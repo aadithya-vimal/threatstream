@@ -10,6 +10,21 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
-    minify: 'esbuild'
+    minify: 'esbuild',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'three': ['three']
+        }
+      }
+    }
+  },
+  optimizeDeps: {
+    exclude: ['three']
+  },
+  resolve: {
+    alias: {
+      'three/webgpu': 'three'
+    }
   }
 })
