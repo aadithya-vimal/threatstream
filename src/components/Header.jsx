@@ -32,7 +32,7 @@ const Header = () => {
   }
 
   const titleStyle = {
-    fontSize: '28px',
+    fontSize: '24px',
     fontWeight: 'bold',
     color: 'var(--color-primary-blue)',
     margin: 0,
@@ -51,7 +51,7 @@ const Header = () => {
     padding: '10px 24px',
     fontSize: '16px',
     fontWeight: 'bold',
-    borderRadius: '4px',
+    borderRadius: '8px',
     border: 'none',
     cursor: 'pointer',
     transition: 'all 0.3s ease',
