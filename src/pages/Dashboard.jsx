@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import StatsCounters from '../components/StatsCounters'
 import Globe from '../components/Globe'
 import ThreatFeed from '../components/ThreatFeed'
@@ -72,6 +73,20 @@ function Dashboard() {
           <ThreatFeed threats={threats} />
         </div>
       </div>
+      <footer className="footer">
+        <div className="footer-content">
+          <div className="footer-left">
+            <p className="footer-text">
+              &copy; 2025 Aadithya Vimal
+            </p>
+          </div>
+          <div className="footer-right">
+            <Link to="/terms" className="footer-link">
+              Terms
+            </Link>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

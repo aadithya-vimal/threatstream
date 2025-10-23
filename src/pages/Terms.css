@@ -1,0 +1,126 @@
+.terms-page {
+  min-height: 100vh;
+  padding: 40px 20px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.terms-container {
+  max-width: 900px;
+  width: 100%;
+  padding: 60px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+}
+
+.terms-title {
+  font-size: 48px;
+  font-weight: bold;
+  color: var(--color-primary-blue);
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.terms-updated {
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  margin-bottom: 40px;
+}
+
+.terms-section {
+  margin-bottom: 40px;
+}
+
+.terms-section h2 {
+  font-size: 24px;
+  font-weight: bold;
+  color: var(--color-text-primary);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(0, 163, 255, 0.2);
+}
+
+.terms-section p {
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--color-text-secondary);
+  margin-bottom: 12px;
+}
+
+.terms-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+}
+
+.terms-section ul li {
+  padding: 8px 0;
+  padding-left: 24px;
+  position: relative;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  font-size: 15px;
+}
+
+.terms-section ul li::before {
+  content: '•';
+  position: absolute;
+  left: 8px;
+  color: var(--color-primary-blue);
+  font-size: 18px;
+}
+
+.terms-footer {
+  margin-top: 60px;
+  padding-top: 40px;
+  border-top: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.terms-footer p {
+  color: var(--color-text-muted);
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.back-home-link {
+  display: inline-block;
+  padding: 12px 32px;
+  background: transparent;
+  color: var(--color-primary-blue);
+  border: 2px solid var(--color-primary-blue);
+  border-radius: 4px;
+  text-decoration: none;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.back-home-link:hover {
+  background: var(--color-primary-blue);
+  color: var(--color-bg-near-black);
+  box-shadow: 0 0 20px rgba(0, 163, 255, 0.4);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .terms-container {
+    padding: 30px 20px;
+  }
+
+  .terms-title {
+    font-size: 36px;
+  }
+
+  .terms-section h2 {
+    font-size: 20px;
+  }
+
+  .terms-section p,
+  .terms-section ul li {
+    font-size: 14px;
+  }
+}
