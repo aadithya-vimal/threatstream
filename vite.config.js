@@ -10,16 +10,6 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
-    minify: 'esbuild',
-    commonjsOptions: {
-      ignoreTryCatch: true
-    }
-  },
-  resolve: {
-    alias: {
-      'three/webgpu': 'three',
-      'three/tsl': 'three',
-      'three/addons': 'three'
-    }
+    minify: 'esbuild'
   }
 })
