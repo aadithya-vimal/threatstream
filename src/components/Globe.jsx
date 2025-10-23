@@ -1,14 +1,13 @@
-import React, { useEffect, useState, useRef } from 'react'
-import Globe from 'react-globe.gl'
+import React, { useEffect, useState, useRef } from 'react';
+import Globe from 'react-globe.gl';
 
-// Static victim locations
+// --- Constants (remain the same) ---
 const VICTIM_LOCATIONS = {
   berlin: { lat: 52.5200, lon: 13.4050, label: 'SSH/IMAP Target', color: '#00FFFF' },
   sanfrancisco: { lat: 37.7749, lon: -122.4194, label: 'Web Target', color: '#FF0000' },
   singapore: { lat: 1.3521, lon: 103.8198, label: 'IoT Target', color: '#00FF00' }
-}
+};
 
-// Attack type to victim routing mapping
 const ATTACK_TYPE_TO_VICTIM = {
   ssh: VICTIM_LOCATIONS.berlin,
   imap: VICTIM_LOCATIONS.berlin,
@@ -19,129 +18,151 @@ const ATTACK_TYPE_TO_VICTIM = {
   strongips: VICTIM_LOCATIONS.singapore,
   all: VICTIM_LOCATIONS.sanfrancisco,
   unknown: VICTIM_LOCATIONS.sanfrancisco
-}
+};
 
-// Attack type to arc color mapping
 const ATTACK_TYPE_COLORS = {
-  ssh: '#00FFFF',
-  ftp: '#00FF00',
-  apache: '#FF0000',
-  imap: '#8A2BE2',
-  sip: '#FFA500',
-  bots: '#FF1493',
-  strongips: '#FFFFFF',
-  all: '#FFFF00',
-  unknown: '#FFFF00'
-}
+  ssh: '#00FFFF',      // Cyan
+  ftp: '#00FF00',      // Green
+  apache: '#FF0000',    // Red
+  imap: '#8A2BE2',    // Purple
+  sip: '#FFA500',      // Orange
+  bots: '#FF1493',    // Pink
+  strongips: '#FFFFFF', // White
+  all: '#FFFF00',      // Yellow
+  unknown: '#FFFF00'   // Yellow
+};
+// --- End Constants ---
 
 const GlobeComponent = ({ threats = [] }) => {
-  const [arcs, setArcs] = useState([])
-  const [pulses, setPulses] = useState([])
-  const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
-  const globeRef = useRef()
-  const containerRef = useRef()
+  // State for attack arcs & pulses (from Firebase)
+  const [arcs, setArcs] = useState([]);
+  const [pulses, setPulses] = useState([]);
 
-  // Static victim markers
+  // *** NEW: State for random background arcs ***
+  const [randomArcs, setRandomArcs] = useState([]);
+
+  // State for globe dimensions
+  const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+  const globeRef = useRef();
+  const containerRef = useRef();
+
+  // Static victim markers (remain the same)
   const victimMarkers = [
     { ...VICTIM_LOCATIONS.berlin, radius: 0.4 },
     { ...VICTIM_LOCATIONS.sanfrancisco, radius: 0.4 },
     { ...VICTIM_LOCATIONS.singapore, radius: 0.4 }
-  ]
+  ];
 
-  // Update globe dimensions when container resizes
+  // Update globe dimensions when container resizes (remains the same)
   useEffect(() => {
     const updateDimensions = () => {
       if (containerRef.current) {
-        const width = containerRef.current.offsetWidth
-        const height = containerRef.current.offsetHeight
-        setDimensions({ width, height })
+        const width = containerRef.current.offsetWidth;
+        const height = containerRef.current.offsetHeight;
+        setDimensions({ width, height });
       }
-    }
+    };
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+    return () => window.removeEventListener('resize', updateDimensions);
+  }, []);
 
-    updateDimensions()
-    window.addEventListener('resize', updateDimensions)
-    
-    return () => window.removeEventListener('resize', updateDimensions)
-  }, [])
-
-  // Get victim location based on attack type
-  const getVictimLocation = (attackType) => {
-    const type = attackType?.toLowerCase() || 'unknown'
-    return ATTACK_TYPE_TO_VICTIM[type] || VICTIM_LOCATIONS.sanfrancisco
-  }
-
-  // Get arc color based on attack type
-  const getArcColor = (attackType) => {
-    const type = attackType?.toLowerCase() || 'unknown'
-    return ATTACK_TYPE_COLORS[type] || ATTACK_TYPE_COLORS.unknown
-  }
-
-  // Process new threats and create arcs/pulses
+  // *** NEW: Generate random background arcs on component mount ***
   useEffect(() => {
-    if (threats.length === 0) return
+    const N_ARCS = 20; // Number of random arcs
+    const gData = [...Array(N_ARCS).keys()].map(() => ({
+      startLat: (Math.random() - 0.5) * 180,
+      startLng: (Math.random() - 0.5) * 360,
+      endLat: (Math.random() - 0.5) * 180,
+      endLng: (Math.random() - 0.5) * 360,
+      color: 'rgba(255, 255, 255, 0.3)', // Faint white color
+      id: `random-${Math.random()}` // Unique ID to differentiate
+    }));
+    setRandomArcs(gData);
+    console.log("Generated random background arcs.");
+  }, []); // Empty dependency array runs only once
 
-    const latestThreat = threats[0]
+  // Get victim location based on attack type (remains the same)
+  const getVictimLocation = (attackType) => {
+    const type = attackType?.toLowerCase() || 'unknown';
+    return ATTACK_TYPE_TO_VICTIM[type] || VICTIM_LOCATIONS.sanfrancisco;
+  };
 
-    // Validate coordinates
-    if (
-      typeof latestThreat.lat !== 'number' ||
-      typeof latestThreat.lon !== 'number' ||
-      latestThreat.lat < -90 ||
-      latestThreat.lat > 90 ||
-      latestThreat.lon < -180 ||
-      latestThreat.lon > 180
-    ) {
-      console.warn('Invalid coordinates for threat:', latestThreat)
-      return
+  // Get arc color based on attack type (remains the same)
+  const getArcColor = (attackType) => {
+    // ----> OPTIONAL: Uncomment the line below to make ALL attack arcs RED <----
+    // return '#FF0000';
+
+    // Default: Use color mapping
+    const type = attackType?.toLowerCase() || 'unknown';
+    return ATTACK_TYPE_COLORS[type] || ATTACK_TYPE_COLORS.unknown;
+  };
+
+  // Process new threats from props and create arcs/pulses (updated)
+  useEffect(() => {
+    // Only process if there are threats and the newest one is different from the last processed one
+    // (This check prevents reprocessing if the parent component re-renders without new data)
+    if (threats.length === 0 || (arcs.length > 0 && threats[0].timestamp === arcs[0].originalTimestamp)) {
+        return;
     }
 
-    const victim = getVictimLocation(latestThreat.attack_type)
-    const color = getArcColor(latestThreat.attack_type)
-    const startTime = Date.now()
-    const id = `${latestThreat.timestamp}-${latestThreat.ip}-${Math.random()}`
+    const latestThreat = threats[0]; // Assuming newest threat is always at index 0
 
-    // Create new arc
+    // Validate coordinates (remains the same)
+    if (
+      typeof latestThreat.lat !== 'number' || typeof latestThreat.lon !== 'number' ||
+      latestThreat.lat < -90 || latestThreat.lat > 90 ||
+      latestThreat.lon < -180 || latestThreat.lon > 180
+    ) {
+      console.warn('Invalid coordinates for threat:', latestThreat);
+      return;
+    }
+
+    const victim = getVictimLocation(latestThreat.attack_type);
+    // *** Use the getArcColor function to determine the color for BOTH arc and pulse ***
+    const color = getArcColor(latestThreat.attack_type);
+    const startTime = Date.now();
+    const id = `${latestThreat.timestamp}-${latestThreat.ip}-${Math.random()}`;
+
+    // Create new arc object - *** ADDED color property directly ***
     const newArc = {
       id,
       startLat: latestThreat.lat,
       startLng: latestThreat.lon,
       endLat: victim.lat,
       endLng: victim.lon,
-      color,
-      startTime
-    }
+      color: color, // Set color directly
+      startTime,
+      originalTimestamp: latestThreat.timestamp // Store original timestamp for comparison
+    };
 
-    // Create new pulse at attacker location
+    // Create new pulse object - *** Use the SAME color as the arc ***
     const newPulse = {
       id,
       lat: latestThreat.lat,
       lng: latestThreat.lon,
-      color,
+      color: color, // Set color directly
       startTime,
       radius: 0.6
-    }
+    };
 
     // Add new arc (limit to 50)
-    setArcs(prevArcs => {
-      const updated = [newArc, ...prevArcs]
-      return updated.slice(0, 50)
-    })
+    setArcs(prevArcs => [newArc, ...prevArcs].slice(0, 50));
 
     // Add new pulse (limit to 50)
-    setPulses(prevPulses => {
-      const updated = [newPulse, ...prevPulses]
-      return updated.slice(0, 50)
-    })
+    setPulses(prevPulses => [newPulse, ...prevPulses].slice(0, 50));
 
-    // Set timeout to remove arc and pulse after 15 seconds
+    // Set timeout to remove arc and pulse after 15 seconds (remains the same)
     setTimeout(() => {
-      setArcs(prevArcs => prevArcs.filter(arc => arc.id !== id))
-      setPulses(prevPulses => prevPulses.filter(pulse => pulse.id !== id))
-    }, 15000)
-  }, [threats])
+      setArcs(prevArcs => prevArcs.filter(arc => arc.id !== id));
+      setPulses(prevPulses => prevPulses.filter(pulse => pulse.id !== id));
+    }, 15000);
 
-  // Combine static victims with active pulses for points data
-  const allPoints = [...victimMarkers, ...pulses]
+  // IMPORTANT: Depend only on the threats array object itself, not its length
+  }, [threats]);
+
+  // Combine static victims with active pulses for points data (remains the same)
+  const allPoints = [...victimMarkers, ...pulses];
 
   return (
     <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -152,38 +173,39 @@ const GlobeComponent = ({ threats = [] }) => {
         globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
         backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
 
-        // Arcs configuration
-        arcsData={arcs}
+        // *** UPDATED Arcs configuration to handle both types ***
+        arcsData={[...arcs, ...randomArcs]} // Combine real and random arcs
         arcStartLat={d => d.startLat}
         arcStartLng={d => d.startLng}
         arcEndLat={d => d.endLat}
         arcEndLng={d => d.endLng}
-        arcColor={d => d.color}
-        arcDashLength={0.4}
-        arcDashGap={0.2}
-        arcDashAnimateTime={2000}
-        arcStroke={0.6}
-        arcAltitude={0.3}
+        arcColor={d => d.color} // Use the color property directly
+        // Apply different styles based on ID prefix
+        arcDashLength={d => d.id.startsWith('random-') ? 0.6 : 0.4}
+        arcDashGap={d => d.id.startsWith('random-') ? 0.6 : 0.2}
+        arcDashAnimateTime={d => d.id.startsWith('random-') ? 8000 : 2000} // Slower animation for random
+        arcStroke={d => d.id.startsWith('random-') ? 0.2 : 0.6} // Thinner stroke for random
+        arcAltitude={d => d.id.startsWith('random-') ? 0.15 : 0.3} // Lower altitude for random
 
-        // Points configuration (victims + pulses)
+        // Points configuration (victims + pulses - remains the same)
         pointsData={allPoints}
         pointLat={d => d.lat}
-        pointLng={d => d.lng || d.lon}
+        pointLng={d => d.lng || d.lon} // Handles both 'lon' and 'lng' keys
         pointColor={d => d.color}
         pointAltitude={0}
         pointRadius={d => d.radius}
         pointLabel={d => d.label || ''}
 
-        // Globe appearance
+        // Globe appearance (remains the same)
         showAtmosphere={true}
         atmosphereColor="#00a3ff"
         atmosphereAltitude={0.15}
 
-        // Controls
+        // Controls (remains the same)
         enablePointerInteraction={true}
       />
     </div>
-  )
-}
+  );
+};
 
-export default GlobeComponent
+export default GlobeComponent;
