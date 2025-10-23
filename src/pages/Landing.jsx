@@ -112,6 +112,95 @@ const Landing = () => {
             </div>
           </div>
 
+          {/* Feature 7: Threat Intelligence Feeds */}
+          <div className="feature-card">
+            <div className="feature-icon">📡</div>
+            <h2 className="feature-title">Threat Intelligence Feeds</h2>
+            <p className="feature-description">
+              Aggregate and correlate data from multiple threat intelligence sources including commercial feeds, open-source intelligence, and custom integrations
+            </p>
+          </div>
+
+          {/* Feature 8: Custom Alerts */}
+          <div className="feature-card">
+            <div className="feature-icon">🔔</div>
+            <h2 className="feature-title">Custom Alerts</h2>
+            <p className="feature-description">
+              Configure intelligent notifications for specific threat patterns, severity thresholds, and geographic regions with multi-channel delivery
+            </p>
+          </div>
+
+          {/* Feature 9: Historical Analytics */}
+          <div className="feature-card">
+            <div className="feature-icon">📊</div>
+            <h2 className="feature-title">Historical Analytics</h2>
+            <p className="feature-description">
+              Deep-dive into historical threat data with trend analysis, pattern recognition, and predictive insights for proactive defense
+            </p>
+          </div>
+
+          {/* Feature 10: API Integration */}
+          <div className="feature-card">
+            <div className="feature-icon">🔗</div>
+            <h2 className="feature-title">API Integration</h2>
+            <p className="feature-description">
+              Seamlessly connect with your existing security infrastructure including SIEM platforms, firewalls, and incident response tools
+            </p>
+            <div className="attack-types">
+              <span className="attack-badge" style={{borderColor: '#00A3FF'}}>Splunk</span>
+              <span className="attack-badge" style={{borderColor: '#00FF00'}}>QRadar</span>
+              <span className="attack-badge" style={{borderColor: '#8A2BE2'}}>ServiceNow</span>
+              <span className="attack-badge" style={{borderColor: '#FFA500'}}>PagerDuty</span>
+            </div>
+          </div>
+
+          {/* Feature 11: Automated Response */}
+          <div className="feature-card">
+            <div className="feature-icon">⚡</div>
+            <h2 className="feature-title">Automated Response</h2>
+            <p className="feature-description">
+              Execute predefined playbooks automatically based on threat severity and type to minimize response time and human error
+            </p>
+            <div className="targets-grid">
+              <div className="target-box">
+                <p>Block IP addresses</p>
+              </div>
+              <div className="target-box">
+                <p>Quarantine endpoints</p>
+              </div>
+              <div className="target-box">
+                <p>Alert security team</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Feature 12: Export & Reporting */}
+          <div className="feature-card">
+            <div className="feature-icon">📄</div>
+            <h2 className="feature-title">Export & Reporting</h2>
+            <p className="feature-description">
+              Generate comprehensive threat intelligence reports with customizable templates and export to multiple formats for stakeholder distribution
+            </p>
+            <div className="tech-stats">
+              <div className="stat">
+                <div className="stat-value">PDF</div>
+                <div className="stat-label">Reports</div>
+              </div>
+              <div className="stat">
+                <div className="stat-value">CSV</div>
+                <div className="stat-label">Data</div>
+              </div>
+              <div className="stat">
+                <div className="stat-value">JSON</div>
+                <div className="stat-label">API</div>
+              </div>
+              <div className="stat">
+                <div className="stat-value">Excel</div>
+                <div className="stat-label">Sheets</div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </section>
 
