@@ -18,36 +18,28 @@ const ThreatFeed = ({ threats = [] }) => {
     }
   }
 
-  const containerStyle = {
-    backgroundColor: '#1a1a1a',
-    border: '2px solid #333333',
-    borderRadius: '8px',
-    padding: '20px',
-    height: 'calc(100vh - 80px - 120px - 80px)',
-    overflowY: 'auto'
-  }
-
   const headerStyle = {
     fontSize: '16px',
     fontWeight: 'bold',
-    color: '#00d9ff',
+    color: 'var(--color-primary-blue)',
     textTransform: 'uppercase',
     letterSpacing: '1px',
     marginBottom: '15px'
   }
 
   const feedItemStyle = {
-    backgroundColor: '#0f0f0f',
-    borderLeft: '3px solid #00d9ff',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderLeft: '3px solid var(--color-primary-blue)',
     padding: '10px',
     marginBottom: '8px',
     fontSize: '12px',
     lineHeight: '1.6',
-    color: '#cccccc'
+    color: 'var(--color-text-secondary)',
+    transition: 'all 0.3s ease'
   }
 
   const emptyStateStyle = {
-    color: '#666666',
+    color: 'var(--color-text-muted)',
     fontStyle: 'italic',
     textAlign: 'center',
     paddingTop: '20px'
@@ -57,7 +49,10 @@ const ThreatFeed = ({ threats = [] }) => {
   const displayThreats = threats.slice(0, 20)
 
   return (
-    <div style={containerStyle}>
+    <div className="cyber-panel" style={{
+      height: 'calc(100vh - 80px - 120px - 80px)',
+      overflowY: 'auto'
+    }}>
       <div style={headerStyle}>LIVE THREAT FEED</div>
 
       {displayThreats.length === 0 ? (
