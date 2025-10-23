@@ -14,17 +14,6 @@
   position: relative;
 }
 
-.hero::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: radial-gradient(circle at 50% 50%, rgba(0, 163, 255, 0.1) 0%, transparent 70%);
-  pointer-events: none;
-}
-
 .hero-content {
   position: relative;
   z-index: 1;
