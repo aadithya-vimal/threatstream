@@ -144,7 +144,7 @@ const GlobeComponent = ({ threats = [] }) => {
   const allPoints = [...victimMarkers, ...pulses]
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <Globe
         ref={globeRef}
         width={dimensions.width}
