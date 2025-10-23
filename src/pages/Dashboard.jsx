@@ -10,7 +10,7 @@ import './Dashboard.css';
 
 function Dashboard() {
   const [threats, setThreats] = useState([]);
-  const [isLoading, setIsLoading] = useState(true); // Added loading state
+  const [isLoading, setIsLoading] = useState(true); 
 
   // Calculate threat statistics (This function remains the same)
   const calculateStats = (threatsArray) => {
