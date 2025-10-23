@@ -12,8 +12,8 @@
     "firebase": "^10.7.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-globe.gl": "^2.25.0",
-    "three": "^0.150.0"
+    "react-globe.gl": "^2.23.0",
+    "three": "^0.148.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",
