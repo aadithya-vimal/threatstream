@@ -14,7 +14,7 @@
   min-height: 0;
 }
 
-/* Globe Section - 80% width */
+/* Globe Section - 80% width - CENTERED */
 .globe-section {
   flex: 4;
   background: var(--color-bg-secondary);
@@ -22,6 +22,9 @@
   border-radius: 8px;
   overflow: hidden;
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Feed Section - 20% width */
