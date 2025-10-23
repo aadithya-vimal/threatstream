@@ -126,9 +126,11 @@ const GlobeComponent = ({ threats = [] }) => {
   const allPoints = [...victimMarkers, ...pulses]
 
   return (
-    <div style={{ width: '100%', height: '100%' }}>
+    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <Globe
         ref={globeRef}
+        width={800}
+        height={600}
         globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
         backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
 
