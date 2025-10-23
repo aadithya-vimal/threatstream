@@ -11,20 +11,15 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: false,
     minify: 'esbuild',
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          'three': ['three']
-        }
-      }
+    commonjsOptions: {
+      ignoreTryCatch: true
     }
-  },
-  optimizeDeps: {
-    exclude: ['three']
   },
   resolve: {
     alias: {
-      'three/webgpu': 'three'
+      'three/webgpu': 'three',
+      'three/tsl': 'three',
+      'three/addons': 'three'
     }
   }
 })
