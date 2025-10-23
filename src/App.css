@@ -1,0 +1,31 @@
+/* App Container Layout */
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Main Content Area - Globe and Feed */
+.main-content {
+  display: flex;
+  gap: 30px;
+  padding: 0 40px 40px 40px;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Globe Section - 80% width */
+.globe-section {
+  flex: 4;
+  background: var(--color-bg-secondary);
+  border: 2px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Feed Section - 20% width */
+.feed-section {
+  flex: 1;
+  min-width: 300px;
+}

@@ -1,0 +1,81 @@
+/* CSS Reset and Global Styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Root CSS Variables */
+:root {
+  /* Primary Colors */
+  --color-bg-primary: #0a0a0a;
+  --color-bg-secondary: #1a1a1a;
+  --color-bg-tertiary: #0f0f0f;
+  --color-border: #333333;
+
+  /* Accent Colors */
+  --color-cyan: #00d9ff;
+  --color-pink: #ff1493;
+  --color-red: #ff0000;
+  --color-orange: #ffa500;
+  --color-green: #00ff00;
+  --color-purple: #8a2be2;
+  --color-yellow: #ffff00;
+  --color-white: #ffffff;
+
+  /* Text Colors */
+  --color-text-primary: #00d9ff;
+  --color-text-secondary: #cccccc;
+  --color-text-muted: #666666;
+
+  /* Spacing */
+  --spacing-xs: 8px;
+  --spacing-sm: 15px;
+  --spacing-md: 20px;
+  --spacing-lg: 30px;
+  --spacing-xl: 40px;
+}
+
+/* Animated Cyberpunk Grid Background */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 14px;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-primary);
+  background-image:
+    linear-gradient(rgba(0, 217, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 217, 255, 0.1) 1px, transparent 1px);
+  background-size: 50px 50px;
+  animation: gridScroll 20s linear infinite;
+  overflow-x: hidden;
+  min-width: 1024px;
+}
+
+@keyframes gridScroll {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 50px;
+  }
+}
+
+/* Custom Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-cyan);
+}
