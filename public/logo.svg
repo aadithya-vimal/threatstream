@@ -1,0 +1,37 @@
+<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Outer circle (globe outline) -->
+  <circle cx="20" cy="20" r="18" stroke="#00d9ff" stroke-width="2" fill="none"/>
+
+  <!-- Grid lines (latitude) -->
+  <ellipse cx="20" cy="20" rx="18" ry="6" stroke="#00d9ff" stroke-width="0.5" fill="none" opacity="0.6"/>
+  <ellipse cx="20" cy="20" rx="18" ry="12" stroke="#00d9ff" stroke-width="0.5" fill="none" opacity="0.4"/>
+
+  <!-- Grid lines (longitude) -->
+  <ellipse cx="20" cy="20" rx="6" ry="18" stroke="#00d9ff" stroke-width="0.5" fill="none" opacity="0.6"/>
+  <ellipse cx="20" cy="20" rx="12" ry="18" stroke="#00d9ff" stroke-width="0.5" fill="none" opacity="0.4"/>
+
+  <!-- Vertical line through center -->
+  <line x1="20" y1="2" x2="20" y2="38" stroke="#00d9ff" stroke-width="0.5" opacity="0.6"/>
+
+  <!-- Horizontal line through center -->
+  <line x1="2" y1="20" x2="38" y2="20" stroke="#00d9ff" stroke-width="0.5" opacity="0.6"/>
+
+  <!-- Attack arc (curved path) -->
+  <path d="M 8 25 Q 20 10, 32 25" stroke="#ff1493" stroke-width="1.5" fill="none" opacity="0.8">
+    <animate attributeName="opacity" values="0.8;1;0.8" dur="2s" repeatCount="indefinite"/>
+  </path>
+
+  <!-- Target points -->
+  <circle cx="8" cy="25" r="2" fill="#00FFFF">
+    <animate attributeName="r" values="2;3;2" dur="1.5s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="32" cy="25" r="2" fill="#FF0000">
+    <animate attributeName="r" values="2;3;2" dur="1.5s" repeatCount="indefinite" begin="0.5s"/>
+  </circle>
+
+  <!-- Center pulse -->
+  <circle cx="20" cy="20" r="3" fill="#00d9ff" opacity="0.6">
+    <animate attributeName="r" values="3;4;3" dur="2s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.6;1;0.6" dur="2s" repeatCount="indefinite"/>
+  </circle>
+</svg>

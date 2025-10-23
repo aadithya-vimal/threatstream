@@ -156,7 +156,7 @@ const GlobeComponent = ({ threats = [] }) => {
 
         // Globe appearance
         showAtmosphere={true}
-        atmosphereColor="#00d9ff"
+        atmosphereColor="#00a3ff"
         atmosphereAltitude={0.15}
 
         // Controls
