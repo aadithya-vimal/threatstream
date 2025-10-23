@@ -130,6 +130,7 @@ const Landing = () => {
       <footer className="landing-footer">
         <p>ThreatStream - Real-time cyber threat intelligence visualization</p>
         <p>Built with React, Three.js, and Firebase</p>
+        <p>© 2025 Aadithya Vimal. All rights reserved. | <Link to="/terms" style={{color: 'var(--color-primary-blue)', textDecoration: 'none'}}>Terms & Conditions</Link></p>
       </footer>
     </div>
   )
