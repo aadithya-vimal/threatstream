@@ -20,8 +20,7 @@ const Header = () => {
   const logoStyle = {
     width: '40px',
     height: '40px',
-    backgroundColor: '#00d9ff',
-    borderRadius: '4px'
+    display: 'block'
   }
 
   const titleStyle = {
@@ -45,7 +44,7 @@ const Header = () => {
   return (
     <header style={headerStyle}>
       <div style={leftSideStyle}>
-        <div style={logoStyle}></div>
+        <img src="/logo.svg" alt="ThreatStream Logo" style={logoStyle} />
         <h1 style={titleStyle}>ThreatStream</h1>
       </div>
       <button style={buttonStyle}>Dashboard</button>
