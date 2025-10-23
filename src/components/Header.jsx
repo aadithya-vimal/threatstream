@@ -1,6 +1,10 @@
 import React from 'react'
+import { Link, useLocation } from 'react-router-dom'
 
 const Header = () => {
+  const location = useLocation()
+  const isDashboard = location.pathname === '/dashboard'
+
   const headerStyle = {
     display: 'flex',
     justifyContent: 'space-between',
@@ -31,7 +35,14 @@ const Header = () => {
     fontSize: '28px',
     fontWeight: 'bold',
     color: 'var(--color-primary-blue)',
-    margin: 0
+    margin: 0,
+    textDecoration: 'none'
+  }
+
+  const navStyle = {
+    display: 'flex',
+    gap: '16px',
+    alignItems: 'center'
   }
 
   const buttonStyle = {
@@ -44,16 +55,36 @@ const Header = () => {
     border: 'none',
     cursor: 'pointer',
     transition: 'all 0.3s ease',
-    boxShadow: '0 0 10px rgba(0, 163, 255, 0.3)'
+    boxShadow: '0 0 10px rgba(0, 163, 255, 0.3)',
+    textDecoration: 'none',
+    display: 'inline-block'
+  }
+
+  const secondaryButtonStyle = {
+    ...buttonStyle,
+    backgroundColor: 'transparent',
+    color: 'var(--color-primary-blue)',
+    border: '2px solid var(--color-primary-blue)',
+    boxShadow: 'none'
   }
 
   return (
     <header style={headerStyle}>
       <div style={leftSideStyle}>
         <img src="/logo.svg" alt="ThreatStream Logo" style={logoStyle} />
-        <h1 style={titleStyle} className="glitch-text">ThreatStream</h1>
+        <Link to="/" style={titleStyle}>
+          <h1 className="glitch-text" style={{ margin: 0 }}>ThreatStream</h1>
+        </Link>
       </div>
-      <button style={buttonStyle}>Dashboard</button>
+      <nav style={navStyle}>
+        {isDashboard ? (
+          <Link to="/" style={secondaryButtonStyle}>Home</Link>
+        ) : (
+          <>
+            <Link to="/dashboard" style={buttonStyle}>Dashboard</Link>
+          </>
+        )}
+      </nav>
     </header>
   )
 }
