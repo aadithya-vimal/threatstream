@@ -37,7 +37,9 @@ const ATTACK_TYPE_COLORS = {
 const GlobeComponent = ({ threats = [] }) => {
   const [arcs, setArcs] = useState([])
   const [pulses, setPulses] = useState([])
+  const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
   const globeRef = useRef()
+  const containerRef = useRef()
 
   // Static victim markers
   const victimMarkers = [
@@ -45,6 +47,22 @@ const GlobeComponent = ({ threats = [] }) => {
     { ...VICTIM_LOCATIONS.sanfrancisco, radius: 0.4 },
     { ...VICTIM_LOCATIONS.singapore, radius: 0.4 }
   ]
+
+  // Update globe dimensions when container resizes
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        const width = containerRef.current.offsetWidth
+        const height = containerRef.current.offsetHeight
+        setDimensions({ width, height })
+      }
+    }
+
+    updateDimensions()
+    window.addEventListener('resize', updateDimensions)
+    
+    return () => window.removeEventListener('resize', updateDimensions)
+  }, [])
 
   // Get victim location based on attack type
   const getVictimLocation = (attackType) => {
@@ -129,8 +147,8 @@ const GlobeComponent = ({ threats = [] }) => {
     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <Globe
         ref={globeRef}
-        width={800}
-        height={600}
+        width={dimensions.width}
+        height={dimensions.height}
         globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
         backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
 
