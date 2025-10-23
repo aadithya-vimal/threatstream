@@ -9,16 +9,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "firebase": "^10.7.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-globe.gl": "^2.27.0",
-    "firebase": "^10.7.1",
-    "three": "^0.160.0"
+    "react-globe.gl": "^2.36.0",
+    "three": "^0.180.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.2.1",
-    "vite": "^5.0.8",
     "@types/react": "^18.2.43",
-    "@types/react-dom": "^18.2.17"
+    "@types/react-dom": "^18.2.17",
+    "@vitejs/plugin-react": "^4.2.1",
+    "vite": "^5.0.8"
   }
 }
