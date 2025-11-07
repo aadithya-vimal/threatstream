@@ -50,7 +50,7 @@ jobs:
       - name: Run Fetch Threats Script
         env:
           # Pass secrets needed by the Python script as environment variables
-          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL_Deprecated }}
           MAXMIND_LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
           # GOOGLE_APPLICATION_CREDENTIALS is set in the previous step via $GITHUB_ENV
         run: python fetch_threats.py
