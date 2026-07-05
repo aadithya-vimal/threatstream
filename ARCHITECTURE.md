@@ -559,6 +559,14 @@ Resolves data overlaps across scanners:
 - **Attribution Matrix**: Employs a JSON attribution tracker recording the source provider for each consolidated property.
 - **Upserts**: Inserts new network nodes or updates existing assets in Supabase with structural constraints.
 
+### E. Production Nuclei Discovery Plugin
+The second concrete scanner plugin executes the host's native `nuclei` binary:
+1. **Target Chaining**: Allows target resolving by loading host IPs/domains from completed Nmap discovery jobs, creating a seamless discovery-to-vulnerability pipeline.
+2. **Subprocess Execution**: Launches Nuclei with `-jsonl` and `-silent` flags via `subprocess.Popen(shell=False)`.
+3. **JSONL Parsing**: Iterates over stdout lines, deserializes findings, and maps them to standard vulnerability objects.
+4. **Vulnerability Registry**: Automatically populates global CVE tables and maps matches to assets in `asset_vulnerabilities`.
+5. **Asset Risk updates**: Dynamically triggers asset risk profile recalculation, updating total severity weights and exposing results.
+
 ### D. Production Nmap Discovery Plugin
 The first concrete scanner plugin executes the host's native `nmap` binary:
 1. **Sanitization**: All input targets and profiles are strictly sanitized using alphanumeric and domain character whitelists to avoid command injections during subprocess spawning. Runs with `shell=False`.

@@ -243,3 +243,10 @@ Executes real binary command `nmap` and parses the standard XML format outputs (
 * Supports timing and profiling matrices: Quick Scan (`-T4 -F`), Full TCP Scan (`-T4 -p-`), UDP Scan (`-sU -T4 -F`), Service detection (`-sV -T4`), OS guessing (`-O -T4`), Aggressive (`-A -T4`).
 * Whitelists target host inputs to avoid shell command injections.
 
+### 6. Nuclei Vulnerability Scanner Integration
+Executes real binary command `nuclei` and parses standard JSONL outputs (`-jsonl`):
+* Extracts template ID, severity rating, protocol, matched URLs, references list, and CVE/CWE classifications.
+* Registers matched findings to the `vulnerabilities` catalog.
+* Binds identified vulnerabilities to target devices inside `asset_vulnerabilities`.
+* Automatically triggers the Asset Risk Engine on database updates to recalculate the host risk and security ratings.
+
