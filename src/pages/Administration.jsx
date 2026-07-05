@@ -1,77 +1,122 @@
-import React, { useState } from 'react';
+/**
+ * src/pages/Administration.jsx
+ * Enterprise SOC Administration and Systems Configuration Panel
+ */
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import SectionHeader from '../components/SectionHeader';
 import Panel from '../components/Panel';
 import DataTable from '../components/DataTable';
 import StatusBadge from '../components/StatusBadge';
+import SearchBar from '../components/SearchBar';
+import FilterBar from '../components/FilterBar';
+import { ConfigurationService } from '../services/ConfigurationService';
+import { UserService } from '../services/UserService';
 import { Icon } from '../components/Icons';
 
+const configService = new ConfigurationService();
+const userService = new UserService();
+
 export const Administration = () => {
-  const [activeTab, setActiveTab] = useState('users');
+  const [activeTab, setActiveTab] = useState('org'); // org, users, settings, deployment
+  const [settings, setSettings] = useState({
+    organization_name: 'Cyberdyne Systems Corp',
+    soc_name: 'Global Threat Operations Center',
+    admin_profile_name: 'Sarah Connor',
+    admin_profile_role: 'SOC Director',
+    default_timezone: 'UTC',
+    default_region: 'us-east-1',
+    storage_retention_days: '90',
+    evidence_quota_gb: '10',
+    feeds_list: '["AbuseIPDB", "CISA Feed"]',
+    license_key: 'TS-ENTERPRISE-PRO-9981-2026',
+    language: 'English (US)',
+    company_logo_url: 'https://placeholder.threatstream.io/logo.png',
+    support_link: 'https://support.threatstream.io'
+  });
+  
+  // Users state
+  const [users, setUsers] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [inviteForm, setInviteForm] = useState({ name: '', email: '', role: 'SOC Analyst' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
-  // API Key Management Mock State
-  const [apiKeys, setApiKeys] = useState([
-    { id: 'key-1', name: 'EDR-Agent-Collect-Token', key: 'ts_live_a71f...8b2c', scope: 'Ingest Logs', status: 'Active', created: '2026-06-15' },
-    { id: 'key-2', name: 'SOAR-Playbook-Auth', key: 'ts_live_d294...f0a1', scope: 'Read/Write Incidents', status: 'Active', created: '2026-07-01' }
-  ]);
-  const [newKeyName, setNewKeyName] = useState('');
+  useEffect(() => {
+    const loadSystemData = async () => {
+      try {
+        const fetchedSettings = await configService.getSettings();
+        if (fetchedSettings && Object.keys(fetchedSettings).length > 0) {
+          setSettings(prev => ({ ...prev, ...fetchedSettings }));
+        }
 
-  // Connectors Mock State
-  const [connectors, setConnectors] = useState([
-    { name: 'AbuseIPDB Integration', type: 'Reputation Feed', active: true, key: '••••••••••••••••' },
-    { name: 'AlienVault OTX PulseSync', type: 'Community IOCs', active: true, key: '••••••••••••••••' },
-    { name: 'VirusTotal API Hash Lookup', type: 'Scanner Aggregator', active: true, key: '••••••••••••••••' },
-    { name: 'GreyNoise Noise Filtering', type: 'Internet Noise Scanner', active: false, key: '' },
-    { name: 'URLhaus Malware List', type: 'Payload URL Feed', active: true, key: '••••••••••••••••' },
-    { name: 'CISA advisories XML Feed', type: 'Government Alerts', active: false, key: '' }
-  ]);
-
-  // System Stats
-  const systemHealth = {
-    fastApiLoad: '4.2%',
-    redisState: 'Online',
-    redisMemory: '124.8 MB',
-    websocketCount: 28,
-    celeryQueueSize: 2,
-    celeryWorkerStatus: '3 Workers Active',
-    postgresStorage: '4.8 GB of 20 GB',
-    influxLogsCount: '12,845,910 records'
-  };
-
-  const usersList = [
-    { name: 'Aadithya Vimal', email: 'aadit@threatstream.io', role: 'Global Administrator', status: 'Active', lastLogin: '2 mins ago' },
-    { name: 'Jane Doe', email: 'jane.doe@threatstream.io', role: 'Incident Responder (Tier 2)', status: 'Active', lastLogin: '2 hours ago' },
-    { name: 'Alex Chen', email: 'alex.chen@threatstream.io', role: 'Security Analyst (Tier 1)', status: 'Active', lastLogin: '1 day ago' },
-    { name: 'Contractor Audit', email: 'external.auditor@threatstream.io', role: 'Read-Only Auditor', status: 'Suspended', lastLogin: '3 weeks ago' }
-  ];
-
-  const toggleConnector = (idx) => {
-    const updated = [...connectors];
-    updated[idx].active = !updated[idx].active;
-    if (updated[idx].active && !updated[idx].key) {
-      updated[idx].key = '••••••••••••••••';
-    }
-    setConnectors(updated);
-  };
-
-  const generateApiKey = (e) => {
-    e.preventDefault();
-    if (!newKeyName.trim()) return;
-    const newKey = {
-      id: `key-${Math.random()}`,
-      name: newKeyName,
-      key: `ts_live_${Math.random().toString(16).substring(2, 6)}...${Math.random().toString(16).substring(2, 6)}`,
-      scope: 'Ingest Logs',
-      status: 'Active',
-      created: new Date().toISOString().split('T')[0]
+        const fetchedUsers = await userService.getUsers();
+        setUsers(fetchedUsers);
+      } catch (err) {
+        console.error('Failed to load administrative configurations:', err);
+      }
     };
-    setApiKeys([...apiKeys, newKey]);
-    setNewKeyName('');
+    loadSystemData();
+  }, []);
+
+  const handleSaveSettings = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setSaveSuccess(false);
+    try {
+      await Promise.all(
+        Object.entries(settings).map(([key, val]) => configService.updateSetting(key, val))
+      );
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      console.error('Failed to save settings:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const revokeApiKey = (id) => {
-    setApiKeys(apiKeys.filter(k => k.id !== id));
+  const handleInviteUser = async (e) => {
+    e.preventDefault();
+    if (!inviteForm.name.trim() || !inviteForm.email.trim()) return;
+
+    try {
+      const newUser = await userService.inviteUser(inviteForm.name, inviteForm.email, inviteForm.role);
+      setUsers(prev => [newUser, ...prev]);
+      setInviteForm({ name: '', email: '', role: 'SOC Analyst' });
+      setIsInviteOpen(false);
+    } catch (err) {
+      console.error('Failed to invite user:', err);
+    }
   };
+
+  const handleDeactivateUser = async (email) => {
+    try {
+      const updated = await userService.deactivateUser(email);
+      setUsers(prev => prev.map(u => u.email === email ? updated : u));
+    } catch (err) {
+      console.error('Failed to deactivate user:', err);
+    }
+  };
+
+  const handleDeleteUser = async (email) => {
+    try {
+      await userService.deleteUser(email);
+      setUsers(prev => prev.filter(u => u.email !== email));
+    } catch (err) {
+      console.error('Failed to delete user:', err);
+    }
+  };
+
+  // Filter users based on query and role selector
+  const filteredUsers = users.filter(u => {
+    const matchesSearch = u.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          u.email.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesRole = roleFilter ? u.role === roleFilter : true;
+    return matchesSearch && matchesRole;
+  });
 
   const tabStyle = (tabId) => ({
     padding: '10px 16px',
@@ -86,244 +131,450 @@ export const Administration = () => {
     marginBottom: '-1px'
   });
 
+  const configInputStyle = {
+    backgroundColor: 'var(--bg-primary)',
+    border: '1px solid var(--border-color)',
+    borderRadius: '4px',
+    color: 'var(--text-primary)',
+    padding: '8px 12px',
+    fontSize: '13px',
+    outline: 'none',
+    width: '100%',
+    boxSizing: 'border-box'
+  };
+
   return (
     <DashboardLayout>
       <SectionHeader 
         title="SOC Portal Administration" 
-        description="Configure access keys, monitor FastAPI/Celery backend workers, manage threat feeds connectors, and review self-hosted deployment documentation."
+        description="Provision organization profiles, manage operator directories, configure global retention/storage policies, and review Docker specifications."
       />
 
       {/* Navigation tabs */}
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', gap: '4px', marginBottom: '20px', overflowX: 'auto' }}>
+        <button style={tabStyle('org')} onClick={() => setActiveTab('org')}>Organization Profile</button>
         <button style={tabStyle('users')} onClick={() => setActiveTab('users')}>Identity & Access</button>
-        <button style={tabStyle('connectors')} onClick={() => setActiveTab('connectors')}>Threat Connectors</button>
-        <button style={tabStyle('system')} onClick={() => setActiveTab('system')}>System Monitoring</button>
+        <button style={tabStyle('settings')} onClick={() => setActiveTab('settings')}>System Settings</button>
         <button style={tabStyle('deployment')} onClick={() => setActiveTab('deployment')}>Self-Hosted Deployment</button>
       </div>
 
-      {/* 1. IDENTITY & ACCESS TAB */}
+      {saveSuccess && (
+        <div style={{
+          padding: '10px 14px',
+          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+          border: '1px solid var(--color-low)',
+          borderRadius: '4px',
+          color: 'var(--color-low)',
+          fontSize: '13px',
+          fontWeight: 600,
+          marginBottom: '20px'
+        }}>
+          Configurations persisted successfully to system_settings registry.
+        </div>
+      )}
+
+      {/* 1. ORGANIZATION PROFILE TAB */}
+      {activeTab === 'org' && (
+        <form onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <Panel title="Organization Branding and License Details">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>Organization Name</label>
+                <input
+                  type="text"
+                  value={settings.organization_name}
+                  onChange={e => setSettings({ ...settings, organization_name: e.target.value })}
+                  style={configInputStyle}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>SOC Name</label>
+                <input
+                  type="text"
+                  value={settings.soc_name}
+                  onChange={e => setSettings({ ...settings, soc_name: e.target.value })}
+                  style={configInputStyle}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>Company Logo URL</label>
+                <input
+                  type="text"
+                  value={settings.company_logo_url}
+                  onChange={e => setSettings({ ...settings, company_logo_url: e.target.value })}
+                  style={configInputStyle}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>License Token Key</label>
+                <input
+                  type="text"
+                  readOnly
+                  value={settings.license_key}
+                  style={{ ...configInputStyle, opacity: 0.6, cursor: 'not-allowed' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>ThreatStream Version</label>
+                <input
+                  type="text"
+                  readOnly
+                  value="v2.4.0 (Enterprise)"
+                  style={{ ...configInputStyle, opacity: 0.6, cursor: 'not-allowed' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>Technical Support Desk</label>
+                <input
+                  type="text"
+                  value={settings.support_link}
+                  onChange={e => setSettings({ ...settings, support_link: e.target.value })}
+                  style={configInputStyle}
+                />
+              </div>
+            </div>
+            
+            <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                style={{
+                  backgroundColor: 'var(--color-blue)',
+                  border: 'none',
+                  color: '#fff',
+                  padding: '10px 20px',
+                  borderRadius: '4px',
+                  fontWeight: 600,
+                  fontSize: '12px',
+                  cursor: 'pointer'
+                }}
+              >
+                {isSubmitting ? 'Saving...' : 'Save Profile Configs'}
+              </button>
+            </div>
+          </Panel>
+        </form>
+      )}
+
+      {/* 2. IDENTITY & ACCESS TAB */}
       {activeTab === 'users' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
           {/* User management */}
-          <Panel title="Authorized Security Operations Personnel">
-            <DataTable 
-              columns={[
-                { header: 'Full Name', accessor: 'name', renderCell: (val) => <span style={{ fontWeight: 600 }}>{val}</span> },
-                { header: 'Email Address', accessor: 'email', renderCell: (val) => <span style={{ fontFamily: 'monospace' }}>{val}</span> },
-                { header: 'Assigned Role', accessor: 'role' },
-                {
-                  header: 'Account Status',
-                  accessor: 'status',
-                  renderCell: (val) => <StatusBadge status={val === 'Active' ? 'low' : 'critical'} text={val} />
-                },
-                { header: 'Last Login', accessor: 'lastLogin' }
-              ]} 
-              data={usersList} 
-            />
-          </Panel>
-
-          {/* API Key management */}
-          <Panel title="API Credentials Tokens">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              
-              <form onSubmit={generateApiKey} style={{ display: 'flex', gap: '8px', maxWidth: '480px' }}>
-                <input
-                  type="text"
-                  value={newKeyName}
-                  onChange={e => setNewKeyName(e.target.value)}
-                  placeholder="Enter API key descriptive label..."
-                  style={{
-                    flex: 1,
-                    backgroundColor: 'var(--bg-primary)',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: '4px',
-                    color: 'var(--text-primary)',
-                    padding: '8px 12px',
-                    fontSize: '13px',
-                    outline: 'none'
-                  }}
-                />
-                <button
-                  type="submit"
-                  style={{
-                    backgroundColor: 'var(--color-blue)',
-                    border: 'none',
-                    color: '#fff',
-                    padding: '8px 16px',
-                    borderRadius: '4px',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                  className="btn-primary-hover"
-                >
-                  Generate Key
-                </button>
-              </form>
-
-              <DataTable
-                columns={[
-                  { header: 'Key Label', accessor: 'name', renderCell: (val) => <span style={{ fontWeight: 600 }}>{val}</span> },
-                  { header: 'API Token Value', accessor: 'key', renderCell: (val) => <span style={{ fontFamily: 'monospace' }}>{val}</span> },
-                  { header: 'Scope', accessor: 'scope' },
-                  { header: 'Created Date', accessor: 'created' },
-                  {
-                    header: 'Status',
-                    accessor: 'status',
-                    renderCell: (val) => <StatusBadge status="low" text={val} />
-                  },
-                  {
-                    header: 'Action',
-                    accessor: 'id',
-                    renderCell: (val) => (
-                      <button 
-                        onClick={() => revokeApiKey(val)}
-                        style={{ background: 'none', border: 'none', color: 'var(--color-critical)', fontWeight: 600, cursor: 'pointer' }}
-                      >
-                        Revoke
-                      </button>
-                    )
-                  }
-                ]}
-                data={apiKeys}
-              />
-            </div>
-          </Panel>
-        </div>
-      )}
-
-      {/* 2. THREAT CONNECTORS TAB */}
-      {activeTab === 'connectors' && (
-        <Panel title="Third-Party Intelligence Pipelines">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
-            {connectors.map((conn, idx) => (
-              <div 
-                key={conn.name}
+          <Panel 
+            title="Authorized Security Operations Personnel"
+            actions={
+              <button
+                onClick={() => setIsInviteOpen(true)}
                 style={{
-                  border: '1px solid var(--border-color)',
-                  borderRadius: '6px',
-                  backgroundColor: 'var(--bg-secondary)',
-                  padding: '16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  gap: '12px'
+                  backgroundColor: 'var(--color-blue)',
+                  border: 'none',
+                  color: '#fff',
+                  padding: '6px 12px',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
                 }}
               >
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                    <span style={{ fontWeight: 700, fontSize: '13px' }}>{conn.name}</span>
-                    <StatusBadge status={conn.active ? 'low' : 'muted'} text={conn.active ? 'CONNECTED' : 'DISABLED'} />
-                  </div>
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Type: {conn.type}</span>
+                Invite SOC Operator
+              </button>
+            }
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Search and Filters */}
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1 }}>
+                  <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search operators by name or email..." />
                 </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-secondary)' }}>API AUTH TOKEN</label>
-                  <input
-                    type="password"
-                    disabled={!conn.active}
-                    value={conn.key}
-                    placeholder="Enter integration token..."
+                <div style={{ width: '180px' }}>
+                  <select
+                    value={roleFilter}
+                    onChange={e => setRoleFilter(e.target.value)}
                     style={{
-                      padding: '6px 8px',
+                      width: '100%',
                       backgroundColor: 'var(--bg-primary)',
                       border: '1px solid var(--border-color)',
                       borderRadius: '4px',
                       color: 'var(--text-primary)',
-                      fontSize: '11px',
-                      outline: 'none'
-                    }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
-                  <button
-                    onClick={() => toggleConnector(idx)}
-                    style={{
-                      backgroundColor: 'transparent',
-                      border: '1px solid var(--border-color)',
-                      color: conn.active ? 'var(--color-critical)' : 'var(--color-blue)',
-                      padding: '4px 10px',
-                      borderRadius: '4px',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      cursor: 'pointer'
+                      padding: '8px 12px',
+                      fontSize: '13px',
+                      outline: 'none',
+                      height: '100%'
                     }}
                   >
-                    {conn.active ? 'Disable Feed' : 'Activate Feed'}
-                  </button>
+                    <option value="">All Roles</option>
+                    <option value="Administrator">Administrator</option>
+                    <option value="SOC Analyst">SOC Analyst</option>
+                    <option value="Incident Responder">Incident Responder</option>
+                    <option value="Threat Hunter">Threat Hunter</option>
+                    <option value="Read Only">Read Only</option>
+                  </select>
                 </div>
               </div>
-            ))}
-          </div>
-        </Panel>
+
+              {/* Users Directory Table */}
+              <DataTable 
+                columns={[
+                  { header: 'Full Name', accessor: 'name', renderCell: (val) => <span style={{ fontWeight: 600 }}>{val}</span> },
+                  { header: 'Email Address', accessor: 'email', renderCell: (val) => <span style={{ fontFamily: 'monospace' }}>{val}</span> },
+                  { header: 'Assigned Role', accessor: 'role' },
+                  {
+                    header: 'MFA Status',
+                    accessor: 'mfa',
+                    renderCell: (val) => <StatusBadge status={val ? 'low' : 'muted'} text={val ? 'ENABLED' : 'INACTIVE'} />
+                  },
+                  {
+                    header: 'Account Status',
+                    accessor: 'status',
+                    renderCell: (val) => <StatusBadge status={val === 'Active' ? 'low' : 'critical'} text={val} />
+                  },
+                  { header: 'Last Login', accessor: 'lastLogin' },
+                  {
+                    header: 'Actions',
+                    accessor: 'email',
+                    renderCell: (val, row) => (
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <button
+                          onClick={() => handleDeactivateUser(val)}
+                          disabled={row.status === 'Suspended'}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: row.status === 'Suspended' ? 'var(--text-muted)' : 'var(--color-high)',
+                            fontWeight: 600,
+                            fontSize: '11px',
+                            cursor: row.status === 'Suspended' ? 'not-allowed' : 'pointer'
+                          }}
+                        >
+                          Suspend
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(val)}
+                          style={{ background: 'none', border: 'none', color: 'var(--color-critical)', fontWeight: 600, fontSize: '11px', cursor: 'pointer' }}
+                        >
+                          Revoke
+                        </button>
+                      </div>
+                    )
+                  }
+                ]} 
+                data={filteredUsers} 
+              />
+            </div>
+          </Panel>
+
+          {/* Invitation modal overlay */}
+          {isInviteOpen && (
+            <div style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.6)',
+              zIndex: 110,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '20px'
+            }}>
+              <div style={{ width: '100%', maxWidth: '440px' }}>
+                <Panel title="Invite New System Operator">
+                  <form onSubmit={handleInviteUser} style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '8px 0' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>Full Name</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="John Doe"
+                        value={inviteForm.name}
+                        onChange={e => setInviteForm({ ...inviteForm, name: e.target.value })}
+                        style={configInputStyle}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>Email Address</label>
+                      <input
+                        type="email"
+                        required
+                        placeholder="jdoe@company.com"
+                        value={inviteForm.email}
+                        onChange={e => setInviteForm({ ...inviteForm, email: e.target.value })}
+                        style={configInputStyle}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>Role Level Permission</label>
+                      <select
+                        value={inviteForm.role}
+                        onChange={e => setInviteForm({ ...inviteForm, role: e.target.value })}
+                        style={configInputStyle}
+                      >
+                        <option value="Administrator">Administrator</option>
+                        <option value="SOC Analyst">SOC Analyst</option>
+                        <option value="Incident Responder">Incident Responder</option>
+                        <option value="Threat Hunter">Threat Hunter</option>
+                        <option value="Read Only">Read Only</option>
+                      </select>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setIsInviteOpen(false)}
+                        style={{
+                          backgroundColor: 'var(--bg-secondary)',
+                          border: '1px solid var(--border-color)',
+                          color: 'var(--text-primary)',
+                          padding: '8px 16px',
+                          borderRadius: '4px',
+                          fontWeight: 600,
+                          fontSize: '12px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        style={{
+                          backgroundColor: 'var(--color-blue)',
+                          border: 'none',
+                          color: '#fff',
+                          padding: '8px 16px',
+                          borderRadius: '4px',
+                          fontWeight: 600,
+                          fontSize: '12px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Send Invite
+                      </button>
+                    </div>
+                  </form>
+                </Panel>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
-      {/* 3. SYSTEM HEALTH TAB */}
-      {activeTab === 'system' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '24px' }}>
-          
-          {/* Queues and background tasks logs */}
-          <Panel title="Broker Queue & Telemetry Processing health">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-                <div style={{ padding: '12px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', borderRadius: '4px' }}>
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase' }}>FastAPI Engine CPU</span>
-                  <span style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-low)' }}>{systemHealth.fastApiLoad}</span>
+      {/* 3. SYSTEM SETTINGS TAB */}
+      {activeTab === 'settings' && (
+        <form onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+            
+            {/* Storage and Retention settings */}
+            <Panel title="Log Retention & Storage Buckets">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>Log Retention Prune Threshold (Days)</label>
+                  <select
+                    value={settings.storage_retention_days}
+                    onChange={e => setSettings({ ...settings, storage_retention_days: e.target.value })}
+                    style={configInputStyle}
+                  >
+                    <option value="30">30 Days</option>
+                    <option value="90">90 Days</option>
+                    <option value="180">180 Days</option>
+                    <option value="365">365 Days (1 Year)</option>
+                  </select>
                 </div>
-                <div style={{ padding: '12px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', borderRadius: '4px' }}>
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase' }}>Redis Memory state</span>
-                  <span style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-low)' }}>{systemHealth.redisState} ({systemHealth.redisMemory})</span>
-                </div>
-                <div style={{ padding: '12px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', borderRadius: '4px' }}>
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase' }}>Active WebSockets</span>
-                  <span style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-blue-hover)' }}>{systemHealth.websocketCount} Clients</span>
-                </div>
-                <div style={{ padding: '12px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', borderRadius: '4px' }}>
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase' }}>Worker Queue (Celery)</span>
-                  <span style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-low)' }}>{systemHealth.celeryQueueSize} tasks queued</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>Evidence File Vault Allocation Quota (GB)</label>
+                  <input
+                    type="number"
+                    value={settings.evidence_quota_gb}
+                    onChange={e => setSettings({ ...settings, evidence_quota_gb: e.target.value })}
+                    style={configInputStyle}
+                  />
                 </div>
               </div>
+            </Panel>
 
-              <div style={{ padding: '12px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', borderRadius: '4px' }}>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', marginBottom: '6px' }}>BACKGROUND JOBS DAEMON</span>
-                <span style={{ fontSize: '13px', fontWeight: 600 }}>{systemHealth.celeryWorkerStatus} (Executing honeypot queries hourly)</span>
+            {/* General Preferences */}
+            <Panel title="General Locale Preferences">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>Default Timezone</label>
+                  <select
+                    value={settings.default_timezone}
+                    onChange={e => setSettings({ ...settings, default_timezone: e.target.value })}
+                    style={configInputStyle}
+                  >
+                    <option value="UTC">UTC (Coordinated Universal Time)</option>
+                    <option value="EST">EST (Eastern Standard Time)</option>
+                    <option value="GMT">GMT (Greenwich Mean Time)</option>
+                    <option value="IST">IST (Indian Standard Time)</option>
+                    <option value="SGT">SGT (Singapore Standard Time)</option>
+                  </select>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>Default Region</label>
+                  <select
+                    value={settings.default_region}
+                    onChange={e => setSettings({ ...settings, default_region: e.target.value })}
+                    style={configInputStyle}
+                  >
+                    <option value="us-east-1">US East (N. Virginia)</option>
+                    <option value="eu-central-1">EU Central (Frankfurt)</option>
+                    <option value="ap-south-1">AP South (Mumbai)</option>
+                    <option value="ap-southeast-1">AP Southeast (Singapore)</option>
+                  </select>
+                </div>
               </div>
-            </div>
-          </Panel>
+            </Panel>
 
-          {/* Database & Logs storage allocations */}
-          <Panel title="Storage & Logging Statistics">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                  <span>PostgreSQL DB Storage Usage:</span>
-                  <strong>{systemHealth.postgresStorage}</strong>
+            {/* Security settings */}
+            <Panel title="Portal Console Security Gate">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Force MFA Enrolment:</span>
+                  <StatusBadge status="muted" text="RECOMMENDED" />
                 </div>
-                <div style={{ width: '100%', height: '6px', backgroundColor: 'var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
-                  <div style={{ width: '24%', height: '100%', backgroundColor: 'var(--color-blue)' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Restrict Logins by IP range:</span>
+                  <StatusBadge status="muted" text="INACTIVE" />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Automatic Console Timeout:</span>
+                  <span>15 Mins</span>
                 </div>
               </div>
+            </Panel>
+          </div>
 
-              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                  <span>Telemetry Log Indexes (InfluxDB):</span>
-                  <strong>{systemHealth.influxLogsCount}</strong>
-                </div>
-                <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Retention policy: 90 days automatic log deletion</span>
-              </div>
-            </div>
-          </Panel>
-        </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              style={{
+                backgroundColor: 'var(--color-blue)',
+                border: 'none',
+                color: '#fff',
+                padding: '10px 20px',
+                borderRadius: '4px',
+                fontWeight: 600,
+                fontSize: '12px',
+                cursor: 'pointer'
+              }}
+            >
+              {isSubmitting ? 'Saving...' : 'Save Settings'}
+            </button>
+          </div>
+        </form>
       )}
 
       {/* 4. SELF-HOSTED DEPLOYMENT TAB */}
       {activeTab === 'deployment' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 0.8fr)', gap: '24px' }}>
-          
-          {/* Docker Compose YAML code */}
-          <Panel title="Docker Compose Architecture Spec">
+          <Panel title="Docker Compose Spec">
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                 Deploy ThreatStream locally using standard self-hosted containers.
@@ -338,7 +589,7 @@ export const Administration = () => {
                 padding: '12px',
                 overflowX: 'auto',
                 lineHeight: '1.4',
-                maxHeight: '400px'
+                maxHeight: '380px'
               }}>
 {`version: '3.8'
 
@@ -354,16 +605,6 @@ services:
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       - postgres
-      - redis
-
-  # Background Ingestion Workers
-  worker:
-    image: threatstream/api:latest
-    command: celery -A workers.tasks worker --loglevel=info
-    environment:
-      - DATABASE_URL=postgresql://threat_user:ts_pass@postgres:5432/threatstream
-      - REDIS_URL=redis://redis:6379/0
-    depends_on:
       - redis
 
   # State Cache Broker
@@ -390,25 +631,24 @@ volumes:
             </div>
           </Panel>
 
-          {/* Deployment guidelines */}
           <Panel title="Deployment Guidelines">
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '12px', lineHeight: '1.6', color: 'var(--text-secondary)' }}>
               <div>
-                <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>1. Environment Configuration</strong>
-                <span>Create a local <code>.env</code> file containing details for PostgreSQL DB credentials and Redis cache endpoints. Connect threat APIs inside the Connectors panel.</span>
+                <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>1. Local Configuration</strong>
+                <span>Configure connection details for PostgreSQL and Redis. Connect feed collectors to Supabase using <code>.env.local</code>.</span>
               </div>
               
               <div>
                 <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>2. Initialize Database Schema</strong>
-                <span>Migrate tables using Alembic CLI tools:</span>
-                <pre style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', padding: '6px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '11px', color: 'var(--color-blue-hover)', marginTop: '4px' }}>
-                  docker-compose exec api alembic upgrade head
+                <span>Run the migrations head scripts via Supabase SQL Console using:</span>
+                <pre style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', padding: '6px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '11px', color: 'var(--color-blue)', marginTop: '4px' }}>
+                  supabase migration up
                 </pre>
               </div>
 
               <div>
-                <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>3. Network Security Boundary</strong>
-                <span>Bind the main FastAPI server to localhost or run under Nginx reverse proxy using SSL certificates. Restrict ingress ports of database engines to internal networks.</span>
+                <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>3. Boundary Protections</strong>
+                <span>Bind the API servers behind SSL reverse proxies and isolate container ports from external networks.</span>
               </div>
             </div>
           </Panel>
