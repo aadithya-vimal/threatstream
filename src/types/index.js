@@ -262,6 +262,9 @@ export class AuthenticationEvent extends BaseModel {
 /**
  * Detection Analytics Rule Model
  */
+/**
+ * Detection Analytics Rule Model - Sigma and YARA configuration definitions
+ */
 export class Detection extends BaseModel {
   constructor(data = {}) {
     super(data);
