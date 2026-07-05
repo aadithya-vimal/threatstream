@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS campaigns (
     status VARCHAR(50) DEFAULT 'Active' CHECK (status IN ('Active', 'Completed', 'Planned')),
     target_regions VARCHAR(100)[],
     affected_industries VARCHAR(100)[],
-    references TEXT[],
+    reference_links TEXT[],
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -56,7 +56,7 @@ ALTER TABLE iocs ADD COLUMN IF NOT EXISTS threat_actor_id UUID REFERENCES threat
 ALTER TABLE iocs ADD COLUMN IF NOT EXISTS campaign_id UUID REFERENCES campaigns(id) ON DELETE SET NULL;
 ALTER TABLE iocs ADD COLUMN IF NOT EXISTS malware_family_id UUID REFERENCES malware_families(id) ON DELETE SET NULL;
 ALTER TABLE iocs ADD COLUMN IF NOT EXISTS tags VARCHAR(100)[];
-ALTER TABLE iocs ADD COLUMN IF NOT EXISTS references TEXT[];
+ALTER TABLE iocs ADD COLUMN IF NOT EXISTS reference_links TEXT[];
 ALTER TABLE iocs ADD COLUMN IF NOT EXISTS geolocation JSONB;
 
 -- 5. Create Generic IOC Correlations Table for Assets, Incidents, Vulnerabilities mapping

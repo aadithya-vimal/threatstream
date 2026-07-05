@@ -43,7 +43,7 @@ ALTER TABLE vulnerabilities ADD COLUMN IF NOT EXISTS capec VARCHAR(20);
 ALTER TABLE vulnerabilities ADD COLUMN IF NOT EXISTS exploit_available BOOLEAN DEFAULT FALSE;
 ALTER TABLE vulnerabilities ADD COLUMN IF NOT EXISTS patch_available BOOLEAN DEFAULT FALSE;
 ALTER TABLE vulnerabilities ADD COLUMN IF NOT EXISTS vendor_advisory TEXT;
-ALTER TABLE vulnerabilities ADD COLUMN IF NOT EXISTS "references" TEXT[];
+ALTER TABLE vulnerabilities ADD COLUMN IF NOT EXISTS reference_links TEXT[];
 ALTER TABLE vulnerabilities ADD COLUMN IF NOT EXISTS known_exploited BOOLEAN DEFAULT FALSE;
 
 -- 5. Create Asset Relationships Table
