@@ -90,7 +90,11 @@ detection:
     TimeOfDay|outside: '08:00-18:00'
   condition: selection`,
         author: 'SOC Triage',
-        created: '2026-07-04'
+        created: '2026-07-04',
+        version: '1.0',
+        tags: ['Lateral Movement', 'RDP'],
+        execution_count: 3,
+        last_triggered: '2026-07-05T09:12:00Z'
       }
     ];
 
@@ -104,7 +108,20 @@ detection:
         details: 'Process Created: powershell.exe -ExecutionPolicy Bypass -File C:\\Users\\sales_user\\AppData\\Local\\Temp\\update.ps1',
         processName: 'powershell.exe',
         parentProcess: 'explorer.exe',
-        category: 'Process Creation'
+        category: 'Process Creation',
+        pid: 3824,
+        ppid: 1102,
+        source: 'Sysmon',
+        severity: 'high',
+        mitre_id: 'T1059.001',
+        mitre_name: 'PowerShell',
+        mitre_tactic: 'Execution',
+        command_line: 'powershell.exe -ExecutionPolicy Bypass -File C:\\Users\\sales_user\\AppData\\Local\\Temp\\update.ps1',
+        hash: 'b12fa8e71182390a88cdff1236892410294e7721',
+        risk_score: 85,
+        correlation_id: '46d9d92b-8a88-4228-a83a-4422e8ff1294',
+        raw_event: { event_id: 1, parent_pid: 1102, image: 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe' },
+        normalized_event: { process_name: 'powershell.exe', integrity_level: 'Medium' }
       },
       {
         id: 'evt-1002',
@@ -116,7 +133,17 @@ detection:
         processName: 'powershell.exe',
         remoteIP: '91.240.118.12',
         remotePort: 443,
-        category: 'Network Flow'
+        category: 'Network Flow',
+        pid: 3824,
+        ppid: 1102,
+        source: 'Sysmon',
+        severity: 'high',
+        mitre_id: 'T1071.001',
+        mitre_name: 'Web Protocols',
+        mitre_tactic: 'Command and Control',
+        command_line: 'powershell.exe -ExecutionPolicy Bypass',
+        risk_score: 80,
+        correlation_id: '46d9d92b-8a88-4228-a83a-4422e8ff1294'
       },
       {
         id: 'evt-1003',
@@ -127,7 +154,17 @@ detection:
         details: 'Registry Key Created: HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\Updater -> C:\\Windows\\Temp\\agent.exe',
         key: 'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\Updater',
         action: 'Create Key',
-        category: 'Persistence'
+        category: 'Persistence',
+        pid: 1404,
+        ppid: 612,
+        source: 'Sysmon',
+        severity: 'high',
+        mitre_id: 'T1547.001',
+        mitre_name: 'Registry Run Keys',
+        mitre_tactic: 'Persistence',
+        command_line: 'reg.exe add HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run /v Updater /t REG_SZ /d C:\\Windows\\Temp\\agent.exe',
+        risk_score: 75,
+        correlation_id: '46d9d92b-8a88-4228-a83a-4422e8ff1294'
       },
       {
         id: 'evt-1004',
@@ -138,7 +175,16 @@ detection:
         details: 'DNS Resolution Request: free-vpn-service.ru -> AS57112 RussianTelecom',
         query: 'free-vpn-service.ru',
         resolvedIP: '185.190.140.22',
-        category: 'DNS Lookup'
+        category: 'DNS Lookup',
+        pid: 8821,
+        ppid: 914,
+        source: 'Zeek',
+        severity: 'medium',
+        mitre_id: 'T1071.004',
+        mitre_name: 'DNS',
+        mitre_tactic: 'Command and Control',
+        risk_score: 50,
+        correlation_id: '3c82e22f-8a14-498c-8822-4429e8122822'
       },
       {
         id: 'evt-1005',
@@ -149,59 +195,49 @@ detection:
         details: 'Cron Job Created: /usr/local/bin/sync-agent.sh > /dev/null 2>&1',
         taskName: 'sync-agent',
         trigger: 'hourly',
-        category: 'Persistence'
+        category: 'Persistence',
+        pid: 912,
+        ppid: 1,
+        source: 'Linux Auditd',
+        severity: 'medium',
+        mitre_id: 'T1053.003',
+        mitre_name: 'Cron',
+        mitre_tactic: 'Persistence',
+        risk_score: 60,
+        correlation_id: 'ff11a28a-c42e-4b2a-a82f-28821219d2aa'
+      }
+    ];
+
+    this.mockAlerts = [
+      {
+        id: 'alert-1001',
+        rule_id: 'rule-001',
+        telemetry_id: 'evt-1001',
+        affected_asset_id: 'asset-001',
+        severity: 'high',
+        mitre_id: 'T1059.001',
+        mitre_name: 'PowerShell',
+        ioc_value: '91.240.118.12',
+        threat_actor_id: 'actor-1',
+        risk_score: 85,
+        evidence: { process_tree: 'explorer.exe -> powershell.exe -> update.ps1' },
+        status: 'New',
+        created_at: new Date().toISOString()
       },
       {
-        id: 'evt-1006',
-        timestamp: '2026-07-05T11:41:00Z',
-        type: 'USB Event',
-        hostname: 'CEO-LAPTOP-01',
-        user: 'ceo_admin',
-        details: 'USB Storage Device Mounted: Crucial FlashDrive (Volume D:\\, VendorID: 0x0781)',
-        deviceName: 'Crucial FlashDrive',
-        action: 'Mount',
-        category: 'Hardware Access'
-      },
-      {
-        id: 'evt-1007',
-        timestamp: '2026-07-05T11:41:20Z',
-        type: 'Authentication',
-        hostname: 'PRD-DB-SRV-01',
-        user: 'db_admin',
-        details: 'Login Successful: db_admin from 10.100.20.91 (LogonType: SSH)',
-        status: 'Success',
-        sourceHost: '10.100.20.91',
-        category: 'Access Log'
-      },
-      {
-        id: 'evt-1008',
-        timestamp: '2026-07-05T11:41:30Z',
-        type: 'Authentication',
-        hostname: 'PRD-DB-SRV-01',
-        user: 'root',
-        details: 'Login Failed: root from 185.220.101.5 (LogonType: SSH - Bad Password)',
-        status: 'Failure',
-        sourceHost: '185.220.101.5',
-        category: 'Access Log'
-      },
-      {
-        id: 'evt-1009',
-        timestamp: '2026-07-05T11:41:40Z',
-        type: 'Driver',
-        hostname: 'PRD-DB-SRV-01',
-        user: 'SYSTEM',
-        details: 'Kernel Driver Loaded: npro-filter.sys (Filtered file operations - Signed)',
-        driverName: 'npro-filter.sys',
-        category: 'Driver Load'
-      },
-      {
-        id: 'evt-1010',
-        timestamp: '2026-07-05T11:42:00Z',
-        type: 'PowerShell',
-        hostname: 'CEO-LAPTOP-01',
-        user: 'ceo_admin',
-        details: 'PowerShell Encoded Script Block Executed: [System.Convert]::FromBase64String("...")',
-        category: 'Execution'
+        id: 'alert-1002',
+        rule_id: 'rule-002',
+        telemetry_id: 'evt-1003',
+        affected_asset_id: 'asset-001',
+        severity: 'critical',
+        mitre_id: 'T1547.001',
+        mitre_name: 'Registry Run Keys',
+        ioc_value: 'C:\\Windows\\Temp\\agent.exe',
+        threat_actor_id: 'actor-1',
+        risk_score: 95,
+        evidence: { process_tree: 'cmd.exe -> reg.exe' },
+        status: 'New',
+        created_at: new Date().toISOString()
       }
     ];
   }
@@ -325,6 +361,45 @@ detection:
     const lowercaseKey = path.toLowerCase();
     const actualKey = Object.keys(obj).find(k => k.toLowerCase() === lowercaseKey) || path;
     return obj[actualKey] !== undefined ? obj[actualKey] : '';
+  }
+
+  /**
+   * Fetch all triggered security alerts.
+   */
+  async getAlerts() {
+    try {
+      const { data, error } = await supabase
+        .from('alerts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.warn('TelemetryRepository: falling back to mock alerts.', err.message);
+      return this.mockAlerts;
+    }
+  }
+
+  /**
+   * Write new alert event.
+   */
+  async saveAlert(alert) {
+    try {
+      const { data, error } = await supabase
+        .from('alerts')
+        .insert([alert])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.warn('TelemetryRepository: writing alert to local session cache.', err.message);
+      const newAlert = { ...alert, id: `alert-${Math.floor(Math.random() * 100000)}`, created_at: new Date().toISOString() };
+      this.mockAlerts.unshift(newAlert);
+      return newAlert;
+    }
   }
 }
 
