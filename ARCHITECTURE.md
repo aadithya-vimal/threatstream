@@ -352,7 +352,49 @@ Future: Force-directed D3.js or Sigma.js visualization engine.
 
 ---
 
-## 9. Platform Modules Summary
+## 10. Operations Platform
+
+The Operations Platform handles background jobs, integrations, audits, backups, system load telemetry, and security settings.
+
+### 10.1 Background Job Queue
+
+Handles scan runs, collection ingestion, backup creation, feed collection, report compiles:
+- `jobs` table (status: `queued` | `running` | `completed` | `failed` | `cancelled`)
+- Tracks priority levels (1-10) and completion progress (%)
+- Triggers are written through `OperationsRepository`
+
+### 10.2 Connector Ingest Registry (27 Plugins)
+
+A central registry managing credentials and interfaces for 27 security connectors:
+- **Scanners**: Nmap, Masscan, RustScan, Nuclei, OpenVAS, Greenbone, Nikto, WhatWeb, SSLyze
+- **Collectors**: Zeek, Suricata, Sysmon, OSQuery, Auditd, Falco
+- **EDR**: Microsoft Defender, CrowdStrike Falcon, SentinelOne
+- **SIEM**: Elastic Security, Wazuh
+- **Threat Intel**: MISP, OpenCTI
+- **Enrichment**: VirusTotal, AbuseIPDB, GreyNoise, Shodan, Censys
+
+### 10.3 Scheduled Tasks
+
+Cron-based task scheduler executing automated processes:
+- Full system backups
+- Vulnerability scans (Nuclei)
+- Threat feed collection jobs
+- Endpoint processes query (OSQuery)
+
+### 10.4 Immutable Audit Logging
+
+Platform-wide events trail recording operator actions, session entries, rate limit warnings, and credential resets. Log schema includes user, action, resource, IP, user-agent, and severity level.
+
+### 10.5 Backup & Restore Manager
+
+Supports three backup channels:
+- **Full Backups**: Relational dump of all database state (incidents, assets, IOCs).
+- **Incremental Backups**: Delta of telemetry events and logs.
+- **Config Only Backups**: Exporters for connector credential configs and cron tasks.
+
+---
+
+## 11. Final Product Modules Summary
 
 | Module | Status | Pages | Repository | Service |
 |---|---|---|---|---|
@@ -361,11 +403,17 @@ Future: Force-directed D3.js or Sigma.js visualization engine.
 | Asset Intelligence | ✅ Live | Assets, Network, Vulnerabilities | AssetRepository | AssetService |
 | Endpoint Telemetry | ✅ Live | Endpoints | TelemetryRepository | TelemetryService |
 | Detection Engineering | ✅ Live | — | DetectionRepository | DetectionService |
-| Incident Response | ✅ Live | Incidents | IncidentRepository | IncidentService |
+| Incident Triage & IR | ✅ Live | Incidents, Reports | IncidentRepository | IncidentService |
 | Malware Analysis | ✅ Live | MalwareAnalysis, YARAPlatform | MalwareRepository | MalwareService |
 | Threat Hunting | ✅ Live | ThreatHunting | MalwareRepository | MalwareService |
 | IOC Enrichment | ✅ Live | IOCEnrichment | — | MalwareService |
 | Graph Investigation | ✅ Live | GraphInvestigation | — | MalwareService |
+| System Operations | ✅ Live | Operations, Connectors | OperationsRepository | OperationsService |
+| Backups & Restore | ✅ Live | BackupManager | OperationsRepository | OperationsService |
+| Audit Trail | ✅ Live | AuditLog | OperationsRepository | OperationsService |
+| Settings Hub | ✅ Live | SystemSettings | OperationsRepository | OperationsService |
+| Admin Panel | ✅ Live | Administration | UserRepository | UserService |
+
 
 
 

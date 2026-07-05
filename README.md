@@ -548,6 +548,8 @@ Asset → Incident → Alert → IOC → Threat Actor → Campaign → Malware �
 
 ---
 
+---
+
 ### Hunt Analytics Dashboard
 
 - Top Hunts by frequency
@@ -559,6 +561,20 @@ Asset → Incident → Alert → IOC → Threat Actor → Campaign → Malware �
 
 ---
 
+### ⚙️ Operations Platform
+
+ThreatStream includes a comprehensive operations management panel:
+
+- **Background Job Queue**: Monitor and orchestrate port scanning, ingestion, enrichment, and platform backups.
+- **Plugin Marketplace**: Integrated management console configures credentials and interfaces for **27 security connectors** (Nmap, Zeek, OSQuery, CrowdStrike, Elastic SIEM, VirusTotal, etc.).
+- **Cron Scheduler**: Automate daily full backups, perimeter vulnerability assessments, threat intel feed pulls, and host processes telemetry sweeps.
+- **Platform Backups**: Download, restore, or schedule backups (Full database state, configuration only, or incremental deltas).
+- **Immutable Audit Logging**: Platform-wide operators activity log tracking all configuration modifications, login attempts, user role escalations, and data exports.
+- **System Health Monitor**: Live system CPU load, memory utilization, disk capacity, network I/O stats, and API latency indicators.
+
+---
+
 ThreatStream combines cutting-edge visualization technology with real-time data streaming to create an unparalleled cyber threat monitoring experience.
+
 
 
