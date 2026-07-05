@@ -250,3 +250,9 @@ Executes real binary command `nuclei` and parses standard JSONL outputs (`-jsonl
 * Binds identified vulnerabilities to target devices inside `asset_vulnerabilities`.
 * Automatically triggers the Asset Risk Engine on database updates to recalculate the host risk and security ratings.
 
+### 7. Multi-Scanner Discovery Suite Integrations
+* **WhatWeb**: Logs technology fingerprints in the `technologies` array on the `assets` table.
+* **SSLyze**: Persists SSL/TLS configuration profiles and leaf certificates to the `certificates` schema.
+* **Masscan / RustScan**: Records open ports and listening service interfaces directly in the `services` table.
+* **Nikto**: Commits CGI vulnerability mappings to the `vulnerabilities` table and links them in `asset_vulnerabilities`.
+

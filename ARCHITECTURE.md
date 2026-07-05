@@ -574,6 +574,12 @@ The first concrete scanner plugin executes the host's native `nmap` binary:
 3. **XML Processing**: Extracts structured element nodes (host address, hostnames, osmatches, port/services versions, script output headers) directly from XML tags, parsing performance latency (srtt) metrics.
 4. **Data Slices**: Discovered elements are normalized and synced to target tables inside the Discovery Orchestrator persistence loop.
 
+### F. Sequential Multi-Scanner Pipeline Builder & Chaining
+The Discovery Orchestrator coordinates sequential execution chains (e.g., RustScan ➔ Nmap ➔ WhatWeb ➔ Nuclei ➔ Nikto ➔ SSLyze) by feeding intermediate targets forward:
+1. **Target Forwarding**: Subsequent stages resolve target parameter scopes by extracting unique IPs/hostnames parsed from preceding scans.
+2. **Attribution Merging**: The Merge Engine unions discovered services, technology tags, and TLS configurations while maintaining contributor keys in the metadata logs.
+3. **Audit Trail**: Real-time console logs are grouped by stage and stored on the job record for operator review.
+
 
 
 
