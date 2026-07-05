@@ -363,6 +363,7 @@ export const Incidents = () => {
               </Panel>
 
               {/* Forensic Evidence cabinet file list */}
+              {/* Evidence Management - SHA-256 integrity hashes and chain of custody tracking */}
               <Panel title="Forensic Evidence Cabinet">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   
