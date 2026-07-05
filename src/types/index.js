@@ -312,12 +312,37 @@ export class Alert extends BaseModel {
 export class Incident extends BaseModel {
   constructor(data = {}) {
     super(data);
-    this.summary = data.summary || '';
+    this.title = data.title || '';
+    this.description = data.description || '';
+    this.summary = data.summary || data.title || '';
     this.severity = data.severity || 'medium'; // 'low' | 'medium' | 'high' | 'critical'
+    this.priority = data.priority || 'medium'; // 'low' | 'medium' | 'high' | 'critical'
     this.status = data.status || 'Active'; // 'Active' | 'Investigating' | 'Mitigated' | 'Closed'
     this.owner = data.owner || 'Unassigned';
+    this.assignee = data.assignee || 'Unassigned';
+    this.reporter = data.reporter || 'System Alert';
+    this.category = data.category || 'General Security';
+    this.source_alert_id = data.source_alert_id || null;
+    this.risk_score = typeof data.risk_score === 'number' ? data.risk_score : 50;
     this.logged_date = data.logged_date || new Date().toISOString();
+    this.closed_at = data.closed_at || null;
+    this.resolution = data.resolution || '';
+    this.classification = data.classification || 'True Positive';
+    this.tags = Array.isArray(data.tags) ? data.tags : [];
+    this.threat_actor_id = data.threat_actor_id || null;
+    this.campaign_id = data.campaign_id || null;
+    this.malware_family_id = data.malware_family_id || null;
     this.affected_assets = Array.isArray(data.affected_assets) ? data.affected_assets : [];
+    this.affected_users = Array.isArray(data.affected_users) ? data.affected_users : [];
+    this.evidence = Array.isArray(data.evidence) ? data.evidence : [];
+    this.timeline = Array.isArray(data.timeline) ? data.timeline : [];
+    this.related_iocs = Array.isArray(data.related_iocs) ? data.related_iocs : [];
+    this.related_cves = Array.isArray(data.related_cves) ? data.related_cves : [];
+    this.related_alerts = Array.isArray(data.related_alerts) ? data.related_alerts : [];
+    this.related_detections = Array.isArray(data.related_detections) ? data.related_detections : [];
+    this.playbook_checklist = Array.isArray(data.playbook_checklist) ? data.playbook_checklist : [];
+    this.tasks = Array.isArray(data.tasks) ? data.tasks : [];
+    this.comments = Array.isArray(data.comments) ? data.comments : [];
     this.mitre_id = data.mitre_id || '';
     this.mitre_name = data.mitre_name || '';
     this.mitre_tactic = data.mitre_tactic || '';

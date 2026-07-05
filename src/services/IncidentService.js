@@ -17,6 +17,10 @@ export class IncidentService {
     return await this.incidentRepository.getIncidentById(id);
   }
 
+  async updateIncident(id, fields) {
+    return await this.incidentRepository.updateIncident(id, fields);
+  }
+
   async getMalwareProfile(filename) {
     return await this.incidentRepository.getMalwareProfile(filename);
   }

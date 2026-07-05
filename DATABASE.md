@@ -162,3 +162,14 @@ Stores security incidents triggered by matching rule definitions.
 * Foreign Key: `rule_id` references `detections.id`, `telemetry_id` references `telemetry.id`, `affected_asset_id` references `assets.id`, `threat_actor_id` references `threat_actors.id`, `campaign_id` references `campaigns.id`
 * Attributes: `severity` (Critical, High, Medium, Low, Info), `ioc_value`, `risk_score`, `evidence` (JSONB), `status` (New, In Progress, Resolved).
 
+---
+
+## 8. Incident Response & Playbooks Schema
+
+The platform implements the following changes to manage active incident cases:
+
+### 1. `incidents` (Expanded)
+Tracks security tickets generated or created manually by SOC triage analysts.
+* Attributes: `title`, `description`, `priority`, `assignee`, `reporter`, `category`, `source_alert_id`, `risk_score`, `closed_at`, `resolution`, `classification`, `tags`, `affected_assets`, `affected_users`, `evidence` (JSONB containing cryptographic SHA-256 hashes and chain of custody logs), `timeline` (JSONB containing trace logs), `playbook_checklist` (JSONB containing checkable tasks), `tasks` (JSONB representing task board cards), `comments` (JSONB containing internal comments feed).
+
+

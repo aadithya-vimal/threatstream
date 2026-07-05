@@ -232,6 +232,31 @@ The Telemetry and Detection Platform is built on top of our 3-tier architecture:
 * **Detection Engine Matcher**: Runs Sigma YAML queries and YARA metadata filters against incoming telemetry payloads in real-time. Matches trigger automated alerts containing evidence details, correlation identifiers, and MITRE mapping context.
 * **Alert & Timeline Engine**: Structures security alerts into chronological visual trees representing parent/child processes execution flow and logical threat actors attribution maps.
 
+---
+
+## 10. Incident Response & Case Management Architecture
+
+The Incident Response and Forensics Platform is built on top of our 3-tier architecture:
+
+```
+[ UI Pages / Incidents ] (Tabs: Dashboard, Queue, Workspace)
+               │
+               ▼
+[ Business Layer / IncidentService ] (Coordinates updates, processes Playbook checklists, compiles Markdown Reports)
+               │
+               ▼
+[ Repository Layer / IncidentRepository ] (Queries PostgreSQL tables: incidents, incident_notes, incident_timeline_events)
+               │
+               ▼
+[ Database Layer / Supabase PostgreSQL ] (Enforces RLS policies and cascades)
+```
+
+* **Timeline Reconstruction Engine**: Unifies SIEM logs, raw host event process executions, alerts, and custom notes into a timeline view.
+* **Response Playbook Checklist**: Executes Containment, Eradication, and Recovery steps. Progress and checklist state modifications are propagated down to the persistence layer.
+* **Forensic Evidence Cabinet**: Collects screenshots, memory dumps, PCAP flows, and registry exports. Includes cryptographic hash checks (SHA-256) and chain of custody logs.
+* **Investigation Graph Generator**: Logical link engine mapping nodes (`[Incident Case]` -> `[Host Asset]` -> `[Malware Family]` -> `[Threat Actor Group]` -> `[Related IOC Domain]`).
+
+
 
 
 

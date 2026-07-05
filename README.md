@@ -443,5 +443,28 @@ interface EDRForwarderConnector {
 
 ---
 
+## Incident Response & Case Management Specifications
+
+ThreatStream features an enterprise Incident Response and Case Management console to triage and audit security incidents.
+
+### 1. Incident Data Model
+Incident entities contain comprehensive metadata representing operational scopes:
+* **Identification**: UUID, title, description, category, risk score, classification (True Positive / False Positive), and tags.
+* **Assignments**: Assignee department, reporting system, assigned owner, SLA targets, and state timestamps.
+
+### 2. Timeline Reconstruction Engine
+Correlates incoming SIEM log flows, analyst checklist logs, and telemetry process creation trees into a single chronological case lifecycle trace.
+
+### 3. Forensic Evidence Cabinet
+Tracks registered logs, volatile memory dump file properties, registry exports, and packet captures containing:
+* **Integrity Validation**: SHA-256 cryptographic check values.
+* **Chain of Custody**: Documented possession histories.
+
+### 4. Remediation Playbook Checklists
+Response checklists containing Containment, Eradication, and Recovery milestones ensuring compliance with standard operational procedures.
+
+---
+
 ThreatStream combines cutting-edge visualization technology with real-time data streaming to create an unparalleled cyber threat monitoring experience.
+
 
