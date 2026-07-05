@@ -286,7 +286,7 @@ export class Detection extends BaseModel {
 }
 
 /**
- * Security Alert Event Model
+ * Security Alert Event Model - Threat trigger incidents catalog & lifecycle management
  */
 export class Alert extends BaseModel {
   constructor(data = {}) {
