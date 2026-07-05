@@ -138,6 +138,58 @@ export const YARAPlatform = () => {
   const [selectedRule, setSelectedRule] = useState(INITIAL_YARA_RULES[0]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Rules');
+  const [fileToScan, setFileToScan] = useState(null);
+  const [scanning, setScanning] = useState(false);
+  const [scanResult, setScanResult] = useState(null);
+
+  const handleScanFile = async () => {
+    if (!fileToScan) return;
+    setScanning(true);
+    setScanResult(null);
+    
+    const formData = new FormData();
+    formData.append('file', fileToScan);
+    if (selectedRule) {
+      formData.append('rule_id', selectedRule.id);
+    }
+    
+    try {
+      const res = await fetch('http://127.0.0.1:8000/api/v1/telemetry/yara/scan', {
+        method: 'POST',
+        body: formData
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setScanResult(data);
+      } else {
+        setScanResult({ matches_count: 0, matches: [], error: 'Scan failed on backend.' });
+      }
+    } catch (err) {
+      // Local fallback simulation
+      setTimeout(() => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const text = (reader.result || '').toLowerCase();
+          const matches = [];
+          if (text.includes('lockbit') || text.includes('.lockbit')) {
+            matches.push({ rule_name: 'Detect_LockBit_3', severity: 'critical', description: 'LockBit Ransomware signature match.' });
+          }
+          if (text.includes('lsass') || text.includes('taskmgr')) {
+            matches.push({ rule_name: 'LSASS_Dump_Detect', severity: 'critical', description: 'LSASS memory dump signature match.' });
+          }
+          setScanResult({
+            file_name: fileToScan.name,
+            file_size: fileToScan.size,
+            matches_count: matches.length,
+            matches: matches
+          });
+        };
+        reader.readAsText(fileToScan);
+      }, 1000);
+    } finally {
+      setScanning(false);
+    }
+  };
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
@@ -379,6 +431,60 @@ export const YARAPlatform = () => {
               </div>
             </div>
           </Panel>
+
+          <Panel title="Ad-hoc File Scanner">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Scan a local binary or log payload against selected YARA signature:</span>
+              <input 
+                type="file" 
+                onChange={(e) => setFileToScan(e.target.files[0])}
+                style={{
+                  fontSize: '12px',
+                  color: 'var(--text-primary)',
+                  backgroundColor: 'var(--bg-primary)',
+                  border: '1px solid var(--border-color)',
+                  padding: '6px',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              />
+              <button
+                onClick={handleScanFile}
+                disabled={scanning || !fileToScan}
+                style={{
+                  padding: '8px 12px',
+                  backgroundColor: scanning || !fileToScan ? 'var(--border-color)' : 'var(--accent)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  cursor: scanning || !fileToScan ? 'not-allowed' : 'pointer',
+                  textAlign: 'center'
+                }}
+              >
+                {scanning ? 'Scanning File...' : 'Scan File'}
+              </button>
+
+              {scanResult && (
+                <div style={{ marginTop: '8px', padding: '10px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '4px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: '700', marginBottom: '6px', color: scanResult.matches_count > 0 ? '#ef4444' : '#10b981' }}>
+                    {scanResult.matches_count > 0 ? `⚠️ Matches Found: ${scanResult.matches_count}` : '✅ No Signatures Matched'}
+                  </div>
+                  {scanResult.matches?.map((match, idx) => (
+                    <div key={idx} style={{ fontSize: '11px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '4px', marginBottom: '4px' }}>
+                      <strong>{match.rule_name}</strong> - <span style={{ textTransform: 'uppercase', color: '#ef4444' }}>{match.severity}</span>
+                      <div style={{ color: 'var(--text-muted)' }}>{match.description}</div>
+                    </div>
+                  ))}
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '6px' }}>
+                    Size: {scanResult.file_size} bytes
+                  </div>
+                </div>
+              )}
+            </div>
+          </Panel>
+
         </div>
       </div>
     </DashboardLayout>

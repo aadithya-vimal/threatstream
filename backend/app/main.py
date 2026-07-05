@@ -2,7 +2,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api.endpoints import jobs, plugins, scheduler
+from app.api.endpoints import jobs, plugins, scheduler, telemetry
 from app.workers.job_worker import worker_manager
 from app.scheduler.task_scheduler import task_scheduler
 
@@ -31,6 +31,7 @@ app.add_middleware(
 app.include_router(jobs.router, prefix=f"{settings.API_V1_STR}/jobs", tags=["Jobs Queue"])
 app.include_router(plugins.router, prefix=f"{settings.API_V1_STR}/plugins", tags=["Plugins Marketplace"])
 app.include_router(scheduler.router, prefix=f"{settings.API_V1_STR}/scheduler", tags=["Scheduler Task List"])
+app.include_router(telemetry.router, prefix=f"{settings.API_V1_STR}/telemetry", tags=["Endpoint Telemetry"])
 
 @app.on_event("startup")
 async def startup_event():

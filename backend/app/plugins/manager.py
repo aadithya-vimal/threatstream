@@ -12,6 +12,12 @@ from app.plugins.sslyze import SSLyzeDiscoveryPlugin
 from app.plugins.masscan import MasscanDiscoveryPlugin
 from app.plugins.rustscan import RustScanDiscoveryPlugin
 from app.plugins.nikto import NiktoDiscoveryPlugin
+from app.plugins.windows_events import WindowsEventLogsCollector
+from app.plugins.sysmon import SysmonCollector
+from app.plugins.auditd import AuditdCollector
+from app.plugins.osquery import OSQueryCollector
+from app.plugins.zeek import ZeekCollector
+from app.plugins.suricata import SuricataCollector
 
 logger = logging.getLogger("threatstream.plugins")
 
@@ -152,6 +158,12 @@ class PluginManager:
         "masscan": MasscanDiscoveryPlugin,
         "rustscan": RustScanDiscoveryPlugin,
         "nikto": NiktoDiscoveryPlugin,
+        "windows_events": WindowsEventLogsCollector,
+        "sysmon": SysmonCollector,
+        "auditd": AuditdCollector,
+        "osquery": OSQueryCollector,
+        "zeek": ZeekCollector,
+        "suricata": SuricataCollector,
         "orchestrator": EnrichmentOrchestrator,
         "discovery_orchestrator": DiscoveryOrchestrator,
         "default": DefaultPlugin
