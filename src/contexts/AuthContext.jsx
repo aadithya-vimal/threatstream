@@ -63,16 +63,23 @@ export const AuthProvider = ({ children }) => {
 
   const fetchUserProfile = async (userId) => {
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('users')
         .select('role')
         .eq('id', userId)
-        .single();
-      applyRole(data?.role);
-    } catch {
+        .maybeSingle(); // returns null (not error) when row not found
+
+      if (error) {
+        // 400 = column missing / schema issue — don't retry, just use default
+        console.warn('AuthContext: Could not fetch user profile:', error.message);
+        applyRole(DEFAULT_ROLE);
+      } else {
+        applyRole(data?.role);
+      }
+    } catch (err) {
+      console.warn('AuthContext: Profile fetch exception:', err.message);
       applyRole(DEFAULT_ROLE);
     } finally {
-      // Always clear spinner regardless of profile fetch outcome
       if (isMounted.current) setLoading(false);
     }
   };
