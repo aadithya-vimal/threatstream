@@ -5,6 +5,7 @@ from app.plugins.base import BasePlugin
 from app.plugins.virustotal import VirusTotalPlugin
 from app.plugins.orchestrator import EnrichmentOrchestrator
 from app.plugins.discovery import DiscoveryOrchestrator
+from app.plugins.nmap import NmapDiscoveryPlugin
 
 logger = logging.getLogger("threatstream.plugins")
 
@@ -137,7 +138,7 @@ class PluginManager:
     Manager that maps job types to concrete plugin executors.
     """
     _registry: Dict[str, Type[BasePlugin]] = {
-        "nmap": NmapPlugin,
+        "nmap": NmapDiscoveryPlugin,
         "virustotal": VirusTotalPlugin,
         "nuclei": NucleiPlugin,
         "orchestrator": EnrichmentOrchestrator,
