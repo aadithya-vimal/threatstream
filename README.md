@@ -211,18 +211,18 @@ A stunning dark theme with animated elements creates an immersive cyber security
 
 ### 🔥 Real-Time Data Streaming
 
-ThreatStream connects to Firebase Realtime Database for instant threat data delivery with zero polling.
+ThreatStream connects to Supabase PostgreSQL Database for instant threat data delivery using active pub/sub channels.
 
-**Firebase Integration:**
-- **Connection Protocol**: WebSocket-based real-time updates
+**Supabase Integration:**
+- **Connection Protocol**: PostgreSQL Realtime channels
 - **Latency**: <100ms from threat creation to visualization
 - **Reliability**: Automatic reconnection on network interruption
 - **Scalability**: Handles unlimited threat volume from backend
 
 **Data Flow:**
 1. Threat detected by honeypot sensors
-2. Data pushed to Firebase Realtime Database
-3. ThreatStream receives `child_added` event instantly
+2. Data pushed to Supabase Database
+3. ThreatStream receives Postgres changes instantly
 4. Threat visualized on globe and added to feed
 5. Statistics updated immediately
 6. All happens in under 100 milliseconds
@@ -291,9 +291,9 @@ ThreatStream is designed as a read-only visualization platform with security bes
 
 **Client-Side Security:**
 - No write access to database from frontend
-- Firebase security rules enforce read-only access
+- Row Level Security (RLS) policies enforce read-only access
 - Environment variables separate from code repository
-- API keys domain-restricted in Firebase Console
+- API keys restricted in Supabase Dashboard
 - No sensitive data stored client-side
 
 **Data Privacy:**
@@ -311,7 +311,7 @@ ThreatStream is designed as a read-only visualization platform with security bes
 - React 18 - Modern UI framework with hooks
 - Vite - Lightning-fast build tool and dev server
 - react-globe.gl - Three.js-based 3D globe library
-- Firebase Realtime Database - Real-time data synchronization
+- Supabase - Database hosting and real-time subscription engine
 - Three.js - WebGL 3D graphics library
 - CSS3 - Modern animations and styling
 
@@ -321,13 +321,14 @@ ThreatStream is designed as a read-only visualization platform with security bes
 - Frame rate: Consistent 60fps
 - Memory usage: <150MB typical
 - CPU usage: <5% on modern hardware
-- Data update latency: <100ms from Firebase to screen
+- Data update latency: <100ms from Supabase to screen
 
 **Code Quality:**
 - Clean, modular component architecture
 - Fully commented service layer
 - PropTypes for type safety
 - Consistent code formatting
+
 - ESLint compliant
 - Production-ready build output
 

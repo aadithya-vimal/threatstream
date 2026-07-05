@@ -1,0 +1,328 @@
+/**
+ * src/types/index.js
+ * Centralized Data Models & Schemas for ThreatStream SOC
+ */
+
+/**
+ * Base Model containing common fields
+ */
+export class BaseModel {
+  constructor(data = {}) {
+    this.id = data.id || null; // UUID
+    this.created_at = data.created_at || new Date().toISOString();
+    this.updated_at = data.updated_at || new Date().toISOString();
+  }
+}
+
+/**
+ * Threat Event Model
+ */
+export class Threat extends BaseModel {
+  constructor(data = {}) {
+    super(data);
+    this.ip = data.ip || '';
+    this.lat = typeof data.lat === 'number' ? data.lat : 0.0;
+    this.lon = typeof data.lon === 'number' ? data.lon : 0.0;
+    this.country = data.country || '??';
+    this.attack_type = data.attack_type || 'unknown';
+    this.timestamp = typeof data.timestamp === 'number' ? data.timestamp : Date.now();
+  }
+}
+
+/**
+ * Indicator of Compromise (IOC) Model
+ */
+export class IOC extends BaseModel {
+  constructor(data = {}) {
+    super(data);
+    this.value = data.value || '';
+    this.ioc_type = data.ioc_type || ''; // 'IP' | 'Domain' | 'URL' | 'Hash'
+    this.asn = data.asn || '';
+    this.country = data.country || '';
+    this.threat_type = data.threat_type || '';
+    this.confidence = typeof data.confidence === 'number' ? data.confidence : 0;
+    this.severity = data.severity || 'low'; // 'low' | 'medium' | 'high' | 'critical'
+    this.mitre_id = data.mitre_id || '';
+    this.mitre_name = data.mitre_name || '';
+    this.source_feed = data.source_feed || '';
+    this.last_seen = data.last_seen || new Date().toISOString();
+    this.description = data.description || '';
+  }
+}
+
+/**
+ * Infrastructure Asset Model
+ */
+export class Asset extends BaseModel {
+  constructor(data = {}) {
+    super(data);
+    this.hostname = data.hostname || '';
+    this.ip = data.ip || '';
+    this.mac = data.mac || '';
+    this.vendor = data.vendor || '';
+    this.os = data.os || '';
+    this.asset_type = data.asset_type || 'Server'; // 'Server' | 'Workstation' | 'Network'
+    this.criticality = data.criticality || 'medium'; // 'low' | 'medium' | 'high' | 'critical'
+    this.risk_score = typeof data.risk_score === 'number' ? data.risk_score : 0;
+    this.status = data.status || 'Offline'; // 'Online' | 'Offline'
+    this.owner = data.owner || '';
+    this.last_seen = data.last_seen || new Date().toISOString();
+    this.patch_status = data.patch_status || 'Up to Date';
+  }
+}
+
+/**
+ * Host Model (specific host metadata)
+ */
+export class Host extends BaseModel {
+  constructor(data = {}) {
+    super(data);
+    this.asset_id = data.asset_id || null;
+    this.cpu_cores = data.cpu_cores || 0;
+    this.memory_gb = data.memory_gb || 0;
+    this.kernel_version = data.kernel_version || '';
+  }
+}
+
+/**
+ * Network Interface Model
+ */
+export class NetworkInterface extends BaseModel {
+  constructor(data = {}) {
+    super(data);
+    this.asset_id = data.asset_id || null;
+    this.name = data.name || '';
+    this.ip = data.ip || '';
+    this.gateway = data.gateway || '';
+    this.netmask = data.netmask || '';
+    this.mac = data.mac || '';
+  }
+}
+
+/**
+ * Open Port Model
+ */
+export class OpenPort extends BaseModel {
+  constructor(data = {}) {
+    super(data);
+    this.asset_id = data.asset_id || null;
+    this.port = data.port || 0;
+    this.protocol = data.protocol || 'TCP';
+    this.state = data.state || 'open';
+  }
+}
+
+/**
+ * Active Service Model
+ */
+export class Service extends BaseModel {
+  constructor(data = {}) {
+    super(data);
+    this.asset_id = data.asset_id || null;
+    this.port = data.port || 0;
+    this.name = data.name || '';
+    this.product = data.product || '';
+    this.version = data.version || '';
+  }
+}
+
+/**
+ * Vulnerability Model
+ */
+export class Vulnerability extends BaseModel {
+  constructor(data = {}) {
+    super(data);
+    this.cve = data.cve || '';
+    this.cvss = typeof data.cvss === 'number' ? data.cvss : 0.0;
+    this.summary = data.summary || '';
+    this.severity = data.severity || 'medium';
+  }
+}
+
+/**
+ * CVE mapping link to Assets
+ */
+export class CVE extends BaseModel {
+  constructor(data = {}) {
+    super(data);
+    this.asset_id = data.asset_id || null;
+    this.vulnerability_id = data.vulnerability_id || null;
+    this.patched = typeof data.patched === 'boolean' ? data.patched : false;
+  }
+}
+
+/**
+ * EDR Endpoint Agent Model
+ */
+export class Endpoint extends BaseModel {
+  constructor(data = {}) {
+    super(data);
+    this.asset_id = data.asset_id || null;
+    this.agent_version = data.agent_version || '';
+    this.policy = data.policy || '';
+    this.risks_logged = typeof data.risks_logged === 'number' ? data.risks_logged : 0;
+    this.status = data.status || 'Active';
+    this.last_check_in = data.last_check_in || new Date().toISOString();
+  }
+}
+
+/**
+ * Process Telemetry Event Model
+ */
+export class ProcessEvent extends BaseModel {
+  constructor(data = {}) {
+    super(data);
+    this.hostname = data.hostname || '';
+    this.user = data.user || '';
+    this.process_name = data.process_name || '';
+    this.parent_process = data.parent_process || '';
+    this.command_line = data.command_line || '';
+    this.timestamp = data.timestamp || new Date().toISOString();
+  }
+}
+
+/**
+ * DNS Telemetry Event Model
+ */
+export class DNSEvent extends BaseModel {
+  constructor(data = {}) {
+    super(data);
+    this.hostname = data.hostname || '';
+    this.user = data.user || '';
+    this.query = data.query || '';
+    this.resolved_ip = data.resolved_ip || '';
+    this.timestamp = data.timestamp || new Date().toISOString();
+  }
+}
+
+/**
+ * Network Telemetry Event Model
+ */
+export class NetworkEvent extends BaseModel {
+  constructor(data = {}) {
+    super(data);
+    this.hostname = data.hostname || '';
+    this.user = data.user || '';
+    this.source_ip = data.source_ip || '';
+    this.source_port = data.source_port || 0;
+    this.dest_ip = data.dest_ip || '';
+    this.dest_port = data.dest_port || 0;
+    this.protocol = data.protocol || 'TCP';
+    this.action = data.action || 'accept'; // 'accept' | 'drop'
+    this.timestamp = data.timestamp || new Date().toISOString();
+  }
+}
+
+/**
+ * Authentication Telemetry Event Model
+ */
+export class AuthenticationEvent extends BaseModel {
+  constructor(data = {}) {
+    super(data);
+    this.hostname = data.hostname || '';
+    this.user = data.user || '';
+    this.logon_type = data.logon_type || 'Interactive';
+    this.status = data.status || 'Success'; // 'Success' | 'Failure'
+    this.source_ip = data.source_ip || '';
+    this.timestamp = data.timestamp || new Date().toISOString();
+  }
+}
+
+/**
+ * Detection Analytics Rule Model
+ */
+export class Detection extends BaseModel {
+  constructor(data = {}) {
+    super(data);
+    this.name = data.name || '';
+    this.rule_type = data.rule_type || 'Sigma'; // 'Sigma' | 'YARA' | 'Custom'
+    this.severity = data.severity || 'medium';
+    this.mitre_id = data.mitre_id || '';
+    this.mitre_name = data.mitre_name || '';
+    this.mitre_tactic = data.mitre_tactic || '';
+    this.status = data.status || 'Active';
+    this.description = data.description || '';
+    this.definition = data.definition || '';
+    this.author = data.author || '';
+  }
+}
+
+/**
+ * Security Alert Event Model
+ */
+export class Alert extends BaseModel {
+  constructor(data = {}) {
+    super(data);
+    this.rule_id = data.rule_id || null;
+    this.title = data.title || '';
+    this.severity = data.severity || 'medium';
+    this.hostname = data.hostname || '';
+    this.details = data.details || '';
+    this.status = data.status || 'New';
+  }
+}
+
+/**
+ * Case Management Incident Model
+ */
+export class Incident extends BaseModel {
+  constructor(data = {}) {
+    super(data);
+    this.summary = data.summary || '';
+    this.severity = data.severity || 'medium'; // 'low' | 'medium' | 'high' | 'critical'
+    this.status = data.status || 'Active'; // 'Active' | 'Investigating' | 'Mitigated' | 'Closed'
+    this.owner = data.owner || 'Unassigned';
+    this.logged_date = data.logged_date || new Date().toISOString();
+    this.affected_assets = Array.isArray(data.affected_assets) ? data.affected_assets : [];
+    this.mitre_id = data.mitre_id || '';
+    this.mitre_name = data.mitre_name || '';
+    this.mitre_tactic = data.mitre_tactic || '';
+  }
+}
+
+/**
+ * Malware File Sample Model
+ */
+export class MalwareSample extends BaseModel {
+  constructor(data = {}) {
+    super(data);
+    this.filename = data.filename || '';
+    this.filesize = data.filesize || '';
+    this.md5 = data.md5 || '';
+    this.sha1 = data.sha1 || '';
+    this.sha256 = data.sha256 || '';
+    this.entropy = typeof data.entropy === 'number' ? data.entropy : 0.0;
+    this.file_type = data.file_type || '';
+    this.compiled_date = data.compiled_date || '';
+    this.subsystem = data.subsystem || '';
+    this.status = data.status || 'Queued'; // 'Queued' | 'Running' | 'Completed'
+    this.verdict = data.verdict || 'Unknown';
+    this.vt_score = data.vt_score || '';
+  }
+}
+
+/**
+ * Case Compliance Report Model
+ */
+export class Report extends BaseModel {
+  constructor(data = {}) {
+    super(data);
+    this.name = data.name || '';
+    this.classification = data.classification || '';
+    this.author = data.author || '';
+    this.date_generated = data.date_generated || new Date().toISOString().split('T')[0];
+    this.file_format = data.file_format || 'PDF';
+  }
+}
+
+/**
+ * System Settings Configuration Model
+ */
+export class SystemSettings extends BaseModel {
+  constructor(data = {}) {
+    super(data);
+    this.key = data.key || '';
+    this.value = data.value || '';
+    this.description = data.description || '';
+  }
+}

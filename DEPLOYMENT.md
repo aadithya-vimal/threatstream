@@ -1,336 +1,238 @@
-# ThreatStream Production Deployment Guide
+# ThreatStream Production Self-Hosted Deployment Guide
 
-## Firebase Realtime Database Security Rules
+This document outlines the architecture and deployment steps to run ThreatStream as a production-grade, self-hosted Security Operations Platform (SOC) on-premises or on a private virtual machine (VPS) with zero cloud vendor lock-in.
 
-### Production-Ready Rules (Copy & Paste)
+---
 
-```json
-{
-  "rules": {
-    "threats": {
-      ".read": true,
-      ".write": false,
-      ".indexOn": ["timestamp", "attack_type", "country"],
-      "$threatId": {
-        ".validate": "newData.hasChildren(['ip', 'lat', 'lon', 'country', 'attack_type', 'timestamp']) && newData.children().length() == 6",
-        "ip": {
-          ".validate": "newData.isString() && newData.val().length >= 7 && newData.val().length <= 45"
-        },
-        "lat": {
-          ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90"
-        },
-        "lon": {
-          ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180"
-        },
-        "country": {
-          ".validate": "newData.isString() && newData.val().matches(/^[A-Z]{2}$/)"
-        },
-        "attack_type": {
-          ".validate": "newData.isString() && newData.val().matches(/^(ssh|ftp|apache|imap|sip|bots|strongips|all|unknown)$/)"
-        },
-        "timestamp": {
-          ".validate": "newData.isNumber() && newData.val() > 1600000000000 && newData.val() <= (now + 60000)"
-        },
-        "$other": {
-          ".validate": false
-        }
-      }
-    },
-    "$other": {
-      ".read": false,
-      ".write": false
-    }
-  }
-}
+## 1. Enterprise Architecture Overview
+
+The ThreatStream self-hosted environment is structured around containerized microservices managed via **Docker Compose**:
+
+```mermaid
+graph TD
+    Client[Browser Console] <-->|HTTP / WebSockets| API[FastAPI Web Server]
+    API <-->|Read / Write| Postgres[(PostgreSQL DB)]
+    API <-->|Publish / Subscribe| Redis[(Redis Cache & Broker)]
+    Worker[Python Celery Worker] <-->|Tasks Queue| Redis
+    Worker <-->|Write Indicators| Postgres
+    Cron[Systemd/Celery Beat] -->|Trigger Scans & Feeds| Redis
+```
+
+### Components
+1. **Frontend**: Static React bundle compiled using Vite, served via a reverse proxy (Nginx) or FastAPI static mounts.
+2. **FastAPI Web Server**: Handles REST API requests and hosts WebSocket connection rooms to broadcast live honeypot threats.
+3. **Redis Broker & Cache**: Acts as a pub/sub manager for WebSockets and serves as the queue backend for asynchronous tasks.
+4. **PostgreSQL Relational DB**: Stores assets registry, CVE vulnerabilities data, incident cases, Sigma/YARA rules, and access key records.
+5. **Python Celery Workers**: Processes background tasks like running network discovery scanners (Nmap, Nuclei) and querying enrichment feeds (VirusTotal, AbuseIPDB).
+
+---
+
+## 2. Docker Compose Infrastructure Spec
+
+Create a `docker-compose.yml` in the project root:
+
+```yaml
+version: '3.8'
+
+services:
+  # 1. FastAPI App & WebSockets
+  api:
+    image: threatstream/api:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://threat_admin:ts_secure_pass@postgres:5432/threatstream
+      - REDIS_URL=redis://redis:6379/0
+      - JWT_SECRET=ts_jwt_secret_token_1234
+    depends_on:
+      - postgres
+      - redis
+    restart: always
+
+  # 2. Celery Worker (Background Scans & Feeds)
+  worker:
+    image: threatstream/api:latest
+    command: celery -A workers.tasks worker --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://threat_admin:ts_secure_pass@postgres:5432/threatstream
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+    restart: always
+
+  # 3. Celery Beat (Scheduler for Cron Jobs)
+  beat:
+    image: threatstream/api:latest
+    command: celery -A workers.tasks beat --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://threat_admin:ts_secure_pass@postgres:5432/threatstream
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+    restart: always
+
+  # 4. Redis Cache & Broker
+  redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass ts_redis_pass
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: always
+
+  # 5. PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: threat_admin
+      POSTGRES_PASSWORD: ts_secure_pass
+      POSTGRES_DB: threatstream
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: always
+
+volumes:
+  pg_data:
+  redis_data:
 ```
 
 ---
 
-## Step-by-Step Deployment
+## 3. Database Schema Blueprint (PostgreSQL)
 
-### 1. Apply Security Rules
+To support self-hosting, the following relational database schemas are created inside PostgreSQL:
 
-1. **Go to Firebase Console**: https://console.firebase.google.com/
-2. **Select project**: threatstream-3b1ed
-3. **Navigate to**: Build > Realtime Database > Rules tab
-4. **Copy the rules above** and paste into the editor
-5. **Click "Publish"**
-6. **Verify**: You should see "Rules published successfully"
+### A. Assets Table
+```sql
+CREATE TABLE assets (
+    id VARCHAR(50) PRIMARY KEY,
+    hostname VARCHAR(100) NOT NULL UNIQUE,
+    ip VARCHAR(45) NOT NULL,
+    mac VARCHAR(17) NOT NULL,
+    vendor VARCHAR(100),
+    os VARCHAR(100),
+    asset_type VARCHAR(50) NOT NULL,
+    criticality VARCHAR(20) NOT NULL,
+    risk_score INT DEFAULT 0,
+    status VARCHAR(20) DEFAULT 'Online',
+    owner VARCHAR(100),
+    last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    patch_status VARCHAR(50) DEFAULT 'Up to Date'
+);
+```
+
+### B. Vulnerabilities Table (CVEs)
+```sql
+CREATE TABLE vulnerabilities (
+    id SERIAL PRIMARY KEY,
+    cve VARCHAR(20) NOT NULL,
+    cvss NUMERIC(3,1) NOT NULL,
+    summary TEXT,
+    patched BOOLEAN DEFAULT FALSE,
+    asset_id VARCHAR(50) REFERENCES assets(id) ON DELETE CASCADE
+);
+```
+
+### C. Indicators of Compromise (IOCs) Table
+```sql
+CREATE TABLE indicators (
+    id VARCHAR(50) PRIMARY KEY,
+    value VARCHAR(255) NOT NULL UNIQUE,
+    ioc_type VARCHAR(20) NOT NULL,
+    asn VARCHAR(100),
+    country VARCHAR(2),
+    threat_type VARCHAR(50),
+    confidence INT CHECK(confidence >= 0 AND confidence <= 100),
+    severity VARCHAR(20) NOT NULL,
+    mitre_id VARCHAR(15),
+    mitre_name VARCHAR(100),
+    source_feed VARCHAR(50),
+    last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    description TEXT
+);
+```
 
 ---
 
-### 2. Test Database Connectivity
+## 4. API & WebSocket Live Ingestion (FastAPI Snippet)
 
-Before deploying, add test data:
+The self-hosted API utilizes standard WebSockets to broadcast live threats:
 
-1. In Firebase Console, go to **Realtime Database > Data** tab
-2. Click the **+** icon next to the database root
-3. Add this test threat:
+```python
+# backend/main.py
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from typing import List
 
-**Name:** `threats`
-**Value:** Click "+" to add child
+app = FastAPI()
 
-Then add a child with:
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
 
-**Name:** `test1`
-**Value:** Click "+" to add the following fields:
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
 
-```
-ip: "203.0.113.45"
-lat: 40.7128
-lon: -74.0060
-country: "US"
-attack_type: "ssh"
-timestamp: 1737590400000
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: str):
+        for connection in self.active_connections:
+            try:
+                await connection.send_text(message)
+            except Exception:
+                # Handle disconnected socket cleanups
+                self.disconnect(connection)
+
+manager = ConnectionManager()
+
+@app.websocket("/ws/threats")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            # Maintain connection alive heartbeat
+            data = await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
 ```
 
 ---
 
-### 3. Deploy to Cloudflare Pages
+## 5. Deployment Step-by-Step
 
-#### A. Via GitHub Integration (Recommended)
-
-**Step 1: Push to GitHub**
+### 1. Build and Run Containers
 ```bash
-cd /workspace/cmh2t1290004nq2i3ki18lzw4/threatstream
-git add .
-git commit -m "Initial ThreatStream deployment"
-git push origin main
+docker-compose up -d --build
 ```
 
-**Step 2: Connect Cloudflare Pages**
-1. Login to [Cloudflare Dashboard](https://dash.cloudflare.com/)
-2. Go to **Workers & Pages** > **Create application** > **Pages**
-3. Click **Connect to Git**
-4. Authorize GitHub and select your repository
-5. Configure build settings:
-   - **Project name**: `threatstream`
-   - **Production branch**: `main`
-   - **Build command**: `npm run build`
-   - **Build output directory**: `dist`
-
-**Step 3: Add Environment Variables**
-
-In Cloudflare Pages settings, add these environment variables:
-
-```
-VITE_FIREBASE_API_KEY=AIzaSyA2dC_-gmtH8QXO1M2XJI8dUxWYq1KwW0Q
-VITE_FIREBASE_AUTH_DOMAIN=threatstream-3b1ed.firebaseapp.com
-VITE_FIREBASE_DATABASE_URL=https://threatstream-3b1ed-default-rtdb.firebaseio.com
-VITE_FIREBASE_PROJECT_ID=threatstream-3b1ed
-VITE_FIREBASE_STORAGE_BUCKET=threatstream-3b1ed.firebasestorage.app
-VITE_FIREBASE_MESSAGING_SENDER_ID=239463975849
-VITE_FIREBASE_APP_ID=1:239463975849:web:fb4c0cdd5b5ec4933092b8
-```
-
-Set scope to: **Production and Preview**
-
-**Step 4: Deploy**
-- Click **Save and Deploy**
-- Wait for build to complete (~2-3 minutes)
-- You'll receive a URL like: `https://threatstream.pages.dev`
-
----
-
-#### B. Manual Deployment via Wrangler
-
+### 2. Run Database Migrations
+Initialize database tables using Python Alembic:
 ```bash
-# Install Wrangler CLI globally
-npm install -g wrangler
-
-# Login to Cloudflare
-wrangler login
-
-# Build the project
-cd /workspace/cmh2t1290004nq2i3ki18lzw4/threatstream
-npm run build
-
-# Deploy
-wrangler pages deploy dist --project-name=threatstream
+docker-compose exec api alembic upgrade head
 ```
 
-After deployment, add environment variables via Cloudflare Dashboard as described above.
+### 3. Verify System Operations
+- **FastAPI Endpoint Docs**: `http://localhost:8000/docs`
+- **Websockets Stream Node**: `ws://localhost:8000/ws/threats`
+- **Console Web App Port**: Open `http://localhost:5173` (Vite local console server)
 
----
-
-### 4. Post-Deployment Verification
-
-**Checklist:**
-- [ ] Visit your deployment URL
-- [ ] Open browser DevTools Console (F12)
-- [ ] Verify "Firebase initialized successfully" message
-- [ ] Verify "Listening for threats at /threats" message
-- [ ] Check that test threat appears on globe and in feed
-- [ ] Test globe interactivity (rotate, zoom)
-- [ ] Verify stats counters show correct values
-- [ ] Check animated grid background is visible
-- [ ] Test on multiple browsers (Chrome, Firefox, Safari)
-
-**If threats don't appear:**
-1. Check browser console for errors
-2. Verify Firebase rules are published
-3. Verify database URL is correct in environment variables
-4. Check that test data exists at `/threats` path
-5. Verify all environment variables are set in Cloudflare
-
----
-
-### 5. Adding Production Threat Data
-
-Since `.write` is set to `false`, you need to use Firebase Admin SDK from a backend service.
-
-**Option A: Firebase Console (Manual)**
-- Add threats manually via Firebase Console UI
-- Good for testing, not scalable
-
-**Option B: Backend Service (Recommended)**
-- Set up a Node.js backend with Firebase Admin SDK
-- Connect your threat detection systems to this backend
-- Backend writes to `/threats` path
-- See `add-threat-example.js` for reference code
-
-**Option C: Cloud Functions**
-- Use Firebase Cloud Functions to receive and process threats
-- Automatically validates and writes to database
-- Serverless, scales automatically
-
----
-
-### 6. Database Maintenance
-
-**Automatic Cleanup (Optional)**
-
-To prevent unlimited database growth, consider:
-
-1. **Time-based cleanup**: Delete threats older than X days
-2. **Count-based cleanup**: Keep only latest 1000 threats
-3. **Firebase Cloud Functions**: Set up automatic cleanup function
-
-Example Cloud Function for cleanup:
-
-```javascript
-// Delete threats older than 7 days
-exports.cleanupOldThreats = functions.pubsub
-  .schedule('every 24 hours')
-  .onRun(async (context) => {
-    const db = admin.database();
-    const threatsRef = db.ref('threats');
-    const cutoffTime = Date.now() - (7 * 24 * 60 * 60 * 1000);
-
-    const snapshot = await threatsRef
-      .orderByChild('timestamp')
-      .endAt(cutoffTime)
-      .once('value');
-
-    const updates = {};
-    snapshot.forEach(child => {
-      updates[child.key] = null;
-    });
-
-    await threatsRef.update(updates);
-    console.log(`Cleaned up ${Object.keys(updates).length} old threats`);
-  });
+### 4. Logging & Maintenance
+Review Celery workers ingestion logs:
+```bash
+docker-compose logs -f worker
+```
+Check DB connections metrics:
+```bash
+docker-compose exec postgres pg_isready -U threat_admin
 ```
 
 ---
 
-### 7. Performance Optimization
-
-**Firebase Indexes** (Already configured in rules)
-- `timestamp` - For chronological queries
-- `attack_type` - For filtering by type
-- `country` - For geographic filtering
-
-**Cloudflare Settings**
-- Enable "Always Use HTTPS"
-- Enable "Auto Minify" (CSS, JS)
-- Configure caching rules for static assets
-
-**Frontend Optimizations** (Already implemented)
-- Max 100 threats stored in state
-- Max 50 concurrent arcs on globe
-- Max 50 concurrent pulse markers
-- 15-second arc/pulse lifetime
-
----
-
-### 8. Monitoring
-
-**Firebase Console**
-- Monitor database usage under **Usage** tab
-- Check read/write operations
-- Monitor bandwidth usage
-
-**Cloudflare Analytics**
-- View visitor traffic
-- Check page load times
-- Monitor bandwidth usage
-
-**Browser Console Logs**
-- Firebase initialization success/failure
-- Threat data validation errors
-- WebGL performance warnings
-
----
-
-### 9. Security Checklist
-
-- [x] Production security rules applied
-- [x] Write access disabled for public clients
-- [x] Data validation enforced
-- [x] Environment variables secured (not in git)
-- [x] HTTPS enforced (Cloudflare automatic)
-- [x] Firebase API key domain-restricted (configure in Firebase Console)
-- [x] No sensitive data in threat records
-
----
-
-### 10. Troubleshooting
-
-**Issue: "Permission denied" errors**
-- Check that security rules are published
-- Verify `.read: true` is set for `/threats`
-
-**Issue: Can't write threats**
-- Expected behavior - use Firebase Admin SDK from backend
-- Never write from frontend in production
-
-**Issue: Globe not rendering**
-- Check browser supports WebGL 2.0
-- Open console and look for Three.js errors
-- Test in Chrome/Firefox (best support)
-
-**Issue: No threats appearing**
-- Verify database URL in environment variables
-- Check test data exists in Firebase Console
-- Look for Firebase connection errors in console
-
-**Issue: Build fails on Cloudflare**
-- Check all environment variables are set
-- Verify Node.js version compatibility
-- Review build logs for specific errors
-
----
-
-## Production URLs
-
-After deployment, you'll have:
-- **Production URL**: `https://threatstream.pages.dev`
-- **Custom domain** (optional): Configure in Cloudflare Pages settings
-- **Firebase Console**: https://console.firebase.google.com/project/threatstream-3b1ed
-- **Cloudflare Dashboard**: https://dash.cloudflare.com/
-
----
-
-## Support
-
-For issues:
-1. Check browser console for errors
-2. Verify Firebase rules are correct
-3. Check Cloudflare build logs
-4. Review this deployment guide
-5. Test with fresh browser (clear cache)
-
----
-
-**Deployment Status**: Ready for production ✅
+**Architecture Status**: Ready for self-hosted production deployment ✅

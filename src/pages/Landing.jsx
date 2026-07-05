@@ -1,177 +1,146 @@
-import React from 'react'
-import { Link } from 'react-router-dom'
-import './Landing.css'
+import React from 'react';
+import { Link } from 'react-router-dom';
+import './Landing.css';
 
-const Landing = () => {
+export const Landing = () => {
   return (
     <div className="landing-page">
+      {/* Public Header */}
+      <header className="public-header">
+        <Link to="/" className="public-logo">
+          <img src="/logo.svg" alt="ThreatStream Logo" style={{ width: '28px', height: '28px' }} />
+          <span>THREAT<strong>STREAM</strong></span>
+        </Link>
+        <Link to="/dashboard" className="public-nav-btn">
+          Console login
+        </Link>
+      </header>
+
       {/* Hero Section */}
       <section className="hero">
         <div className="hero-content">
-          <h1 className="hero-title glitch-text">ThreatStream</h1>
+          <div className="hero-badge">Enterprise SecOps platform</div>
+          <h1 className="hero-title">
+            Next-Generation <span>Security Operations Center</span> Console
+          </h1>
           <p className="hero-subtitle">
-            Real-time cyber threat visualization platform with interactive 3D globe and live threat feed
+            Ingest, visualize, and remediate network intrusions in real-time. Built with interactive 3D telemetry visualization, global honeypots, and integrated endpoint response.
           </p>
-          <Link to="/dashboard" className="cta-button">
-            Launch Dashboard
-          </Link>
+          <div className="cta-group">
+            <Link to="/dashboard" className="cta-primary">
+              Launch SOC Console
+            </Link>
+            <a href="https://github.com/aadithya-vimal/threatstream" target="_blank" rel="noreferrer" className="cta-secondary">
+              View Repository
+            </a>
+          </div>
         </div>
       </section>
 
       {/* Features Grid */}
       <section className="features-section">
-        <div className="container">
-
-          {/* Feature 1: 3D Visualization */}
+        <div className="features-header">
+          <h2>Enterprise Security Modules</h2>
+          <p>Explore modules designed to support security teams at global scale.</p>
+        </div>
+        
+        <div className="features-grid">
+          {/* Feature 1 */}
           <div className="feature-card">
             <div className="feature-icon">🌐</div>
-            <h2 className="feature-title">3D Visualization</h2>
+            <h3 className="feature-title">3D Threat Visualization</h3>
             <p className="feature-description">
-              Interactive globe showing threat locations and attack vectors in real-time
+              Observe incoming network attacks mapped geographically in real-time. Trace ingress source vectors directly to targets.
             </p>
           </div>
 
-          {/* Feature 2: Live Updates */}
+          {/* Feature 2 */}
           <div className="feature-card">
             <div className="feature-icon">⚡</div>
-            <h2 className="feature-title">Live Updates</h2>
+            <h3 className="feature-title">Real-time Stream</h3>
             <p className="feature-description">
-              Firebase-powered real-time data streaming for instant threat detection
+              Powered by database triggers for microsecond event notifications. Keep security operators updated with low-latency logs.
             </p>
           </div>
 
-          {/* Feature 3: Threat Analysis */}
+          {/* Feature 3 */}
           <div className="feature-card">
             <div className="feature-icon">🛡️</div>
-            <h2 className="feature-title">Threat Analysis</h2>
+            <h3 className="feature-title">Strategic Targets</h3>
             <p className="feature-description">
-              Comprehensive threat feed with severity levels and detailed information
-            </p>
-          </div>
-
-          {/* Feature 4: Animated Attack Arcs */}
-          <div className="feature-card">
-            <div className="feature-icon">🎯</div>
-            <h2 className="feature-title">Attack Visualization</h2>
-            <p className="feature-description">
-              Watch cyber attacks travel across the globe with stunning animated arcs color-coded by attack type
-            </p>
-            <div className="attack-types">
-              <span className="attack-badge" style={{borderColor: '#00FFFF'}}>SSH</span>
-              <span className="attack-badge" style={{borderColor: '#00FF00'}}>FTP</span>
-              <span className="attack-badge" style={{borderColor: '#FF0000'}}>Apache</span>
-              <span className="attack-badge" style={{borderColor: '#8A2BE2'}}>IMAP</span>
-              <span className="attack-badge" style={{borderColor: '#FFA500'}}>SIP</span>
-              <span className="attack-badge" style={{borderColor: '#FF1493'}}>Bots</span>
-            </div>
-          </div>
-
-          {/* Feature 5: Strategic Targets */}
-          <div className="feature-card">
-            <div className="feature-icon">📍</div>
-            <h2 className="feature-title">Strategic Targets</h2>
-            <p className="feature-description">
-              Three permanent honeypot targets across key global locations with intelligent routing
+              Permanent distributed honeypot systems routing simulated SSH, Mail, and Web payloads for traffic profiling.
             </p>
             <div className="targets-grid">
               <div className="target-box">
-                <h4 style={{color: '#00FFFF'}}>Berlin</h4>
-                <p>SSH/IMAP</p>
+                <h4>Berlin</h4>
+                <p>SSH / Mail</p>
               </div>
               <div className="target-box">
-                <h4 style={{color: '#FF0000'}}>San Francisco</h4>
-                <p>Web Services</p>
+                <h4>San Francisco</h4>
+                <p>Web Target</p>
               </div>
               <div className="target-box">
-                <h4 style={{color: '#00FF00'}}>Singapore</h4>
-                <p>IoT Devices</p>
+                <h4>Singapore</h4>
+                <p>IoT Sensors</p>
               </div>
             </div>
           </div>
 
-          {/* Feature 6: Real-Time Stats */}
+          {/* Feature 4 */}
           <div className="feature-card">
             <div className="feature-icon">📊</div>
-            <h2 className="feature-title">Real-Time Statistics</h2>
+            <h3 className="feature-title">Vulnerability Auditing</h3>
             <p className="feature-description">
-              Live threat counters providing instant insights into attack patterns and severity distribution
+              Correlate Common Vulnerabilities and Exposures (CVEs) with asset catalogs. Prioritize security patches based on CVSS scoring.
+            </p>
+            <div className="attack-types">
+              <span className="attack-badge">CVE-2024-3094</span>
+              <span className="attack-badge">Log4Shell</span>
+              <span className="attack-badge">libwebp</span>
+            </div>
+          </div>
+
+          {/* Feature 5 */}
+          <div className="feature-card">
+            <div className="feature-icon">🔍</div>
+            <h3 className="feature-title">Proactive Threat Hunting</h3>
+            <p className="feature-description">
+              Execute Kusto (KQL) and SQL syntax queries over high-fidelity container logs, process actions, and registry modifications.
+            </p>
+          </div>
+
+          {/* Feature 6 */}
+          <div className="feature-card">
+            <div className="feature-icon">🛠️</div>
+            <h3 className="feature-title">Sandboxing & Verdicts</h3>
+            <p className="feature-description">
+              Execute suspicious executables inside multi-OS virtual sandboxes. Gather process runtimes and threat scores.
             </p>
             <div className="tech-stats">
               <div className="stat">
-                <div className="stat-value">100</div>
-                <div className="stat-label">Max Threats</div>
+                <div className="stat-value">60s</div>
+                <div className="stat-label">Timeout</div>
               </div>
               <div className="stat">
-                <div className="stat-value">50</div>
-                <div className="stat-label">Concurrent Arcs</div>
+                <div className="stat-value">Win10</div>
+                <div className="stat-label">Host OS</div>
               </div>
               <div className="stat">
-                <div className="stat-value">60 FPS</div>
-                <div className="stat-label">Performance</div>
+                <div className="stat-value">Score</div>
+                <div className="stat-label">Verdicts</div>
               </div>
             </div>
           </div>
-
-          {/* Feature 7: Threat Intelligence Feeds */}
-          <div className="feature-card">
-            <div className="feature-icon">📡</div>
-            <h2 className="feature-title">Threat Intelligence Feeds</h2>
-            <p className="feature-description">
-              Aggregate and correlate data from multiple threat intelligence sources including commercial feeds, open-source intelligence, and custom integrations
-            </p>
-          </div>
-
-          {/* Feature 9: Historical Analytics */}
-          <div className="feature-card">
-            <div className="feature-icon">📊</div>
-            <h2 className="feature-title">Historical Analytics</h2>
-            <p className="feature-description">
-              Deep-dive into historical threat data with trend analysis, pattern recognition, and predictive insights for proactive defense
-            </p>
-          </div>
-
-          {/* Feature 11: Automated Response */}
-          <div className="feature-card">
-            <div className="feature-icon">⚡</div>
-            <h2 className="feature-title">Automated Response</h2>
-            <p className="feature-description">
-              Execute predefined playbooks automatically based on threat severity and type to minimize response time and human error
-            </p>
-            <div className="targets-grid">
-              <div className="target-box">
-                <p>Block IP addresses</p>
-              </div>
-              <div className="target-box">
-                <p>Quarantine endpoints</p>
-              </div>
-              <div className="target-box">
-                <p>Alert security team</p>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="cta-section">
-        <div className="cta-content">
-          <h2 className="glitch-text">Ready to Monitor Global Threats?</h2>
-          <p>Experience real-time cyber threat visualization like never before</p>
-          <Link to="/dashboard" className="cta-button">
-            Launch Dashboard Now
-          </Link>
         </div>
       </section>
 
       {/* Footer */}
       <footer className="landing-footer">
-        <p>ThreatStream - Real-time cyber threat intelligence visualization</p>
-        <p>Built with React, Three.js, and Firebase</p>
-        <p>© 2025 Aadithya Vimal. All rights reserved. | <Link to="/terms" style={{color: 'var(--color-primary-blue)', textDecoration: 'none'}}>Terms & Conditions</Link></p>
+        <p>ThreatStream Security Operations Platform - Enterprise Dashboard Console</p>
+        <p>© 2025 Aadithya Vimal. All rights reserved. | <Link to="/terms" style={{ color: 'var(--color-blue)', textDecoration: 'none' }}>Terms & Conditions</Link></p>
       </footer>
     </div>
-  )
-}
+  );
+};
 
-export default Landing
+export default Landing;

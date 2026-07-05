@@ -34,7 +34,7 @@ const ATTACK_TYPE_COLORS = {
 // --- End Constants ---
 
 const GlobeComponent = ({ threats = [] }) => {
-  // State for attack arcs & pulses (from Firebase)
+  // State for attack arcs & pulses (from live telemetry stream)
   const [arcs, setArcs] = useState([]);
   const [pulses, setPulses] = useState([]);
 
