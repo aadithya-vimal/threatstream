@@ -213,7 +213,7 @@ export class ProcessEvent extends BaseModel {
 }
 
 /**
- * DNS Telemetry Event Model
+ * DNS Telemetry Event Model - Domain lookup correlation log metrics mapping
  */
 export class DNSEvent extends BaseModel {
   constructor(data = {}) {
