@@ -145,7 +145,7 @@ function ConfidenceBar({ value, color }) {
   );
 }
 
-const RESULT_TABS = ['Provider Results', 'Relationships', 'Timeline'];
+const RESULT_TABS = ['Provider Results', 'Relationships', 'Timeline', 'Attribution Matrix'];
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export function IOCEnrichment() {
@@ -438,51 +438,91 @@ export function IOCEnrichment() {
                   )}
 
                   {enriched && resultTab === 'Provider Results' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                      {activeProviders.map(p => {
-                        let res = PROVIDER_RESULTS_MOCK[p.id];
-                        if (p.id === 'vt' && realResult) {
-                          const details = [];
-                          if (realResult.detection_ratio) details.push(`Detection Ratio: ${realResult.detection_ratio}`);
-                          if (realResult.popular_threat_label && realResult.popular_threat_label !== 'Unknown') details.push(`Threat Label: ${realResult.popular_threat_label}`);
-                          if (realResult.file_type && realResult.file_type !== 'N/A') details.push(`File Type: ${realResult.file_type}`);
-                          if (realResult.names && realResult.names.length > 0) details.push(`Names: ${realResult.names.slice(0, 3).join(', ')}`);
-                          if (realResult.first_seen) {
-                            const dateVal = typeof realResult.first_seen === 'number' ? realResult.first_seen * 1000 : realResult.first_seen;
-                            details.push(`First Seen: ${new Date(dateVal).toLocaleDateString()}`);
-                          }
-                          if (realResult.reputation !== undefined) details.push(`Community Reputation: ${realResult.reputation}`);
-                          
-                          res = {
-                            verdict: realResult.verdict ? realResult.verdict.charAt(0).toUpperCase() + realResult.verdict.slice(1) : 'Clean',
-                            confidence: 100,
-                            findings: details.length > 0 ? details : ['Analyzed successfully, no threats identified.']
-                          };
-                        }
-                        
-                        const color = res.verdict === 'Malicious' || res.verdict === 'malicious' ? '#ef4444' : res.verdict === 'Suspicious' || res.verdict === 'suspicious' ? '#eab308' : '#10b981';
-                        return (
-                          <div key={p.id} style={{ backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 6, padding: 14, border: `1px solid ${color}20` }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                              <span style={{ fontSize: 16 }}>{p.icon}</span>
-                              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', flex: 1 }}>{p.name}</span>
-                              <VerdictBadge verdict={res.verdict} />
-                            </div>
-                            <div style={{ marginBottom: 8 }}>
-                              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>Confidence</div>
-                              <ConfidenceBar value={res.confidence} color={color} />
-                            </div>
-                            <ul style={{ margin: 0, paddingLeft: 14 }}>
-                              {res.findings.map((f, i) => <li key={i} style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>{f}</li>)}
-                            </ul>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {/* Live provider execution status list */}
+                      {realResult && realResult.providers_status && (
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Active Provider Statuses</div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+                            {realResult.providers_status.completed.map(cp => (
+                              <div key={cp.name} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', backgroundColor: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 5, fontSize: 12 }}>
+                                <span style={{ color: '#10b981', fontWeight: 'bold' }}>●</span>
+                                <strong style={{ flex: 1 }}>{cp.name}</strong>
+                                <span style={{ color: 'var(--text-muted)' }}>Latency: {cp.latency_ms}ms</span>
+                                <span style={{ padding: '2px 6px', borderRadius: 4, backgroundColor: 'rgba(16,185,129,0.15)', color: '#10b981', fontWeight: 700, fontSize: 10 }}>Health: {cp.health_score}%</span>
+                              </div>
+                            ))}
+                            {realResult.providers_status.failed.map(fp => (
+                              <div key={fp.name} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', backgroundColor: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 5, fontSize: 12 }}>
+                                <span style={{ color: '#ef4444', fontWeight: 'bold' }}>●</span>
+                                <strong style={{ flex: 1 }}>{fp.name}</strong>
+                                <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>Error: {fp.error}</span>
+                                <span style={{ padding: '2px 6px', borderRadius: 4, backgroundColor: 'rgba(239,68,68,0.15)', color: '#ef4444', fontWeight: 700, fontSize: 10 }}>Health: {fp.health_score}%</span>
+                              </div>
+                            ))}
                           </div>
-                        );
-                      })}
+                        </div>
+                      )}
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        {activeProviders.map(p => {
+                          let res = PROVIDER_RESULTS_MOCK[p.id];
+                          if (p.id === 'vt' && realResult) {
+                            const details = [];
+                            if (realResult.detection_ratio) details.push(`Detection Ratio: ${realResult.detection_ratio}`);
+                            if (realResult.popular_threat_label && realResult.popular_threat_label !== 'Unknown') details.push(`Threat Label: ${realResult.popular_threat_label}`);
+                            if (realResult.file_type && realResult.file_type !== 'N/A') details.push(`File Type: ${realResult.file_type}`);
+                            if (realResult.names && realResult.names.length > 0) details.push(`Names: ${realResult.names.slice(0, 3).join(', ')}`);
+                            if (realResult.first_seen) {
+                              const dateVal = typeof realResult.first_seen === 'number' ? realResult.first_seen * 1000 : realResult.first_seen;
+                              details.push(`First Seen: ${new Date(dateVal).toLocaleDateString()}`);
+                            }
+                            if (realResult.reputation !== undefined) details.push(`Community Reputation: ${realResult.reputation}`);
+                            
+                            res = {
+                              verdict: realResult.verdict ? realResult.verdict.charAt(0).toUpperCase() + realResult.verdict.slice(1) : 'Clean',
+                              confidence: realResult.confidence || 100,
+                              findings: details.length > 0 ? details : ['Analyzed successfully, no threats identified.']
+                            };
+                          }
+                          
+                          const color = res.verdict === 'Malicious' || res.verdict === 'malicious' ? '#ef4444' : res.verdict === 'Suspicious' || res.verdict === 'suspicious' ? '#eab308' : '#10b981';
+                          return (
+                            <div key={p.id} style={{ backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 6, padding: 14, border: `1px solid ${color}20` }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                                <span style={{ fontSize: 16 }}>{p.icon}</span>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', flex: 1 }}>{p.name}</span>
+                                <VerdictBadge verdict={res.verdict} />
+                              </div>
+                              <div style={{ marginBottom: 8 }}>
+                                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>Confidence</div>
+                                <ConfidenceBar value={res.confidence} color={color} />
+                              </div>
+                              <ul style={{ margin: 0, paddingLeft: 14 }}>
+                                {res.findings.map((f, i) => <li key={i} style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>{f}</li>)}
+                              </ul>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
 
                   {enriched && resultTab === 'Relationships' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                      {realResult && realResult.relationships && realResult.relationships.length > 0 && (
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>Normalized Relationships linkages</div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {realResult.relationships.map((rel, idx) => (
+                              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', border: '1px solid var(--border-color)', borderRadius: '4px', backgroundColor: 'rgba(0,0,0,0.2)', fontSize: '11px' }}>
+                                <span style={{ textTransform: 'capitalize' }}>Relationship: {rel.type}</span>
+                                <strong>Value: {rel.value}</strong>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       <div>
                         <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>Related IOCs</div>
                         {RELATED_IOCS.map((r, i) => (
@@ -512,28 +552,59 @@ export function IOCEnrichment() {
 
                   {enriched && resultTab === 'Timeline' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>Enrichment query timeline — all {activeProviders.length} active providers queried simultaneously</div>
-                      <div style={{ display: 'flex', gap: 0, alignItems: 'flex-end', height: 60, padding: '0 4px', borderBottom: '1px solid var(--border-color)' }}>
-                        {ENRICHMENT_TIMELINE.map((e, i) => (
-                          <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                            <div style={{ width: '60%', backgroundColor: '#3b82f6', borderRadius: '2px 2px 0 0', height: Math.min(56, (e.ms / 2500) * 56) }} title={`${e.ms}ms`} />
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>
+                        Merged query timeline — active provider plugins executed concurrently.
+                      </div>
+                      {realResult && realResult.providers_status ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          {realResult.providers_status.completed.map((p) => (
+                            <div key={p.name} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                              <span style={{ fontSize: 12, width: 90, color: 'var(--text-secondary)' }}>{p.name}</span>
+                              <div style={{ flex: 1, height: 8, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden' }}>
+                                <div style={{ height: '100%', backgroundColor: '#10b981', width: `${Math.min(100, (p.latency_ms / 1500) * 100)}%`, borderRadius: 4 }} />
+                              </div>
+                              <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{p.latency_ms}ms</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <>
+                          <div style={{ display: 'flex', gap: 0, alignItems: 'flex-end', height: 60, padding: '0 4px', borderBottom: '1px solid var(--border-color)' }}>
+                            {ENRICHMENT_TIMELINE.map((e, i) => (
+                              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                                <div style={{ width: '60%', backgroundColor: '#3b82f6', borderRadius: '2px 2px 0 0', height: Math.min(56, (e.ms / 2500) * 56) }} title={`${e.ms}ms`} />
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                      <div style={{ display: 'flex', gap: 0 }}>
-                        {ENRICHMENT_TIMELINE.map((e, i) => (
-                          <div key={i} style={{ flex: 1, textAlign: 'center', fontSize: 9, color: 'var(--text-muted)' }}>{e.provider.split(' ')[0]}</div>
-                        ))}
-                      </div>
-                      <div style={{ marginTop: 8 }}>
-                        {ENRICHMENT_TIMELINE.map((e, i) => (
-                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid rgba(255,255,255,0.03)', fontSize: 12 }}>
-                            <span style={{ color: 'var(--text-secondary)' }}>{e.provider}</span>
-                            <span style={{ color: '#10b981', fontFamily: 'monospace' }}>{e.ms}ms</span>
-                            <VerdictBadge verdict={e.verdict} />
+                          <div style={{ display: 'flex', gap: 0 }}>
+                            {ENRICHMENT_TIMELINE.map((e, i) => (
+                              <div key={i} style={{ flex: 1, textAlign: 'center', fontSize: 9, color: 'var(--text-muted)' }}>{e.provider.split(' ')[0]}</div>
+                            ))}
                           </div>
-                        ))}
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {enriched && resultTab === 'Attribution Matrix' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                        Attribution traceability data — tracks which provider supplied each intelligence node.
                       </div>
+                      {realResult && realResult.attribution ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, backgroundColor: 'rgba(0,0,0,0.15)', padding: 14, borderRadius: 6, border: '1px solid var(--border-color)' }}>
+                          {Object.entries(realResult.attribution).map(([field, sources]) => (
+                            <div key={field} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.03)', fontSize: 12 }}>
+                              <span style={{ color: 'var(--text-secondary)', textTransform: 'capitalize' }}>{field.replace('_', ' ')}</span>
+                              <span style={{ color: 'var(--accent)', fontWeight: 700 }}>{sources.join(', ')}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>
+                          No attribution data recorded for mock payload.
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
