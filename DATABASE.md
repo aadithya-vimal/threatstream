@@ -89,3 +89,35 @@ The platform configures three default buckets inside the `storage.buckets` schem
 1. **`reports`** (Public): Holds generated markdown and PDF security audits. Accessible via public URLs for dashboard sharing.
 2. **`malware`** (Private): Secured container storing submitted executable binaries. Strictly isolated; files cannot be accessed or run directly from the browser without token verification.
 3. **`evidence`** (Private): Secured cabinet storing text dumps, attachments, and PCAP packets uploaded during incident response operations.
+
+---
+
+## 5. Threat Intelligence Platform (TIP) Schema
+
+The platform implements the following tables to manage indicator datasets:
+
+### 1. `threat_actors`
+Tracks malicious groups, APT aliases, motivations, and systems risks.
+* Primary Key: `id` (UUID)
+* Unique Constraint: `name` (VARCHAR)
+* Attributes: `aliases`, `country`, `motivation`, `target_industries`, `risk_score`, `status`.
+
+### 2. `campaigns`
+Tracks active threat campaigns, regions focus, target sectors, and references.
+* Primary Key: `id` (UUID)
+* Unique Constraint: `name` (VARCHAR)
+* Attributes: `description`, `start_date`, `end_date`, `status`, `target_regions`, `affected_industries`, `references`.
+
+### 3. `malware_families`
+Tracks classified malware strains capability and tactical signatures.
+* Primary Key: `id` (UUID)
+* Unique Constraint: `name` (VARCHAR)
+* Attributes: `aliases`, `malware_type`, `capabilities`, `mitre_techniques`, `description`.
+
+### 4. `ioc_correlations`
+Maintains relational mapping links between indicators and assets/incidents/vulnerabilities.
+* Primary Key: `id` (UUID)
+* Foreign Key: `ioc_id` references `iocs.id`
+* Attributes: `target_type` (Asset, Incident, CVE), `target_id`, `relationship_score`.
+
+All TIP tables have RLS enabled by default to permit read-only select actions to all authenticated SOC operators, while restricting insert/update/delete operations to designated security personnel roles.
