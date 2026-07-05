@@ -3,8 +3,7 @@ from typing import Dict, Any
 
 class BasePlugin(ABC):
     """
-    Abstract base class for all ThreatStream Execution Engine plugins.
-    Plugins wrap scanners, collectors, enrichment, detection, and analysis systems.
+    Abstract base class for all ThreatStream Execution Engine plugins & connectors.
     """
 
     def __init__(self, config: Dict[str, Any] = None):
@@ -19,6 +18,14 @@ class BasePlugin(ABC):
         pass
 
     @abstractmethod
+    def authenticate(self) -> bool:
+        """
+        Tests authentication credentials against the remote provider API.
+        Returns True if authentication succeeds, False otherwise.
+        """
+        pass
+
+    @abstractmethod
     def validate(self, payload: Dict[str, Any]) -> bool:
         """
         Validates target parameters, scopes, IP formats, hashes, and configurations.
@@ -29,9 +36,17 @@ class BasePlugin(ABC):
     @abstractmethod
     def execute(self, payload: Dict[str, Any], progress_callback=None) -> Dict[str, Any]:
         """
-        Executes the main task logic (asynchronously or synchronously).
+        Executes the main task logic.
         Periodically publishes progress through the progress_callback(progress_int).
         Returns a dict of results.
+        """
+        pass
+
+    @abstractmethod
+    def health(self) -> Dict[str, Any]:
+        """
+        Gathers connector runtime metrics: status, latency, authentication state, and remaining quotas.
+        Returns a dict containing: status, quota_remaining, last_successful_sync, etc.
         """
         pass
 
