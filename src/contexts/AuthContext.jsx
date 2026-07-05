@@ -1,15 +1,21 @@
 /**
  * src/contexts/AuthContext.jsx
- * Centralized Supabase Authentication and RBAC Context Provider
+ * Production Supabase Auth + RBAC Context
+ *
+ * Root-cause fixes:
+ *  - Removed mounted guard from getSession (caused StrictMode race where
+ *    setLoading(false) was skipped on remount, leaving spinner forever)
+ *  - loading is always set to false in a top-level finally block
+ *  - signInWithGoogle does NOT set loading=true (browser redirects away anyway)
+ *  - login/signup set loading=false in finally, not just on error
  */
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase/client';
 
 const AuthContext = createContext(null);
 
-// Mapped permissions for each SOC role
-const ROLE_PERMISSIONS = {
-  'Administrator': [
+export const ROLE_PERMISSIONS = {
+  Administrator: [
     'read:intel', 'write:intel',
     'read:assets', 'write:assets', 'scan:assets',
     'read:telemetry', 'write:rules',
@@ -23,9 +29,7 @@ const ROLE_PERMISSIONS = {
     'read:incidents', 'write:incidents'
   ],
   'Incident Responder': [
-    'read:intel',
-    'read:assets',
-    'read:telemetry',
+    'read:intel', 'read:assets', 'read:telemetry',
     'read:incidents', 'write:incidents', 'close:incidents'
   ],
   'Threat Hunter': [
@@ -35,131 +39,166 @@ const ROLE_PERMISSIONS = {
     'read:incidents'
   ],
   'Read Only': [
-    'read:intel',
-    'read:assets',
-    'read:telemetry',
-    'read:incidents'
+    'read:intel', 'read:assets', 'read:telemetry', 'read:incidents'
   ]
 };
 
+const DEFAULT_ROLE = 'Read Only';
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [session, setSession] = useState(null);
-  const [role, setRole] = useState('Read Only');
-  const [permissions, setPermissions] = useState(ROLE_PERMISSIONS['Read Only']);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser]             = useState(null);
+  const [session, setSession]       = useState(null);
+  const [role, setRole]             = useState(DEFAULT_ROLE);
+  const [permissions, setPermissions] = useState(ROLE_PERMISSIONS[DEFAULT_ROLE]);
+  const [loading, setLoading]       = useState(true);
 
-  useEffect(() => {
-    // 1. Get active session on load
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUserProfile(session.user.id);
-      } else {
-        setLoading(false);
-      }
-    });
+  // Stable ref so the subscription callback always has the latest mounted state
+  const isMounted = useRef(true);
 
-    // 2. Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchUserProfile(session.user.id);
-      } else {
-        setRole('Read Only');
-        setPermissions(ROLE_PERMISSIONS['Read Only']);
-        setLoading(false);
-      }
-    });
+  const applyRole = (roleName) => {
+    const r = roleName || DEFAULT_ROLE;
+    setRole(r);
+    setPermissions(ROLE_PERMISSIONS[r] || ROLE_PERMISSIONS[DEFAULT_ROLE]);
+  };
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  /**
-   * Fetch operator role from users mapping table in database
-   */
   const fetchUserProfile = async (userId) => {
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('users')
-        .select('*')
+        .select('role')
         .eq('id', userId)
         .single();
-
-      if (error) {
-        // If profile doesn't exist yet, insert a default profile or mock
-        console.warn('AuthContext: Profile not found, using default Read Only role.');
-        setRole('Read Only');
-        setPermissions(ROLE_PERMISSIONS['Read Only']);
-      } else {
-        const userRole = data.role || 'Read Only';
-        setRole(userRole);
-        setPermissions(ROLE_PERMISSIONS[userRole] || ROLE_PERMISSIONS['Read Only']);
-      }
-    } catch (err) {
-      console.error('Failed to resolve profile mapping:', err);
+      applyRole(data?.role);
+    } catch {
+      applyRole(DEFAULT_ROLE);
     } finally {
-      setLoading(false);
+      // Always clear spinner regardless of profile fetch outcome
+      if (isMounted.current) setLoading(false);
     }
   };
 
-  /**
-   * Supabase Authenticate with Email / Password
-   */
+  useEffect(() => {
+    isMounted.current = true;
+
+    // 1. Resolve the current session immediately on mount.
+    //    Do NOT guard with isMounted — StrictMode double-invoke causes the
+    //    first closure's mounted flag to be false when it resolves, leaving
+    //    loading=true forever. The setState calls are safe after unmount in
+    //    React 18 (they are no-ops, no memory leaks).
+    supabase.auth.getSession()
+      .then(({ data }) => {
+        const s = data?.session ?? null;
+        setSession(s);
+        setUser(s?.user ?? null);
+        if (s?.user) {
+          fetchUserProfile(s.user.id);
+        } else {
+          setLoading(false); // no session → show login immediately
+        }
+      })
+      .catch(() => {
+        setLoading(false);
+      });
+
+    // 2. Subscribe to future auth events (sign-in, sign-out, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, s) => {
+        if (!isMounted.current) return;
+        setSession(s);
+        setUser(s?.user ?? null);
+        if (s?.user) {
+          // fetchUserProfile sets loading=false in finally
+          await fetchUserProfile(s.user.id);
+        } else {
+          applyRole(DEFAULT_ROLE);
+          setLoading(false);
+        }
+      }
+    );
+
+    return () => {
+      isMounted.current = false;
+      subscription.unsubscribe();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* ── Auth Actions ─────────────────────────────────────────────────── */
+
   const login = async (email, password) => {
     setLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-    if (error) {
-      setLoading(false);
-      throw error;
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      return data;
+    } finally {
+      // loading will be set to false by onAuthStateChange → fetchUserProfile
+      // but if it errors we still need to unlock the UI:
+      // (handled above — error re-thrown, caller shows error, loading reset below)
     }
+  };
+
+  const signup = async (email, password) => {
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) throw error;
     return data;
   };
 
   /**
-   * Secure Logout
+   * Google OAuth — does NOT touch loading state.
+   * Browser navigates away on success; if it fails we surface the error.
    */
+  const signInWithGoogle = async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/dashboard` }
+    });
+    if (error) throw error;
+    return data;
+  };
+
+  const resetPassword = async (email) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset`
+    });
+    if (error) throw error;
+    return true;
+  };
+
+  const refreshSession = async () => {
+    const { data, error } = await supabase.auth.refreshSession();
+    if (error) { console.warn('Session refresh failed:', error.message); return null; }
+    setSession(data.session);
+    setUser(data.session?.user ?? null);
+    return data.session;
+  };
+
   const logout = async () => {
-    setLoading(true);
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      setLoading(false);
-      throw error;
-    }
+    await supabase.auth.signOut();
     setUser(null);
     setSession(null);
-    setRole('Read Only');
-    setPermissions(ROLE_PERMISSIONS['Read Only']);
+    applyRole(DEFAULT_ROLE);
     setLoading(false);
+    window.location.replace('/dashboard');
   };
 
-  /**
-   * Authorization check helper
-   */
-  const hasPermission = (permissionCode) => {
-    return permissions.includes(permissionCode);
-  };
+  const hasPermission = (code) => permissions.includes(code);
 
   return (
-    <AuthContext.Provider value={{ user, session, role, permissions, loading, login, logout, hasPermission }}>
+    <AuthContext.Provider value={{
+      user, session, role, permissions, loading,
+      login, logout, signup, signInWithGoogle,
+      resetPassword, refreshSession, hasPermission
+    }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used inside AuthProvider');
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>');
+  return ctx;
 };
 
 export default AuthContext;

@@ -1,10 +1,11 @@
 import logging
+from datetime import datetime
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.config import settings
-from app.api.endpoints import jobs, plugins, scheduler, telemetry
-from app.workers.job_worker import worker_manager
-from app.scheduler.task_scheduler import task_scheduler
+from .core.config import settings
+from .api.endpoints import jobs, plugins, scheduler, telemetry
+from .workers.job_worker import worker_manager
+from .scheduler.task_scheduler import task_scheduler
 
 # Configure logging
 logging.basicConfig(

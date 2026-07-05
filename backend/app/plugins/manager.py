@@ -1,10 +1,10 @@
 import time
 import logging
+import importlib
 from typing import Dict, Any, Type
 from app.plugins.base import BasePlugin
 from app.plugins.virustotal import VirusTotalPlugin
-from app.plugins.orchestrator import EnrichmentOrchestrator
-from app.plugins.discovery import DiscoveryOrchestrator
+# Orchestrators will be lazily imported
 from app.plugins.nmap import NmapDiscoveryPlugin
 from app.plugins.nuclei import NucleiDiscoveryPlugin
 from app.plugins.whatweb import WhatWebDiscoveryPlugin
@@ -164,14 +164,24 @@ class PluginManager:
         "osquery": OSQueryCollector,
         "zeek": ZeekCollector,
         "suricata": SuricataCollector,
-        "orchestrator": EnrichmentOrchestrator,
-        "discovery_orchestrator": DiscoveryOrchestrator,
+        "orchestrator": "app.plugins.orchestrator.EnrichmentOrchestrator",
+        "discovery_orchestrator": "app.plugins.discovery.DiscoveryOrchestrator",
         "default": DefaultPlugin
     }
 
     @classmethod
     def get_plugin(cls, plugin_name: str, config: Dict[str, Any] = None) -> BasePlugin:
-        plugin_class = cls._registry.get(plugin_name.lower(), cls._registry["default"])
-        plugin_instance = plugin_class(config)
+        """Retrieve plugin instance by name.
+        Supports direct class objects or dotted import strings.
+        """
+        plugin_entry = cls._registry.get(plugin_name.lower(), cls._registry["default"])
+        if isinstance(plugin_entry, str):
+            # Dynamically import the class from its dotted path
+            module_path, class_name = plugin_entry.rsplit(".", 1)
+            module = importlib.import_module(module_path)
+            plugin_class = getattr(module, class_name)
+        else:
+            plugin_class = plugin_entry
+        plugin_instance = plugin_class(config or {})
         plugin_instance.initialize()
         return plugin_instance

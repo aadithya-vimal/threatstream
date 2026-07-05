@@ -15,33 +15,35 @@ export const NotificationProvider = ({ children }) => {
   ]);
 
   useEffect(() => {
-    // Attempt Supabase Realtime alerts channel subscription
+    let channel;
     try {
-      const channel = supabase
+      channel = supabase
         .channel('public:alerts')
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'alerts' },
           (payload) => {
-            const newNotif = {
+            addNotification({
               id: payload.new.id,
               title: payload.new.title,
               message: payload.new.details || 'Security alert triggered.',
-              type: payload.new.severity === 'critical' ? 'critical' : payload.new.severity === 'high' ? 'warning' : 'info',
+              type: payload.new.severity === 'critical' ? 'critical'
+                  : payload.new.severity === 'high'     ? 'warning' : 'info',
               read: false,
-              timestamp: payload.new.created_at
-            };
-            addNotification(newNotif);
+              timestamp: payload.new.created_at,
+            });
           }
         )
         .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    } catch (err) {
-      console.warn('NotificationContext: Supabase realtime channel not active.');
+    } catch {
+      // Mock client or unavailable — notifications still work via addNotification()
     }
+
+    return () => {
+      if (channel) {
+        try { supabase.removeChannel(channel); } catch { /* ignore */ }
+      }
+    };
   }, []);
 
   const addNotification = (notif) => {

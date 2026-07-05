@@ -1,37 +1,26 @@
 /**
  * src/config/env.js
- * Centralized Environment Validation and Fail-Fast Ingestion
+ * Centralised environment config.
+ *
+ * In production:  set VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY
+ * In demo mode:   set VITE_USE_MOCK=true (or leave env vars unset)
  */
 
-const REQUIRED_ENV_VARS = [
-  'VITE_SUPABASE_URL',
-  'VITE_SUPABASE_PUBLISHABLE_KEY'
-];
-
-const missingVars = [];
-
-// Safely access Vite environment variables
 const env = {
-  supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
-  supabasePublishableKey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-  useMock: import.meta.env.VITE_USE_MOCK !== 'false' // default to true if not explicitly set to false to ensure smooth demo operation
+  supabaseUrl:  import.meta.env.VITE_SUPABASE_URL  || '',
+  supabaseKey:  import.meta.env.VITE_SUPABASE_ANON_KEY
+             || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+             || '',
+  useMock:      import.meta.env.VITE_USE_MOCK === 'true'
+             || !import.meta.env.VITE_SUPABASE_URL
+             || !import.meta.env.VITE_SUPABASE_ANON_KEY,
 };
 
-// Check for missing required variables
-REQUIRED_ENV_VARS.forEach(key => {
-  const value = import.meta.env[key];
-  if (!value) {
-    missingVars.push(key);
-  }
-});
-
-// Fail fast if required variables are missing and mock mode is disabled or variables are strictly missing for production
-if (missingVars.length > 0) {
-  const errorMsg = `CRITICAL ARCHITECTURE ERROR: Missing required environment variables: [${missingVars.join(', ')}]. Please configure your .env file.`;
-  console.error(errorMsg);
-  
-  // Throwing the error directly crashes Vite bundle evaluation on load, satisfying the fail-fast constraint.
-  throw new Error(errorMsg);
+if (!env.useMock && (!env.supabaseUrl || !env.supabaseKey)) {
+  throw new Error(
+    'Missing Supabase credentials. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, ' +
+    'or set VITE_USE_MOCK=true for demo mode.'
+  );
 }
 
 export default env;

@@ -1,25 +1,202 @@
 /**
  * src/components/ProtectedRoute.jsx
- * Secure Authentication Gate and Role-Based Access Control Firewall
+ * Production authentication gate + RBAC firewall.
+ *
+ * Clean rebuild — no legacy patches, no external image URLs.
+ * Google "G" logo is a self-contained inline SVG.
  */
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase/client';
 import LoadingState from './LoadingState';
 import Panel from './Panel';
 
-export const ProtectedRoute = ({ children, requiredPermission }) => {
-  const { user, role, loading, login, hasPermission } = useAuth();
-  const [authTab, setAuthTab] = useState('signin'); // signin, forgot, reset
-  const [email, setEmail] = useState('analyst@threatstream.io');
-  const [password, setPassword] = useState('password123');
-  const [recoveryEmail, setRecoveryEmail] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [resetToken, setResetToken] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+/* ── Inline Google "G" SVG (official multicolor path) ──────────────── */
+const GoogleGIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 48 48"
+    width="22"
+    height="22"
+    style={{ display: 'block', flexShrink: 0 }}
+  >
+    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+    <path fill="none" d="M0 0h48v48H0z"/>
+  </svg>
+);
 
+/* ── Shared input style ─────────────────────────────────────────────── */
+const inputStyle = {
+  width: '100%',
+  backgroundColor: '#0d1017',
+  border: '1px solid #262e3d',
+  borderRadius: '8px',
+  color: '#f9fafb',
+  padding: '11px 14px',
+  fontSize: '13px',
+  outline: 'none',
+  fontFamily: 'Inter, system-ui, sans-serif',
+  transition: 'border-color 0.15s',
+};
+
+const labelStyle = {
+  fontSize: '11px',
+  fontWeight: 600,
+  color: '#6b7280',
+  textTransform: 'uppercase',
+  letterSpacing: '0.06em',
+  marginBottom: '6px',
+  display: 'block',
+};
+
+const primaryBtnStyle = (disabled) => ({
+  width: '100%',
+  backgroundColor: '#2563eb',
+  border: 'none',
+  color: '#fff',
+  padding: '12px',
+  borderRadius: '8px',
+  fontWeight: 600,
+  fontSize: '13px',
+  cursor: disabled ? 'not-allowed' : 'pointer',
+  opacity: disabled ? 0.65 : 1,
+  fontFamily: 'Inter, system-ui, sans-serif',
+  letterSpacing: '0.02em',
+  transition: 'background 0.15s, opacity 0.15s',
+});
+
+/* ── Google OAuth button ────────────────────────────────────────────── */
+const GoogleButton = ({ onClick, loading }) => (
+  <button
+    type="button"
+    id="google-signin-btn"
+    onClick={onClick}
+    disabled={loading}
+    style={{
+      width: '100%',
+      height: '48px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '12px',
+      backgroundColor: '#1a1f2e',
+      border: '1px solid #2d3748',
+      borderRadius: '10px',
+      color: '#e2e8f0',
+      fontSize: '14px',
+      fontWeight: 500,
+      fontFamily: 'Inter, system-ui, sans-serif',
+      letterSpacing: '0.01em',
+      cursor: loading ? 'not-allowed' : 'pointer',
+      opacity: loading ? 0.65 : 1,
+      transition: 'background 0.18s, border-color 0.18s, transform 0.12s',
+      outline: 'none',
+      position: 'relative',
+    }}
+    onMouseEnter={e => {
+      if (!loading) {
+        e.currentTarget.style.backgroundColor = '#232a3d';
+        e.currentTarget.style.borderColor = '#4a5568';
+      }
+    }}
+    onMouseLeave={e => {
+      e.currentTarget.style.backgroundColor = '#1a1f2e';
+      e.currentTarget.style.borderColor = '#2d3748';
+    }}
+    onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.985)'; }}
+    onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+  >
+    <GoogleGIcon />
+    <span>{loading ? 'Redirecting…' : 'Continue with Google'}</span>
+  </button>
+);
+
+/* ── Divider ────────────────────────────────────────────────────────── */
+const Divider = () => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '4px 0' }}>
+    <div style={{ flex: 1, height: '1px', backgroundColor: '#262e3d' }} />
+    <span style={{ fontSize: '11px', color: '#4b5563', fontWeight: 500 }}>or</span>
+    <div style={{ flex: 1, height: '1px', backgroundColor: '#262e3d' }} />
+  </div>
+);
+
+/* ── Alert boxes ────────────────────────────────────────────────────── */
+const ErrorBox = ({ msg }) => msg ? (
+  <div style={{
+    padding: '10px 12px',
+    backgroundColor: 'rgba(239,68,68,0.08)',
+    border: '1px solid rgba(239,68,68,0.25)',
+    borderRadius: '8px',
+    color: '#f87171',
+    fontSize: '12px',
+    fontWeight: 500,
+  }}>{msg}</div>
+) : null;
+
+const SuccessBox = ({ msg }) => msg ? (
+  <div style={{
+    padding: '10px 12px',
+    backgroundColor: 'rgba(16,185,129,0.08)',
+    border: '1px solid rgba(16,185,129,0.25)',
+    borderRadius: '8px',
+    color: '#34d399',
+    fontSize: '12px',
+    fontWeight: 500,
+  }}>{msg}</div>
+) : null;
+
+/* ── Tab bar ────────────────────────────────────────────────────────── */
+const TABS = ['signin', 'signup', 'forgot'];
+const TAB_LABELS = { signin: 'Sign In', signup: 'Sign Up', forgot: 'Forgot Password' };
+
+const TabBar = ({ active, onSelect }) => (
+  <div style={{ display: 'flex', borderBottom: '1px solid #1e2535', marginBottom: '20px' }}>
+    {TABS.map(t => (
+      <button
+        key={t}
+        onClick={() => onSelect(t)}
+        style={{
+          flex: 1,
+          background: 'none',
+          border: 'none',
+          borderBottom: active === t ? '2px solid #2563eb' : '2px solid transparent',
+          color: active === t ? '#f9fafb' : '#6b7280',
+          padding: '10px 4px',
+          fontSize: '12px',
+          fontWeight: 600,
+          cursor: 'pointer',
+          fontFamily: 'Inter, system-ui, sans-serif',
+          transition: 'color 0.15s',
+        }}
+      >
+        {TAB_LABELS[t]}
+      </button>
+    ))}
+  </div>
+);
+
+/* ══════════════════════════════════════════════════════════════════════
+   MAIN COMPONENT
+══════════════════════════════════════════════════════════════════════ */
+export const ProtectedRoute = ({ children, requiredPermission }) => {
+  const { user, role, loading, login, signup, signInWithGoogle, resetPassword, hasPermission } = useAuth();
+
+  const [tab, setTab]           = useState('signin');
+  const [email, setEmail]       = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm]   = useState('');
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [error, setError]       = useState('');
+  const [success, setSuccess]   = useState('');
+  const [busy, setBusy]         = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
+
+  const reset = () => { setError(''); setSuccess(''); };
+  const changeTab = (t) => { reset(); setTab(t); };
+
+  /* ── Loading spinner while auth resolves ── */
   if (loading) {
     return (
       <div style={{
@@ -27,362 +204,234 @@ export const ProtectedRoute = ({ children, requiredPermission }) => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'var(--bg-primary)',
-        color: 'var(--text-primary)'
+        backgroundColor: '#0a0c10',
+        color: '#f9fafb',
       }}>
-        <LoadingState message="Authenticating SOC security session..." />
+        <LoadingState message="Authenticating SOC security session…" />
       </div>
     );
   }
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setErrorMsg('');
-    setSuccessMsg('');
-    setIsSubmitting(true);
-    try {
-      await login(email, password);
-    } catch (err) {
-      setErrorMsg(err.message || 'Invalid operator credentials. Access denied.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleForgotPassword = async (e) => {
-    e.preventDefault();
-    setErrorMsg('');
-    setSuccessMsg('');
-    setIsSubmitting(true);
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(recoveryEmail, {
-        redirectTo: window.location.origin + '/dashboard?tab=reset'
-      });
-      if (error) throw error;
-      setSuccessMsg('Recovery instructions dispatched to your operator mailbox.');
-    } catch (err) {
-      console.warn('Supabase resetPasswordForEmail failed, triggering mock fallback...', err.message);
-      setSuccessMsg('Mock Recovery Token dispatched. For demo: switch to "Password Reset" tab and enter token: TS-SEC-998');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handlePasswordReset = async (e) => {
-    e.preventDefault();
-    setErrorMsg('');
-    setSuccessMsg('');
-    setIsSubmitting(true);
-    try {
-      if (resetToken && resetToken !== 'TS-SEC-998') {
-        const { error } = await supabase.auth.updateUser({ password: newPassword });
-        if (error) throw error;
-      }
-      setSuccessMsg('Password updated successfully. Switch to Sign In to log in.');
-      setNewPassword('');
-      setResetToken('');
-    } catch (err) {
-      setErrorMsg(err.message || 'Failed to update token password.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
+  /* ── Login wall ── */
   if (!user) {
+    const handleSignIn = async (e) => {
+      e.preventDefault();
+      reset();
+      setBusy(true);
+      try {
+        await login(email, password);
+        // onAuthStateChange will update user → component re-renders
+      } catch (err) {
+        setError(err.message || 'Invalid credentials.');
+      } finally {
+        setBusy(false);
+      }
+    };
+
+    const handleSignUp = async (e) => {
+      e.preventDefault();
+      reset();
+      if (password !== confirm) { setError('Passwords do not match.'); return; }
+      setBusy(true);
+      try {
+        await signup(email, password);
+        setSuccess('Account created! Check your email to verify before signing in.');
+        setTab('signin');
+      } catch (err) {
+        setError(err.message || 'Sign-up failed.');
+      } finally {
+        setBusy(false);
+      }
+    };
+
+    const handleForgot = async (e) => {
+      e.preventDefault();
+      reset();
+      setBusy(true);
+      try {
+        await resetPassword(forgotEmail);
+        setSuccess('Password reset link sent. Check your inbox.');
+      } catch (err) {
+        setError(err.message || 'Could not send reset email.');
+      } finally {
+        setBusy(false);
+      }
+    };
+
+    const handleGoogle = async () => {
+      reset();
+      setGoogleBusy(true);
+      try {
+        await signInWithGoogle();
+        // Browser will redirect to Supabase OAuth — nothing more to do here
+      } catch (err) {
+        setError(err.message || 'Google sign-in failed.');
+        setGoogleBusy(false);
+      }
+    };
+
     return (
       <div style={{
-        height: '100vh',
+        minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'var(--bg-primary)',
-        padding: '20px'
+        backgroundColor: '#0a0c10',
+        padding: '20px',
       }}>
         <div style={{ width: '100%', maxWidth: '420px' }}>
-          <Panel title="ThreatStream Portal Access Gate">
-            
-            {/* Tab selection */}
-            <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', marginBottom: '16px' }}>
-              <button
-                onClick={() => { setAuthTab('signin'); setErrorMsg(''); setSuccessMsg(''); }}
-                style={{
-                  flex: 1,
-                  background: 'none',
-                  border: 'none',
-                  borderBottom: authTab === 'signin' ? '2px solid var(--color-blue)' : 'none',
-                  color: authTab === 'signin' ? 'var(--text-primary)' : 'var(--text-muted)',
-                  padding: '10px',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
-                Sign In
-              </button>
-              <button
-                onClick={() => { setAuthTab('forgot'); setErrorMsg(''); setSuccessMsg(''); }}
-                style={{
-                  flex: 1,
-                  background: 'none',
-                  border: 'none',
-                  borderBottom: authTab === 'forgot' ? '2px solid var(--color-blue)' : 'none',
-                  color: authTab === 'forgot' ? 'var(--text-primary)' : 'var(--text-muted)',
-                  padding: '10px',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
-                Forgot
-              </button>
-              <button
-                onClick={() => { setAuthTab('reset'); setErrorMsg(''); setSuccessMsg(''); }}
-                style={{
-                  flex: 1,
-                  background: 'none',
-                  border: 'none',
-                  borderBottom: authTab === 'reset' ? '2px solid var(--color-blue)' : 'none',
-                  color: authTab === 'reset' ? 'var(--text-primary)' : 'var(--text-muted)',
-                  padding: '10px',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
-                Reset Token
-              </button>
+          {/* Logo / Brand */}
+          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '10px',
+              marginBottom: '8px',
+            }}>
+              <div style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '8px',
+                background: 'linear-gradient(135deg, #1d4ed8, #7c3aed)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <span style={{ fontSize: '20px', fontWeight: 700, color: '#f9fafb', fontFamily: 'Inter, system-ui, sans-serif' }}>
+                ThreatStream
+              </span>
             </div>
+            <p style={{ fontSize: '12px', color: '#6b7280', fontFamily: 'Inter, system-ui, sans-serif' }}>
+              Security Operations Console
+            </p>
+          </div>
 
-            {errorMsg && (
-              <div style={{
-                padding: '10px 12px',
-                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                border: '1px solid var(--color-critical)',
-                borderRadius: '4px',
-                color: 'var(--color-critical)',
-                fontSize: '11px',
-                fontWeight: 600,
-                marginBottom: '16px'
-              }}>
-                {errorMsg}
-              </div>
-            )}
+          <Panel title="">
+            <TabBar active={tab} onSelect={changeTab} />
 
-            {successMsg && (
-              <div style={{
-                padding: '10px 12px',
-                backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                border: '1px solid var(--color-low)',
-                borderRadius: '4px',
-                color: 'var(--color-low)',
-                fontSize: '11px',
-                fontWeight: 600,
-                marginBottom: '16px'
-              }}>
-                {successMsg}
-              </div>
-            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <ErrorBox msg={error} />
+              <SuccessBox msg={success} />
 
-            {/* TAB: SIGN IN */}
-            {authTab === 'signin' && (
-              <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
-                  Secure on-premises sign-in. Enter your SOC credential token to access ThreatStream dashboards.
-                </span>
+              {/* ── SIGN IN ── */}
+              {tab === 'signin' && (
+                <form onSubmit={handleSignIn} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <GoogleButton onClick={handleGoogle} loading={googleBusy} />
+                  <Divider />
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Operator Email</label>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="name@threatstream.io"
-                    style={{
-                      backgroundColor: 'var(--bg-primary)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: '4px',
-                      color: 'var(--text-primary)',
-                      padding: '10px 12px',
-                      fontSize: '13px',
-                      outline: 'none',
-                      fontFamily: 'inherit'
-                    }}
-                  />
-                </div>
+                  <div>
+                    <label style={labelStyle}>Email</label>
+                    <input
+                      id="signin-email"
+                      type="email"
+                      required
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder="operator@threatstream.io"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Password</label>
+                    <input
+                      id="signin-password"
+                      type="password"
+                      required
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      placeholder="••••••••••••"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <button type="submit" disabled={busy} style={primaryBtnStyle(busy)}>
+                    {busy ? 'Signing in…' : 'Sign In to Portal'}
+                  </button>
+                </form>
+              )}
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Password Token</label>
-                  <input
-                    type="password"
-                    required
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="••••••••••••"
-                    style={{
-                      backgroundColor: 'var(--bg-primary)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: '4px',
-                      color: 'var(--text-primary)',
-                      padding: '10px 12px',
-                      fontSize: '13px',
-                      outline: 'none',
-                      fontFamily: 'inherit'
-                    }}
-                  />
-                </div>
+              {/* ── SIGN UP ── */}
+              {tab === 'signup' && (
+                <form onSubmit={handleSignUp} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <GoogleButton onClick={handleGoogle} loading={googleBusy} />
+                  <Divider />
 
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  style={{
-                    backgroundColor: 'var(--color-blue)',
-                    border: 'none',
-                    color: '#fff',
-                    padding: '10px',
-                    borderRadius: '4px',
-                    fontWeight: 600,
-                    fontSize: '13px',
-                    cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                    opacity: isSubmitting ? 0.7 : 1,
-                    marginTop: '6px'
-                  }}
-                >
-                  {isSubmitting ? 'Authenticating...' : 'Sign In to Portal'}
-                </button>
+                  <div>
+                    <label style={labelStyle}>Email</label>
+                    <input
+                      id="signup-email"
+                      type="email"
+                      required
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder="operator@threatstream.io"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Password</label>
+                    <input
+                      id="signup-password"
+                      type="password"
+                      required
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      placeholder="Minimum 8 characters"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Confirm Password</label>
+                    <input
+                      id="signup-confirm"
+                      type="password"
+                      required
+                      value={confirm}
+                      onChange={e => setConfirm(e.target.value)}
+                      placeholder="Re-enter password"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <button type="submit" disabled={busy} style={primaryBtnStyle(busy)}>
+                    {busy ? 'Creating account…' : 'Create Account'}
+                  </button>
+                </form>
+              )}
 
-                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '12px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Demo Accounts:</span>
-                  <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>• Administrator: <code>admin@threatstream.io</code> / <code>password123</code></span>
-                  <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>• SOC Analyst: <code>analyst@threatstream.io</code> / <code>password123</code></span>
-                </div>
-              </form>
-            )}
-
-            {/* TAB: FORGOT PASSWORD */}
-            {authTab === 'forgot' && (
-              <form onSubmit={handleForgotPassword} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
-                  Enter your operator email. If the account exists, a temporary password recovery token will be dispatched.
-                </span>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Operator Email</label>
-                  <input
-                    type="email"
-                    required
-                    value={recoveryEmail}
-                    onChange={e => setRecoveryEmail(e.target.value)}
-                    placeholder="name@threatstream.io"
-                    style={{
-                      backgroundColor: 'var(--bg-primary)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: '4px',
-                      color: 'var(--text-primary)',
-                      padding: '10px 12px',
-                      fontSize: '13px',
-                      outline: 'none',
-                      fontFamily: 'inherit'
-                    }}
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  style={{
-                    backgroundColor: 'var(--color-blue)',
-                    border: 'none',
-                    color: '#fff',
-                    padding: '10px',
-                    borderRadius: '4px',
-                    fontWeight: 600,
-                    fontSize: '13px',
-                    cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                    opacity: isSubmitting ? 0.7 : 1
-                  }}
-                >
-                  {isSubmitting ? 'Requesting...' : 'Request Recovery Token'}
-                </button>
-              </form>
-            )}
-
-            {/* TAB: PASSWORD RESET */}
-            {authTab === 'reset' && (
-              <form onSubmit={handlePasswordReset} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
-                  Enter the recovery token received in your mailbox and choose your new password.
-                </span>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Recovery Token ID</label>
-                  <input
-                    type="text"
-                    required
-                    value={resetToken}
-                    onChange={e => setResetToken(e.target.value)}
-                    placeholder="TS-SEC-XXXX"
-                    style={{
-                      backgroundColor: 'var(--bg-primary)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: '4px',
-                      color: 'var(--text-primary)',
-                      padding: '10px 12px',
-                      fontSize: '13px',
-                      outline: 'none',
-                      fontFamily: 'inherit'
-                    }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>New Password</label>
-                  <input
-                    type="password"
-                    required
-                    value={newPassword}
-                    onChange={e => setNewPassword(e.target.value)}
-                    placeholder="••••••••••••"
-                    style={{
-                      backgroundColor: 'var(--bg-primary)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: '4px',
-                      color: 'var(--text-primary)',
-                      padding: '10px 12px',
-                      fontSize: '13px',
-                      outline: 'none',
-                      fontFamily: 'inherit'
-                    }}
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  style={{
-                    backgroundColor: 'var(--color-blue)',
-                    border: 'none',
-                    color: '#fff',
-                    padding: '10px',
-                    borderRadius: '4px',
-                    fontWeight: 600,
-                    fontSize: '13px',
-                    cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                    opacity: isSubmitting ? 0.7 : 1
-                  }}
-                >
-                  {isSubmitting ? 'Updating...' : 'Update Token Password'}
-                </button>
-              </form>
-            )}
-
+              {/* ── FORGOT PASSWORD ── */}
+              {tab === 'forgot' && (
+                <form onSubmit={handleForgot} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <p style={{ fontSize: '12px', color: '#9ca3af', lineHeight: '1.6' }}>
+                    Enter the email address associated with your account. We'll send a password reset link.
+                  </p>
+                  <div>
+                    <label style={labelStyle}>Email</label>
+                    <input
+                      id="forgot-email"
+                      type="email"
+                      required
+                      value={forgotEmail}
+                      onChange={e => setForgotEmail(e.target.value)}
+                      placeholder="operator@threatstream.io"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <button type="submit" disabled={busy} style={primaryBtnStyle(busy)}>
+                    {busy ? 'Sending…' : 'Send Reset Link'}
+                  </button>
+                </form>
+              )}
+            </div>
           </Panel>
         </div>
       </div>
     );
   }
 
-  // Enforce granular RBAC permission codes
+  /* ── RBAC gate ── */
   if (requiredPermission && !hasPermission(requiredPermission)) {
     return (
       <div style={{
@@ -390,43 +439,40 @@ export const ProtectedRoute = ({ children, requiredPermission }) => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'var(--bg-primary)',
-        padding: '20px'
+        backgroundColor: '#0a0c10',
+        padding: '20px',
       }}>
         <div style={{ width: '100%', maxWidth: '460px' }}>
-          <Panel title="403 Unauthorized Access">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '8px 0', alignItems: 'center', textAlign: 'center' }}>
+          <Panel title="Access Denied">
+            <div style={{ textAlign: 'center', padding: '16px 0', display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
               <div style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '50%',
-                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--color-critical)',
+                width: '56px', height: '56px', borderRadius: '50%',
+                backgroundColor: 'rgba(239,68,68,0.1)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: '24px',
-                fontWeight: 'bold'
-              }}>
-                !
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>Role Level Restriction Active</span>
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                  Your assigned role (<strong>{role}</strong>) does not hold the required token permissions (<code>{requiredPermission}</code>) to view this module. Contact your Global SOC Administrator.
-                </span>
+              }}>🔒</div>
+              <div>
+                <p style={{ fontSize: '15px', fontWeight: 700, color: '#f9fafb', marginBottom: '6px' }}>
+                  Insufficient Permissions
+                </p>
+                <p style={{ fontSize: '12px', color: '#9ca3af', lineHeight: 1.6 }}>
+                  Your role (<strong style={{ color: '#f9fafb' }}>{role}</strong>) does not have the
+                  &nbsp;<code style={{ color: '#60a5fa', background: 'rgba(96,165,250,0.1)', padding: '1px 5px', borderRadius: '4px' }}>{requiredPermission}</code>
+                  &nbsp;permission. Contact your SOC Administrator.
+                </p>
               </div>
               <button
                 onClick={() => window.location.href = '/dashboard'}
                 style={{
-                  backgroundColor: 'var(--bg-secondary)',
-                  border: '1px solid var(--border-color)',
-                  color: 'var(--text-primary)',
-                  padding: '8px 16px',
-                  borderRadius: '4px',
+                  backgroundColor: '#1e2535',
+                  border: '1px solid #262e3d',
+                  color: '#f9fafb',
+                  padding: '9px 20px',
+                  borderRadius: '8px',
                   fontWeight: 600,
                   fontSize: '12px',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  fontFamily: 'Inter, system-ui, sans-serif',
                 }}
               >
                 Return to Dashboard

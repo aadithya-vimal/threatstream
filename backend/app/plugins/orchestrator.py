@@ -4,7 +4,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 from app.plugins.base import BasePlugin
-from app.plugins.manager import PluginManager
+import importlib
 from app.database.supabase_client import supabase_client
 
 logger = logging.getLogger("threatstream.plugins.orchestrator")
@@ -68,6 +68,9 @@ class EnrichmentOrchestrator(BasePlugin):
         start_time = time.perf_counter()
         
         try:
+            # Lazy import PluginManager to avoid circular dependency
+            manager_module = importlib.import_module('app.plugins.manager')
+            PluginManager = getattr(manager_module, 'PluginManager')
             plugin = PluginManager.get_plugin(plugin_name, config=config)
             
             # Execute inside executor thread
