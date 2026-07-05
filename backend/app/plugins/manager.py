@@ -2,12 +2,16 @@ import time
 import logging
 from typing import Dict, Any, Type
 from app.plugins.base import BasePlugin
+from app.plugins.virustotal import VirusTotalPlugin
 
 logger = logging.getLogger("threatstream.plugins")
 
 class NmapPlugin(BasePlugin):
     def initialize(self) -> bool:
         logger.info("Initializing Nmap Scanner Plugin Wrapper")
+        return True
+
+    def authenticate(self) -> bool:
         return True
 
     def validate(self, payload: Dict[str, Any]) -> bool:
@@ -39,46 +43,20 @@ class NmapPlugin(BasePlugin):
             }
         }
 
+    def health(self) -> Dict[str, Any]:
+        return {"status": "connected", "quota_remaining": 9999, "last_successful_sync": None}
+
     def cleanup(self) -> bool:
         logger.info("Cleaning up Nmap plugin sockets")
-        return True
-
-
-class VirusTotalPlugin(BasePlugin):
-    def initialize(self) -> bool:
-        logger.info("Initializing VirusTotal Enrichment Plugin Wrapper")
-        return True
-
-    def validate(self, payload: Dict[str, Any]) -> bool:
-        ioc = payload.get("ioc_value")
-        return bool(ioc)
-
-    def execute(self, payload: Dict[str, Any], progress_callback=None) -> Dict[str, Any]:
-        ioc = payload.get("ioc_value")
-        logger.info(f"VirusTotal lookup for indicator: {ioc}")
-        
-        if progress_callback:
-            progress_callback(50)
-        time.sleep(1.5)
-        if progress_callback:
-            progress_callback(100)
-            
-        return {
-            "indicator": ioc,
-            "verdict": "malicious" if len(ioc) % 2 == 0 else "suspicious",
-            "engines_detected": 14,
-            "total_engines": 72,
-            "reputation_score": 75,
-            "threat_classification": "Ransomware.LockBit.Trojan"
-        }
-
-    def cleanup(self) -> bool:
         return True
 
 
 class NucleiPlugin(BasePlugin):
     def initialize(self) -> bool:
         logger.info("Initializing Nuclei Vulnerability Scanner")
+        return True
+
+    def authenticate(self) -> bool:
         return True
 
     def validate(self, payload: Dict[str, Any]) -> bool:
@@ -120,12 +98,18 @@ class NucleiPlugin(BasePlugin):
             ]
         }
 
+    def health(self) -> Dict[str, Any]:
+        return {"status": "connected", "quota_remaining": 9999, "last_successful_sync": None}
+
     def cleanup(self) -> bool:
         return True
 
 
 class DefaultPlugin(BasePlugin):
     def initialize(self) -> bool:
+        return True
+
+    def authenticate(self) -> bool:
         return True
 
     def validate(self, payload: Dict[str, Any]) -> bool:
@@ -138,6 +122,9 @@ class DefaultPlugin(BasePlugin):
                 progress_callback(p)
             time.sleep(0.5)
         return {"status": "success", "note": "Generic background operation succeeded."}
+
+    def health(self) -> Dict[str, Any]:
+        return {"status": "connected", "quota_remaining": 9999, "last_successful_sync": None}
 
     def cleanup(self) -> bool:
         return True
