@@ -1,3 +1,7 @@
+/**
+ * src/pages/Assets.jsx
+ * Enterprise Asset Intelligence & Attack Surface Management Console
+ */
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import SectionHeader from '../components/SectionHeader';
@@ -15,117 +19,196 @@ import { AssetService } from '../services/AssetService';
 const assetService = new AssetService();
 
 export const Assets = () => {
-  const [activeTab, setActiveTab] = useState('inventory');
+  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, directory, discovery, topology
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Data States
+  const [assets, setAssets] = useState([]);
+  const [stats, setStats] = useState({
+    total: 0,
+    criticalCount: 0,
+    highCount: 0,
+    riskAvg: 0,
+    totalVulnerabilities: 0,
+    internetFacingCount: 0,
+    cloudProviders: { AWS: 0, Azure: 0, 'On-Premise': 0 },
+    eolSoftwareCount: 0
+  });
+  const [topology, setTopology] = useState({ nodes: [], links: [] });
+
+  // Directory Filter States
   const [searchTerm, setSearchTerm] = useState('');
   const [critFilter, setCritFilter] = useState('ALL');
-  
-  // Selected Asset Detail State
+  const [envFilter, setEnvFilter] = useState('ALL');
+  const [facingFilter, setFacingFilter] = useState('ALL'); // ALL, yes, no
   const [selectedAssetId, setSelectedAssetId] = useState(null);
   const [selectedAsset, setSelectedAsset] = useState(null);
-  const [detailTab, setDetailTab] = useState('services');
+  const [inspectorTab, setInspectorTab] = useState('profile'); // profile, services, software, vulns, timeline, topology
 
-  // Scanner State
+  // Bulk Selection States
+  const [selectedAssetIds, setSelectedAssetIds] = useState([]);
+
+  // Scanner States
   const [scanTarget, setScanTarget] = useState('10.100.4.0/24');
   const [scannerId, setScannerId] = useState('nmap');
   const [isScanning, setIsScanning] = useState(false);
   const [scanOutput, setScanOutput] = useState(null);
 
-  // Async States
-  const [assets, setAssets] = useState([]);
-  const [stats, setStats] = useState({ total: 0, criticalCount: 0, highCount: 0, riskAvg: 0 });
-  const [topology, setTopology] = useState({ nodes: [], links: [] });
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Load assets data asynchronously on mount
+  // Load Platform Datasets
   useEffect(() => {
-    const loadData = async () => {
+    const loadPlatformAssets = async () => {
       setIsLoading(true);
       try {
-        const list = await assetService.getAssets();
-        const statData = await assetService.getAssetStats();
-        const topoData = await assetService.getNetworkTopology();
-        setAssets(list);
-        setStats(statData);
+        const [assetList, assetStats, topoData] = await Promise.all([
+          assetService.getAssets(),
+          assetService.getAssetStats(),
+          assetService.getNetworkTopology()
+        ]);
+        setAssets(assetList);
+        setStats(assetStats);
         setTopology(topoData);
       } catch (err) {
-        console.error('Failed to load asset details:', err);
+        console.error('Failed to load asset intelligence database:', err);
       } finally {
         setIsLoading(false);
       }
     };
-    loadData();
+    loadPlatformAssets();
   }, []);
 
+  // Update detail inspector reference when selected ID changes
   useEffect(() => {
     if (selectedAssetId) {
-      const asset = assets.find(a => a.id === selectedAssetId);
-      setSelectedAsset(asset);
+      const found = assets.find(a => a.id === selectedAssetId);
+      setSelectedAsset(found || null);
     } else {
       setSelectedAsset(null);
     }
   }, [selectedAssetId, assets]);
 
-  // Filters
+  // Filters application
   const filteredAssets = assets.filter(a => {
-    const matchesSearch = a.hostname.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          a.ip.includes(searchTerm) || 
-                          a.owner.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = 
+      a.hostname.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      a.ip.includes(searchTerm) ||
+      (a.owner && a.owner.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (a.display_name && a.display_name.toLowerCase().includes(searchTerm.toLowerCase()));
+
     const matchesCrit = critFilter === 'ALL' || a.criticality === critFilter;
-    return matchesSearch && matchesCrit;
+    const matchesEnv = envFilter === 'ALL' || a.environment === envFilter;
+    const matchesFacing = facingFilter === 'ALL' || 
+      (facingFilter === 'yes' ? a.internet_facing : !a.internet_facing);
+
+    return matchesSearch && matchesCrit && matchesEnv && matchesFacing;
   });
 
-  const columns = [
-    { header: 'Hostname', accessor: 'hostname', renderCell: (val) => <span style={{ fontWeight: 600 }}>{val}</span> },
-    { header: 'IP Address', accessor: 'ip', renderCell: (val) => <span style={{ fontFamily: 'monospace' }}>{val}</span> },
-    { header: 'MAC Address', accessor: 'mac', renderCell: (val) => <span style={{ fontFamily: 'monospace', color: 'var(--text-secondary)' }}>{val}</span> },
-    { header: 'Asset Type', accessor: 'assetType' },
-    {
-      header: 'Criticality',
-      accessor: 'criticality',
-      renderCell: (val) => <StatusBadge status={val} text={val} />
-    },
-    {
-      header: 'Risk Score',
-      accessor: 'riskScore',
-      renderCell: (val) => {
-        let color = 'var(--color-low)';
-        if (val >= 85) color = 'var(--color-critical)';
-        else if (val >= 70) color = 'var(--color-high)';
-        return <span style={{ fontWeight: 700, color }}>{val}</span>;
-      }
-    },
-    { header: 'Status', accessor: 'status', renderCell: (val) => <StatusBadge status={val === 'Online' ? 'low' : 'muted'} text={val} /> },
-    {
-      header: 'Action',
-      accessor: 'id',
-      renderCell: (val) => (
-        <button 
-          onClick={() => setSelectedAssetId(val)}
-          style={{ background: 'none', border: 'none', color: 'var(--color-blue)', fontWeight: 600, cursor: 'pointer' }}
-        >
-          View Details
-        </button>
-      )
-    }
-  ];
+  const handleBulkSelect = (id) => {
+    setSelectedAssetIds(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
 
-  // Execute Network scan trigger
-  const runMockScan = async () => {
+  const handleSelectAll = () => {
+    if (selectedAssetIds.length === filteredAssets.length) {
+      setSelectedAssetIds([]);
+    } else {
+      setSelectedAssetIds(filteredAssets.map(a => a.id));
+    }
+  };
+
+  // SBOM CycloneDX Exporter Stub
+  const handleExportCycloneDX = () => {
+    if (selectedAssetIds.length === 0) {
+      alert('Select one or more assets to export SBOM.');
+      return;
+    }
+    const targetAssets = assets.filter(a => selectedAssetIds.includes(a.id));
+    
+    // Compile CycloneDX SBOM JSON representation
+    const sbom = {
+      bomFormat: 'CycloneDX',
+      specVersion: '1.5',
+      serialNumber: `urn:uuid:${crypto.randomUUID()}`,
+      version: 1,
+      metadata: {
+        timestamp: new Date().toISOString(),
+        tool: {
+          vendor: 'ThreatStream',
+          name: 'Attack Surface Management Engine',
+          version: '2.0.0'
+        }
+      },
+      components: targetAssets.flatMap(asset => 
+        (asset.installedSoftware || []).map(sw => ({
+          type: 'library',
+          name: sw.name,
+          version: sw.version,
+          publisher: sw.publisher || 'Unknown',
+          licenses: [{ license: { name: sw.license || 'Proprietary' } }],
+          properties: [
+            { name: 'threatstream:associated_host', value: asset.hostname },
+            { name: 'threatstream:support_status', value: sw.support_status || 'Supported' }
+          ]
+        }))
+      )
+    };
+
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(sbom, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `threatstream_sbom_cyclonedx_${Date.now()}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
+
+  const handleExportCSV = () => {
+    if (selectedAssetIds.length === 0) {
+      alert('Select one or more assets to export inventory.');
+      return;
+    }
+    const targetAssets = assets.filter(a => selectedAssetIds.includes(a.id));
+    const csvRows = [
+      ['Hostname', 'Display Name', 'IP Address', 'Environment', 'Criticality', 'Risk Score', 'Owner'],
+      ...targetAssets.map(a => [a.hostname, a.display_name, a.ip, a.environment, a.criticality, a.risk_score, a.owner])
+    ];
+
+    const csvContent = "data:text/csv;charset=utf-8," + csvRows.map(e => e.join(",")).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `threatstream_inventory_export_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
+
+  const handleBulkChangeOwner = () => {
+    const newOwner = prompt('Enter name of new Owner department / team:');
+    if (!newOwner) return;
+    setAssets(prev => prev.map(a => 
+      selectedAssetIds.includes(a.id) ? { ...a, owner: newOwner } : a
+    ));
+    setSelectedAssetIds([]);
+    alert('Assets ownership updated successfully.');
+  };
+
+  // Run mock discovery check
+  const executeScan = async () => {
     setIsScanning(true);
     setScanOutput(null);
     try {
-      // Simulate scan process delay
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise(resolve => setTimeout(resolve, 2500));
       const res = await assetService.runDiscovery(scannerId, scanTarget);
       setScanOutput(res);
     } catch (err) {
-      alert(`Scan failed: ${err.message}`);
+      alert(`Scan execution failed: ${err.message}`);
     } finally {
       setIsScanning(false);
     }
   };
 
-  const navTabStyle = (tabId) => ({
+  const tabStyle = (tabId) => ({
     padding: '10px 16px',
     backgroundColor: activeTab === tabId ? 'var(--panel-bg)' : 'transparent',
     border: '1px solid',
@@ -138,185 +221,348 @@ export const Assets = () => {
     marginBottom: '-1px'
   });
 
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <LoadingState message="Connecting to Asset Intelligence registry..." />
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <SectionHeader 
-        title="Asset & Infrastructure Inventory" 
-        description="Comprehensive asset discovery, network topology visualization, and vulnerability mapping."
+        title="Asset Intelligence & Attack Surface" 
+        description="Unified corporate asset inventory, live risk scoring engines, network topology correlations, and plug-in vulnerability scanner controls."
       />
 
-      {/* Metrics overview */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <MetricCard title="Total Assets" value={stats.total} status="info" subtitle="Registered systems" />
-        <MetricCard title="Critical Systems" value={stats.criticalCount} status="critical" subtitle="Require highest uptime" />
-        <MetricCard title="Vulnerability Count" value={stats.totalVulnerabilities} status="high" subtitle="Across all network endpoints" />
-        <MetricCard title="Average Network Risk" value={`${stats.riskAvg}/100`} status={stats.riskAvg > 70 ? 'critical' : 'medium'} subtitle="Overall environment score" />
+      {/* Overview Cards Row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+        <MetricCard title="Total Assets Registered" value={stats.total} status="info" subtitle="Hosts, cloud instances, and sites" />
+        <MetricCard title="Avg Security Score" value={`${Math.max(10, 100 - stats.riskAvg)}/100`} status="low" subtitle="Inverse of network risk weight" />
+        <MetricCard title="Internet-Facing Nodes" value={stats.internetFacingCount} status="high" subtitle="External ingress vectors" />
+        <MetricCard title="Vulnerabilities Unpatched" value={stats.totalVulnerabilities} status="critical" subtitle="Discovered active CVEs" />
       </div>
 
-      {/* Tab bar navigation */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', gap: '4px', marginBottom: '20px' }}>
-        <button style={navTabStyle('inventory')} onClick={() => setActiveTab('inventory')}>Asset Directory</button>
-        <button style={navTabStyle('discovery')} onClick={() => setActiveTab('discovery')}>Network Discovery & Scanners</button>
-        <button style={navTabStyle('topology')} onClick={() => setActiveTab('topology')}>Network Topology Map</button>
+      {/* Tab Navigation */}
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', gap: '4px', marginBottom: '20px', overflowX: 'auto' }}>
+        <button style={tabStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>Executive Dashboard</button>
+        <button style={tabStyle('directory')} onClick={() => setActiveTab('directory')}>Asset Directory ({assets.length})</button>
+        <button style={tabStyle('discovery')} onClick={() => setActiveTab('discovery')}>Discovery Scanners</button>
+        <button style={tabStyle('topology')} onClick={() => setActiveTab('topology')}>Network Topology</button>
       </div>
 
-      {/* 1. ASSET DIRECTORY TAB */}
-      {activeTab === 'inventory' && (
-        <div style={{ display: 'grid', gridTemplateColumns: selectedAsset ? 'minmax(0, 1.1fr) minmax(0, 0.9fr)' : '1fr', gap: '24px', alignItems: 'stretch' }} className="dashboard-grid-layout">
+      {/* TAB: EXECUTIVE DASHBOARD */}
+      {activeTab === 'dashboard' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
-          {/* Main assets list */}
-          <Panel title="Active Host Registry" actions={<span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Click host to view full profile</span>}>
-            <FilterBar showClear={searchTerm || critFilter !== 'ALL'} onClear={() => { setSearchTerm(''); setCritFilter('ALL'); }}>
-              <SearchBar value={searchTerm} onChange={setSearchTerm} placeholder="Search by hostname, IP, owner..." style={{ maxWidth: '240px' }} />
-              <select
-                value={critFilter}
-                onChange={e => setCritFilter(e.target.value)}
-                style={{
-                  backgroundColor: 'var(--panel-bg)',
-                  border: '1px solid var(--border-color)',
-                  color: 'var(--text-primary)',
-                  borderRadius: '6px',
-                  padding: '8px 12px',
-                  fontSize: '13px',
-                  outline: 'none'
-                }}
-              >
-                <option value="ALL">All Criticality</option>
-                <option value="critical">Critical</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
-            </FilterBar>
+          {/* Cloud Distribution and High Risk items */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 0.8fr)', gap: '24px' }} className="dashboard-grid-layout">
+            
+            <Panel title="Highest Risk Active Infrastructure Assets">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {assets.sort((x, y) => y.risk_score - x.risk_score).slice(0, 3).map(asset => (
+                  <div 
+                    key={asset.id} 
+                    onClick={() => { setSelectedAssetId(asset.id); setActiveTab('directory'); }}
+                    style={{
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center', 
+                      padding: '12px 14px', 
+                      border: '1px solid var(--border-color)', 
+                      borderRadius: '6px', 
+                      backgroundColor: 'var(--bg-secondary)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <div>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>{asset.hostname}</span>
+                      <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)' }}>{asset.display_name} • IP: {asset.ip} • Owner: {asset.owner}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-critical)' }}>Risk Index: {asset.risk_score}/100</span>
+                      <StatusBadge status={asset.criticality} text={asset.criticality} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Panel>
 
-            <DataTable 
-              columns={columns} 
-              data={filteredAssets} 
-              onRowClick={(row) => setSelectedAssetId(row.id)}
-            />
+            <Panel title="Cloud Provider Distribution">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '10px 0' }}>
+                {Object.entries(stats.cloudProviders || {}).map(([provider, count]) => (
+                  <div key={provider}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                      <span style={{ textTransform: 'uppercase' }}>{provider}</span>
+                      <span>{count} Assets</span>
+                    </div>
+                    <div style={{ height: '5px', backgroundColor: 'var(--bg-primary)', borderRadius: '2px' }}>
+                      <div style={{ width: `${(count / Math.max(1, stats.total)) * 100}%`, height: '100%', backgroundColor: 'var(--color-blue)' }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Panel>
+          </div>
+
+          {/* Software EOL and Expiring Certificates widget row */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+            <Panel title="Critical Software Packages EOL Status">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <span style={{ fontSize: '24px', fontWeight: 700, color: 'var(--color-high)' }}>{stats.eolSoftwareCount}</span>
+                  <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>Installed packages identified as End-of-Life</span>
+                </div>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-critical)' }}>
+                  ⚠️
+                </div>
+              </div>
+            </Panel>
+
+            <Panel title="Exposed Ingress Certificates Status">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <span style={{ fontSize: '24px', fontWeight: 700, color: 'var(--color-low)' }}>1 Active</span>
+                  <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>SSL certificate expiring in less than 30 days</span>
+                </div>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-blue)' }}>
+                  🔑
+                </div>
+              </div>
+            </Panel>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: ASSET DIRECTORY */}
+      {activeTab === 'directory' && (
+        <div style={{ display: 'grid', gridTemplateColumns: selectedAsset ? 'minmax(0, 1.2fr) minmax(0, 0.8fr)' : '1fr', gap: '24px', alignItems: 'stretch' }} className="dashboard-grid-layout">
+          
+          {/* Inventory Table Panel */}
+          <Panel 
+            title="Infrastructure Asset Directory"
+            actions={
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginRight: '8px' }}>
+                  {selectedAssetIds.length} Selected
+                </span>
+                {selectedAssetIds.length > 0 && (
+                  <>
+                    <button onClick={handleExportCycloneDX} style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--color-blue)', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
+                      Export CycloneDX SBOM
+                    </button>
+                    <button onClick={handleExportCSV} style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
+                      Export CSV
+                    </button>
+                    <button onClick={handleBulkChangeOwner} style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
+                      Change Owner
+                    </button>
+                  </>
+                )}
+              </div>
+            }
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <FilterBar showClear={searchTerm || critFilter !== 'ALL' || envFilter !== 'ALL' || facingFilter !== 'ALL'} onClear={() => { setSearchTerm(''); setCritFilter('ALL'); setEnvFilter('ALL'); setFacingFilter('ALL'); }}>
+                <SearchBar value={searchTerm} onChange={setSearchTerm} placeholder="Filter by hostname, IP, display name..." />
+                
+                <select value={critFilter} onChange={e => setCritFilter(e.target.value)} style={{ backgroundColor: 'var(--panel-bg)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '4px', padding: '6px 10px', fontSize: '13px', outline: 'none' }}>
+                  <option value="ALL">All Criticality</option>
+                  <option value="critical">Critical</option>
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
+
+                <select value={envFilter} onChange={e => setEnvFilter(e.target.value)} style={{ backgroundColor: 'var(--panel-bg)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '4px', padding: '6px 10px', fontSize: '13px', outline: 'none' }}>
+                  <option value="ALL">All Environments</option>
+                  <option value="Production">Production</option>
+                  <option value="Testing">Testing</option>
+                  <option value="Development">Development</option>
+                </select>
+
+                <select value={facingFilter} onChange={e => setFacingFilter(e.target.value)} style={{ backgroundColor: 'var(--panel-bg)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '4px', padding: '6px 10px', fontSize: '13px', outline: 'none' }}>
+                  <option value="ALL">All Exposure</option>
+                  <option value="yes">Internet Facing</option>
+                  <option value="no">Internal Only</option>
+                </select>
+              </FilterBar>
+
+              <DataTable 
+                columns={[
+                  {
+                    header: (
+                      <input type="checkbox" checked={selectedAssetIds.length === filteredAssets.length && filteredAssets.length > 0} onChange={handleSelectAll} />
+                    ),
+                    accessor: 'id',
+                    renderCell: (val) => (
+                      <input type="checkbox" checked={selectedAssetIds.includes(val)} onClick={e => e.stopPropagation()} onChange={() => handleBulkSelect(val)} />
+                    )
+                  },
+                  { header: 'Hostname', accessor: 'hostname', renderCell: (val) => <span style={{ fontWeight: 700 }}>{val}</span> },
+                  { header: 'Environment', accessor: 'environment' },
+                  { header: 'IP Address', accessor: 'ip', renderCell: (val) => <span style={{ fontFamily: 'monospace' }}>{val}</span> },
+                  { header: 'Criticality', accessor: 'criticality', renderCell: (val) => <StatusBadge status={val} text={val?.toUpperCase()} /> },
+                  { header: 'Risk Score', accessor: 'risk_score', renderCell: (val) => <span style={{ fontWeight: 700, color: val >= 75 ? 'var(--color-critical)' : 'var(--color-low)' }}>{val}/100</span> },
+                  { header: 'Exposure', accessor: 'internet_facing', renderCell: (val) => val ? <span style={{ color: 'var(--color-high)', fontWeight: 600 }}>External</span> : <span style={{ color: 'var(--text-muted)' }}>Internal</span> }
+                ]}
+                data={filteredAssets}
+                onRowClick={(row) => setSelectedAssetId(row.id)}
+                emptyText="No assets match search parameters."
+              />
+            </div>
           </Panel>
 
-          {/* Right inspector detail panel */}
+          {/* Right Inspector Drawer Panel */}
           {selectedAsset && (
             <Panel 
-              title={`${selectedAsset.hostname} Profile`}
+              title={`${selectedAsset.hostname} Details`}
               actions={
-                <button onClick={() => setSelectedAssetId(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }} className="btn-icon-hover">
-                  <Icon name="cross" size={16} />
+                <button onClick={() => setSelectedAssetId(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                  ×
                 </button>
               }
             >
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--color-blue-hover)' }}>{selectedAsset.ip}</span>
-                    <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)' }}>MAC: {selectedAsset.mac} | {selectedAsset.os}</span>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <StatusBadge status={selectedAsset.criticality} text={selectedAsset.criticality} />
-                    <span style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginTop: '4px', color: selectedAsset.riskScore > 75 ? 'var(--color-critical)' : 'var(--color-low)' }}>
-                      Risk: {selectedAsset.riskScore}/100
-                    </span>
+                <div>
+                  <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--color-blue)' }}>{selectedAsset.display_name}</span>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                    <StatusBadge status={selectedAsset.criticality} text={selectedAsset.environment} />
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', alignSelf: 'center' }}>Owner: <strong>{selectedAsset.owner}</strong></span>
                   </div>
                 </div>
 
-                {/* Sub tabs inside inspector */}
-                <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', gap: '12px', paddingBottom: '4px' }}>
-                  {['services', 'interfaces', 'software', 'vulnerabilities'].map(subTab => (
-                    <button 
-                      key={subTab} 
-                      onClick={() => setDetailTab(subTab)}
+                {/* Tab navigator inside inspector */}
+                <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', gap: '10px', overflowX: 'auto', paddingBottom: '4px' }}>
+                  {['profile', 'services', 'software', 'vulnerabilities', 'timeline'].map(tab => (
+                    <button
+                      key={tab}
+                      onClick={() => setInspectorTab(tab)}
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: detailTab === subTab ? 'var(--color-blue-hover)' : 'var(--text-secondary)',
-                        fontSize: '12px',
+                        color: inspectorTab === tab ? 'var(--color-blue-hover)' : 'var(--text-secondary)',
+                        fontSize: '11px',
                         fontWeight: 600,
                         cursor: 'pointer',
                         textTransform: 'uppercase',
                         paddingBottom: '2px',
-                        borderBottom: detailTab === subTab ? '2px solid var(--color-blue)' : '2px solid transparent'
+                        borderBottom: inspectorTab === tab ? '2px solid var(--color-blue)' : '2px solid transparent'
                       }}
                     >
-                      {subTab}
+                      {tab}
                     </button>
                   ))}
                 </div>
 
-                {/* Sub tabs content renderer */}
-                {detailTab === 'services' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)' }}>OPEN PORTS & ACTIVE SERVICES</span>
-                    {selectedAsset.services.map((srv, idx) => (
-                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '12px' }}>
-                        <span>Port <strong>{srv.port}</strong> ({srv.name})</span>
-                        <span style={{ color: 'var(--text-secondary)' }}>{srv.product} {srv.version}</span>
-                      </div>
-                    ))}
+                {/* Profile Information SubTab */}
+                {inspectorTab === 'profile' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12px' }}>
+                    <div>
+                      <span style={{ display: 'block', color: 'var(--text-muted)' }}>IP Address (IPv4)</span>
+                      <strong>{selectedAsset.ip}</strong>
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', color: 'var(--text-muted)' }}>IPv6 Address</span>
+                      <strong style={{ fontSize: '10px', wordBreak: 'break-all' }}>{selectedAsset.ipv6 || 'None'}</strong>
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', color: 'var(--text-muted)' }}>MAC Address</span>
+                      <strong style={{ fontFamily: 'monospace' }}>{selectedAsset.mac}</strong>
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', color: 'var(--text-muted)' }}>Operating System</span>
+                      <strong>{selectedAsset.os} ({selectedAsset.architecture})</strong>
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', color: 'var(--text-muted)' }}>Manufacturer / Model</span>
+                      <strong>{selectedAsset.manufacturer} {selectedAsset.model}</strong>
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', color: 'var(--text-muted)' }}>Serial Number</span>
+                      <strong style={{ fontFamily: 'monospace' }}>{selectedAsset.serial_number || 'N/A'}</strong>
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', color: 'var(--text-muted)' }}>Cloud Provider</span>
+                      <strong>{selectedAsset.cloud_provider || 'On-Premise'}</strong>
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', color: 'var(--text-muted)' }}>Geographic Location</span>
+                      <strong>{selectedAsset.location || 'Unknown'}</strong>
+                    </div>
                   </div>
                 )}
 
-                {detailTab === 'interfaces' && (
+                {/* Listening Services SubTab */}
+                {inspectorTab === 'services' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)' }}>NETWORK INTERFACE CONTROLLERS</span>
-                    {selectedAsset.networkInterfaces.map((nic, idx) => (
-                      <div key={idx} style={{ padding: '8px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '12px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
-                          <span>Interface: {nic.name}</span>
-                          <span>IP: {nic.ip}</span>
+                    {selectedAsset.services?.map((s, idx) => (
+                      <div key={idx} style={{ padding: '8px 12px', border: '1px solid var(--border-color)', borderRadius: '4px', backgroundColor: 'var(--bg-secondary)', fontSize: '11px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <strong>Port {s.port}/{s.protocol}</strong> ({s.name})
+                          <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-muted)' }}>Banner: {s.banner || 'None'}</span>
                         </div>
-                        <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px' }}>Netmask: {nic.netmask} | Gateway: {nic.gateway}</span>
+                        <StatusBadge status={s.risk_level} text={`Risk: ${s.risk_level}`} />
                       </div>
                     ))}
                   </div>
                 )}
 
-                {detailTab === 'software' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)' }}>INSTALLED SYSTEM BINARIES & SOFTWARE</span>
-                    {selectedAsset.installedSoftware.map((sw, idx) => (
-                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '11px' }}>
-                        <span style={{ fontWeight: 600 }}>{sw.name}</span>
-                        <span style={{ fontFamily: 'monospace' }}>v{sw.version}</span>
+                {/* Software Packages (SBOM) SubTab */}
+                {inspectorTab === 'software' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '240px', overflowY: 'auto' }}>
+                    {selectedAsset.installedSoftware?.map((sw, idx) => (
+                      <div key={idx} style={{ padding: '8px', border: '1px solid var(--border-color)', borderRadius: '4px', backgroundColor: 'var(--bg-secondary)', fontSize: '11px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
+                          <span>{sw.name}</span>
+                          <span>v{sw.version}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                          <span>Publisher: {sw.publisher} | Lic: {sw.license}</span>
+                          <span style={{ color: sw.support_status === 'End of Life' ? 'var(--color-critical)' : 'var(--text-muted)' }}>{sw.support_status}</span>
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
 
-                {detailTab === 'vulnerabilities' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)' }}>PATCH STATUS: {selectedAsset.patchStatus.toUpperCase()}</span>
-                    {selectedAsset.detectedCVEs.length === 0 ? (
-                      <div style={{ padding: '12px', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'var(--color-low)', fontStyle: 'italic', fontSize: '12px' }}>
-                        No vulnerabilities detected on this system.
-                      </div>
-                    ) : (
-                      selectedAsset.detectedCVEs.map((cve, idx) => (
-                        <div key={idx} style={{ padding: '10px', border: '1px solid var(--border-color)', borderRadius: '4px', backgroundColor: cve.severity === 'critical' ? 'var(--color-critical-bg)' : 'var(--bg-secondary)' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                            <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '12px' }}>{cve.cve}</span>
-                            <StatusBadge status={cve.severity} text={`CVSS ${cve.cvss}`} />
-                          </div>
-                          <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: '0 0 6px 0' }}>{cve.summary}</p>
-                          <span style={{ fontSize: '10px', fontWeight: 600, color: cve.patched ? 'var(--color-low)' : 'var(--color-critical)' }}>
-                            {cve.patched ? 'PATCH APPLIED' : 'ACTION REQUIRED'}
+                {/* Vulnerabilities SubTab */}
+                {inspectorTab === 'vulnerabilities' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto' }}>
+                    {selectedAsset.detectedCVEs?.map((cve, idx) => (
+                      <div key={idx} style={{ padding: '10px', border: '1px solid var(--border-color)', borderRadius: '4px', backgroundColor: 'var(--bg-secondary)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                          <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '11px' }}>{cve.cve}</span>
+                          <StatusBadge status={cve.severity} text={`CVSS ${cve.cvss}`} />
+                        </div>
+                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: '0 0 6px 0' }}>{cve.summary}</p>
+                        <div style={{ display: 'flex', gap: '8px', fontSize: '9px', fontWeight: 700 }}>
+                          <span style={{ color: cve.exploit_available ? 'var(--color-critical)' : 'var(--text-muted)' }}>
+                            {cve.exploit_available ? 'PUBLIC EXPLOIT READY' : 'NO KNOWN EXPLOITS'}
+                          </span>
+                          <span style={{ color: cve.patch_available ? 'var(--color-low)' : 'var(--color-high)' }}>
+                            {cve.patch_available ? 'PATCH AVAILABLE' : 'NO PATCH REMEDIATION'}
                           </span>
                         </div>
-                      ))
-                    )}
-                    
-                    {/* Recommendations list */}
-                    {selectedAsset.recommendations?.length > 0 && (
-                      <div style={{ marginTop: '10px', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
-                        <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>REMEDIATION ADVICE</span>
-                        {selectedAsset.recommendations.map((rec, idx) => (
-                          <div key={idx} style={{ display: 'flex', gap: '8px', fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                            <span>{idx + 1}.</span>
-                            <span>{rec}</span>
-                          </div>
-                        ))}
                       </div>
-                    )}
+                    ))}
+                  </div>
+                )}
+
+                {/* Timeline / Lifecycle events SubTab */}
+                {inspectorTab === 'timeline' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', borderLeft: '1px solid var(--border-color)', paddingLeft: '14px', position: 'relative' }}>
+                    <div style={{ position: 'relative' }}>
+                      <span style={{ position: 'absolute', left: '-18px', top: '4px', width: '7px', height: '7px', borderRadius: '50%', backgroundColor: 'var(--color-blue)' }} />
+                      <span style={{ display: 'block', fontSize: '11px', fontWeight: 600 }}>Active Ingress Scanner Sync</span>
+                      <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-muted)' }}>2026-07-05 11:40 • SSH port 22 verified active</span>
+                    </div>
+                    <div style={{ position: 'relative' }}>
+                      <span style={{ position: 'absolute', left: '-18px', top: '4px', width: '7px', height: '7px', borderRadius: '50%', backgroundColor: 'var(--color-low)' }} />
+                      <span style={{ display: 'block', fontSize: '11px', fontWeight: 600 }}>CVE Vulnerability Mapped</span>
+                      <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-muted)' }}>2026-03-10 08:12 • Backdoored xz-utils (CVE-2024-3094) package identified</span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -325,12 +571,11 @@ export const Assets = () => {
         </div>
       )}
 
-      {/* 2. NETWORK DISCOVERY & SCANNERS TAB */}
+      {/* TAB: DISCOVERY & SCANNERS */}
       {activeTab === 'discovery' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.5fr)', gap: '24px' }}>
           
-          {/* Discovery Trigger Options */}
-          <Panel title="Discovery Control Center">
+          <Panel title="Scanner Daemon Plugins">
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Target IP Scope / Subnet</label>
@@ -367,16 +612,20 @@ export const Assets = () => {
                   }}
                 >
                   <option value="nmap">Nmap Port Scanner (Core)</option>
+                  <option value="rustscan">RustScan Accelerated Scanner (Core)</option>
+                  <option value="masscan">Masscan Ingress IP Scout</option>
                   <option value="nuclei">Nuclei Vulnerability Template Scanner</option>
+                  <option value="whatweb">WhatWeb App Profiler</option>
                   <option value="sslyze">SSLyze Certificate Analyzer</option>
-                  <option value="masscan">Masscan Ingress IP Scout (Mock)</option>
-                  <option value="rustscan">Rustscan Accelerated Scanner (Mock)</option>
-                  <option value="whatweb">WhatWeb App Profiler (Mock)</option>
+                  <option value="testssl">testssl.sh TLS Analyzer</option>
+                  <option value="nikto">Nikto Web Server Scanner</option>
+                  <option value="openvas">OpenVAS Manager</option>
+                  <option value="greenbone">Greenbone Security Feed</option>
                 </select>
               </div>
 
               <button
-                onClick={runMockScan}
+                onClick={executeScan}
                 disabled={isScanning}
                 style={{
                   backgroundColor: 'var(--color-blue)',
@@ -391,7 +640,6 @@ export const Assets = () => {
                   justifyContent: 'center',
                   gap: '8px'
                 }}
-                className="btn-primary-hover"
               >
                 {isScanning ? (
                   <>
@@ -404,15 +652,10 @@ export const Assets = () => {
                   </>
                 )}
               </button>
-
-              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '12px', fontSize: '11px', color: 'var(--text-muted)' }}>
-                <strong>Architecture Note:</strong> Future integrations with local docker agents will execute these CLI tools using standard FastAPI background tasks, writing structured logs directly into the PostgreSQL assets tables.
-              </div>
             </div>
           </Panel>
 
-          {/* Scan output logs console */}
-          <Panel title="Scanner CLI Telemetry Output">
+          <Panel title="Scanner CLI Terminal Console Output">
             {isScanning ? (
               <LoadingState message={`Executing binary scan on ${scanTarget} using ${scannerId}...`} />
             ) : scanOutput ? (
@@ -437,16 +680,13 @@ export const Assets = () => {
 Starting Nmap 7.92 ( https://nmap.org ) at 2026-07-05 11:43 UTC
 Nmap scan report for ${scanTarget}
 Host is up (0.00012s latency).
-Not shown: 99997 closed ports
 PORT     STATE SERVICE VERSION
 22/tcp   open  ssh     OpenSSH 8.2p1
 80/tcp   open  http    Apache httpd 2.4.41
-443/tcp  open  https   Apache httpd 2.4.41
-
-Service detection performed. Please refer to inventory logs.`
+443/tcp  open  https   Apache httpd 2.4.41`
                   )}
                   {scannerId === 'nuclei' && (
-                    `$ nuclei -target ${scanTarget} -severity critical,high
+                    `$ nuclei -target ${scanTarget}
 [CVE-2021-44228] [http] [critical] Apache Log4j RCE matched on target gateway.
 [INFO] Scanning completed. 1 critical vulnerability discovered.`
                   )}
@@ -454,10 +694,9 @@ Service detection performed. Please refer to inventory logs.`
                     `$ sslyze --regular ${scanTarget}
 SCAN RESULTS FOR: ${scanTarget}:443
   * Protocols supported: TLS 1.2, TLS 1.3
-  * Cipher suite audits: All ciphers compliant. No weak keys mapped.
-  * Certificate chain validated successfully. Expiry in 348 days.`
+  * Cipher suite audits: All ciphers compliant.`
                   )}
-                  {['masscan', 'rustscan', 'whatweb'].includes(scannerId) && (
+                  {!['nmap', 'nuclei', 'sslyze'].includes(scannerId) && (
                     `[MOCK OUTPUT] Executed scanner daemon plugin: ${scannerId}
 Output: Target ${scanTarget} profiled. No anomalies identified.`
                   )}
@@ -473,7 +712,7 @@ Output: Target ${scanTarget} profiled. No anomalies identified.`
         </div>
       )}
 
-      {/* 3. NETWORK TOPOLOGY TAB */}
+      {/* TAB: NETWORK TOPOLOGY */}
       {activeTab === 'topology' && (
         <Panel title="Global Corporate Network Connections Map">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -482,7 +721,6 @@ Output: Target ${scanTarget} profiled. No anomalies identified.`
               <span style={{ color: 'var(--color-low)' }}>● Dynamic Update Channel Active</span>
             </div>
 
-            {/* Visual HTML map mock */}
             <div style={{ 
               height: '420px', 
               backgroundColor: 'var(--bg-primary)', 
@@ -495,11 +733,9 @@ Output: Target ${scanTarget} profiled. No anomalies identified.`
               overflow: 'hidden'
             }}>
               
-              {/* Outer boundary circles */}
               <div style={{ position: 'absolute', width: '380px', height: '380px', border: '1px dashed rgba(59,130,246,0.1)', borderRadius: '50%' }} />
               <div style={{ position: 'absolute', width: '220px', height: '220px', border: '1px dashed rgba(59,130,246,0.15)', borderRadius: '50%' }} />
 
-              {/* Edge Node: Firewall */}
               <div style={{ position: 'absolute', top: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
                 <div style={{ width: '40px', height: '40px', backgroundColor: 'var(--color-critical-bg)', border: '1px solid var(--color-critical)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-critical)' }}>
                   🛡️
@@ -507,7 +743,6 @@ Output: Target ${scanTarget} profiled. No anomalies identified.`
                 <span style={{ fontSize: '11px', fontWeight: 600 }}>Edge Firewall</span>
               </div>
 
-              {/* Center Core Switch */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', zIndex: 10 }}>
                 <div style={{ width: '50px', height: '50px', backgroundColor: 'var(--panel-bg)', border: '2px solid var(--color-blue)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-blue)' }}>
                   🔌
@@ -516,40 +751,44 @@ Output: Target ${scanTarget} profiled. No anomalies identified.`
               </div>
 
               {/* Subnet hosts surrounding core */}
-              {/* Asset 001 */}
-              <div style={{ position: 'absolute', bottom: '50px', left: '120px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                <div style={{ width: '36px', height: '36px', backgroundColor: 'var(--panel-bg)', border: '1px solid var(--color-critical)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>
-                  🗄️
-                </div>
-                <span style={{ fontSize: '10px', fontWeight: 600 }}>PRD-DB-SRV-01</span>
-              </div>
-
-              {/* Asset 002 */}
-              <div style={{ position: 'absolute', bottom: '50px', right: '120px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                <div style={{ width: '36px', height: '36px', backgroundColor: 'var(--panel-bg)', border: '1px solid var(--color-high)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>
-                  🖥️
-                </div>
-                <span style={{ fontSize: '10px', fontWeight: 600 }}>PRD-APP-SRV-02</span>
-              </div>
-
-              {/* Asset 003 */}
-              <div style={{ position: 'absolute', top: '160px', left: '60px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                <div style={{ width: '36px', height: '36px', backgroundColor: 'var(--panel-bg)', border: '1px solid var(--color-low)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>
-                  💻
-                </div>
-                <span style={{ fontSize: '10px', fontWeight: 600 }}>MACOS-DEV-382</span>
-              </div>
-
-              {/* Asset 004 */}
-              <div style={{ position: 'absolute', top: '160px', right: '60px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                <div style={{ width: '36px', height: '36px', backgroundColor: 'var(--panel-bg)', border: '1px solid var(--color-medium)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>
-                  💻
-                </div>
-                <span style={{ fontSize: '10px', fontWeight: 600 }}>CEO-LAPTOP-01</span>
-              </div>
+              {assets.map((asset, index) => {
+                const angle = (index / assets.length) * 2 * Math.PI;
+                const radius = 130;
+                const x = Math.round(Math.cos(angle) * radius);
+                const y = Math.round(Math.sin(angle) * radius);
+                
+                return (
+                  <div 
+                    key={asset.id} 
+                    style={{ 
+                      position: 'absolute', 
+                      transform: `translate(${x}px, ${y}px)`,
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      alignItems: 'center', 
+                      gap: '4px' 
+                    }}
+                  >
+                    <div style={{ 
+                      width: '36px', 
+                      height: '36px', 
+                      backgroundColor: 'var(--panel-bg)', 
+                      border: '1px solid var(--border-color)', 
+                      borderColor: asset.risk_score >= 80 ? 'var(--color-critical)' : asset.risk_score >= 60 ? 'var(--color-high)' : 'var(--color-low)',
+                      borderRadius: '50%', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      fontSize: '14px' 
+                    }}>
+                      {asset.asset_type === 'Server' ? '🗄️' : '💻'}
+                    </div>
+                    <span style={{ fontSize: '9px', fontWeight: 600 }}>{asset.hostname}</span>
+                  </div>
+                );
+              })}
             </div>
 
-            {/* Topology legend */}
             <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', fontSize: '11px', flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--color-critical)' }} />
