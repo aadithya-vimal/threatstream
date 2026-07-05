@@ -582,6 +582,7 @@ ThreatStream implements a production-grade, secure, and extensible Threat Intell
 - **VirusTotal Production Connector**: Provides real enrichment for domains, IPs, URLs, and file hashes (MD5, SHA-1, SHA-256) through the VirusTotal API v3.
 - **Secure Credentials**: Credentials are saved in Supabase and only read on the backend by the Service Role Key. Secrets are never exposed to the frontend.
 - **Intelligent Caching**: Keeps indicator results cached in `enrichment_results` for 24 hours to prevent exceeding provider API rate limits. Bypassing cache is supported through the UI.
+- **Asset Discovery Orchestrator**: Concurrently triggers configured network scanners (like Nmap, RustScan, Masscan, Nuclei wrappers), normalizes their results into a standard asset schema, de-duplicates overlapping hosts, and inserts/updates them to Supabase `assets` and `services` tables.
 
 #### Running the Backend API
 1. Navigate to the backend directory:

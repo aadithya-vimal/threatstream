@@ -528,6 +528,36 @@ Vulnerability scans, database backups, and intelligence feed pulls are scheduled
 | Admin Panel | ✅ Live | Administration | UserRepository | UserService |
 | Backend Job Engine | ✅ Live | — | — | FastAPI / Workers |
 | VT Production Connector| ✅ Live | — | — | FastAPI / Plugins |
+| Discovery Orchestrator | ✅ Live | Assets | — | FastAPI / Plugins |
+
+---
+
+## 13. Discovery Orchestrator Architecture
+
+The **Discovery Orchestrator** is an extensible background engine responsible for multi-scanner subnet sweep coordination, result consolidation, de-duplication, and asset persistence.
+
+### A. Discovery Workflow
+```mermaid
+graph TD
+    A[Target Input: IP/CIDR/Domain] --> B[Validate Target Format]
+    B --> C[Fetch Enabled Scanner Connectors]
+    C --> D[Execute Scanners Concurrently]
+    D --> E[Gather Scanner Outputs]
+    E --> F[Normalize into Unified Schema]
+    F --> G[Merge Engine: Group & De-duplicate]
+    G --> H[Persist Assets to DB]
+    H --> I[Generate Consolidate Report]
+```
+
+### B. Unified Schema Mapping
+Outputs from scanners (e.g., Nmap open ports, WhatWeb platforms, SSLyze TLS grades) are translated into a standardized schema mapping Host, Ports, Operating Systems, Technologies, Certificates, and GeoIP location fields.
+
+### C. Merge Engine
+Resolves data overlaps across scanners:
+- **Grouping**: Clusters findings by unique IP address.
+- **Port Union**: Combines distinct port mappings from multiple passes.
+- **Attribution Matrix**: Employs a JSON attribution tracker recording the source provider for each consolidated property.
+- **Upserts**: Inserts new network nodes or updates existing assets in Supabase with structural constraints.
 
 
 

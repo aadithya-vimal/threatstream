@@ -206,5 +206,34 @@ IOC provider enrichment response cache.
 * `raw_result` JSONB — provider response payload
 * `enriched_at` TIMESTAMPTZ
 
-### Total Table Count: 44 tables across 9 domains
+### Total Table Count: 50 tables across 10 domains
+
+---
+
+## 10. Operations & Discovery Orchestration Schema
+
+The operations control registry maps active connectors, schedules background task automation runs, and audits discovery logs.
+
+### 1. `jobs`
+Background execution tracking ledger.
+* `name`, `type` CHECK ('scan','collect','enrich','backup','report','cleanup')
+* `status` CHECK ('queued','running','completed','failed','cancelled')
+* `payload` JSONB, `result` JSONB, `progress` INT, `error` TEXT
+
+### 2. `connectors`
+Pluggable system agent and scan tool registration sheet.
+* `name` UNIQUE, `display_name`, `category` ('scanner','collector','edr','siem','threat_intel','enrichment')
+* `status` CHECK ('active','inactive','error','not_configured','deprecated')
+* `config` JSONB, `capabilities` JSONB, `health` JSONB (tracks success rate, latency, failures)
+
+### 3. `scheduled_tasks`
+Automation task schedule rules.
+* `cron_expression` VARCHAR, `job_type`, `connector_id` FK references `connectors.id`
+* `enabled` BOOLEAN, `last_run`, `next_run`, `run_count`
+
+### 4. Discovery Persistence
+The Discovery Orchestrator parses unified scans and records data to:
+* **`assets`**: Upserts IP, hostname (unique), generated deterministic MAC address, and operating system.
+* **`services`**: Overrides and syncs open ports, protocol (TCP/UDP), product, and service versions.
+* **`asset_vulnerabilities`**: Maps vulnerability matches (CVEs) found during template checks to the corresponding asset.
 
