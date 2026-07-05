@@ -198,7 +198,7 @@ export class Endpoint extends BaseModel {
 }
 
 /**
- * Process Telemetry Event Model
+ * Process Telemetry Event Model - Execution timeline trace nodes mapping
  */
 export class ProcessEvent extends BaseModel {
   constructor(data = {}) {
