@@ -3,6 +3,7 @@ import logging
 from typing import Dict, Any, Type
 from app.plugins.base import BasePlugin
 from app.plugins.virustotal import VirusTotalPlugin
+from app.plugins.orchestrator import EnrichmentOrchestrator
 
 logger = logging.getLogger("threatstream.plugins")
 
@@ -138,6 +139,7 @@ class PluginManager:
         "nmap": NmapPlugin,
         "virustotal": VirusTotalPlugin,
         "nuclei": NucleiPlugin,
+        "orchestrator": EnrichmentOrchestrator,
         "default": DefaultPlugin
     }
 
