@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
 import { AuthProvider } from './contexts/AuthContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // Public Pages
@@ -24,8 +25,9 @@ import Administration from './pages/Administration';
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <div className="app-container">
+      <NotificationProvider>
+        <Router>
+          <div className="app-container">
           <Routes>
             {/* Public Views */}
             <Route path="/" element={<Landing />} />
@@ -89,7 +91,8 @@ function App() {
             } />
           </Routes>
         </div>
-      </Router>
+        </Router>
+      </NotificationProvider>
     </AuthProvider>
   );
 }
