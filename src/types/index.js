@@ -373,7 +373,7 @@ export class Campaign extends BaseModel {
 }
 
 /**
- * Malware Family Model
+ * Malware Family Model - Malware strains capabilities database entities
  */
 export class MalwareFamily extends BaseModel {
   constructor(data = {}) {
