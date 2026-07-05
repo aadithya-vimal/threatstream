@@ -307,7 +307,7 @@ export class Alert extends BaseModel {
 }
 
 /**
- * Case Management Incident Model
+ * Case Management Incident Model - Full enterprise incident lifecycle (create, triage, close)
  */
 export class Incident extends BaseModel {
   constructor(data = {}) {
