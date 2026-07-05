@@ -415,6 +415,7 @@ export const Incidents = () => {
               </Panel>
 
               {/* Relationship visual graph mapping */}
+              {/* Investigation Graph - Incident -> Assets -> Users -> IOCs -> Threat Actors -> MITRE */}
               <Panel title="Investigation Relationship Linkages">
                 <div style={{ 
                   border: '1px solid var(--border-color)', 
