@@ -8,7 +8,7 @@
 -- Background job queue
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS jobs (
-  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name          VARCHAR NOT NULL,
   type          VARCHAR NOT NULL,  -- 'scan','collect','enrich','backup','report','cleanup'
   status        VARCHAR DEFAULT 'queued'
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS jobs (
 -- Connector registry (all 27 plugins)
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS connectors (
-  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name          VARCHAR UNIQUE NOT NULL,
   display_name  VARCHAR NOT NULL,
   category      VARCHAR NOT NULL,  -- 'scanner','collector','edr','siem','threat_intel','enrichment'
@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS connectors (
 -- Scheduled tasks
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS scheduled_tasks (
-  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name            VARCHAR NOT NULL,
   description     TEXT,
   cron_expression VARCHAR,   -- e.g. '0 */6 * * *'
@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS scheduled_tasks (
 -- Audit log (immutable)
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS audit_logs (
-  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   timestamp     TIMESTAMPTZ DEFAULT now(),
   user_id       UUID REFERENCES auth.users(id),
   user_email    VARCHAR,
@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 -- Backup records
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS backups (
-  id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name             VARCHAR NOT NULL,
   type             VARCHAR DEFAULT 'full'
                      CHECK (type IN ('full','incremental','config')),
@@ -115,7 +115,7 @@ CREATE TABLE IF NOT EXISTS backups (
 -- System metrics snapshots
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS system_metrics (
-  id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   timestamp           TIMESTAMPTZ DEFAULT now(),
   cpu_percent         DECIMAL,
   memory_percent      DECIMAL,
@@ -132,7 +132,7 @@ CREATE TABLE IF NOT EXISTS system_metrics (
 -- API keys
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS api_keys (
-  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name        VARCHAR NOT NULL,
   key_prefix  VARCHAR NOT NULL,   -- first 8 chars for display
   key_hash    VARCHAR NOT NULL,   -- bcrypt hashed

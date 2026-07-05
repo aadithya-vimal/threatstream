@@ -5,7 +5,7 @@
 
 -- 1. Create Threat Actors Table
 CREATE TABLE IF NOT EXISTS threat_actors (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL UNIQUE,
     aliases VARCHAR(100)[],
     country VARCHAR(100),
@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS threat_actors (
 
 -- 2. Create Campaigns Table
 CREATE TABLE IF NOT EXISTS campaigns (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL UNIQUE,
     description TEXT,
     start_date DATE,
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS campaigns (
 
 -- 3. Create Malware Families Table
 CREATE TABLE IF NOT EXISTS malware_families (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL UNIQUE,
     aliases VARCHAR(100)[],
     malware_type VARCHAR(100) DEFAULT 'Trojan',
@@ -61,7 +61,7 @@ ALTER TABLE iocs ADD COLUMN IF NOT EXISTS geolocation JSONB;
 
 -- 5. Create Generic IOC Correlations Table for Assets, Incidents, Vulnerabilities mapping
 CREATE TABLE IF NOT EXISTS ioc_correlations (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     ioc_id UUID REFERENCES iocs(id) ON DELETE CASCADE NOT NULL,
     target_type VARCHAR(50) NOT NULL CHECK (target_type IN ('asset', 'incident', 'vulnerability')),
     target_id UUID NOT NULL,

@@ -48,7 +48,7 @@ ALTER TABLE vulnerabilities ADD COLUMN IF NOT EXISTS known_exploited BOOLEAN DEF
 
 -- 5. Create Asset Relationships Table
 CREATE TABLE IF NOT EXISTS asset_relationships (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     source_asset_id UUID REFERENCES assets(id) ON DELETE CASCADE NOT NULL,
     target_asset_id UUID REFERENCES assets(id) ON DELETE CASCADE NOT NULL,
     relationship_type VARCHAR(100) NOT NULL CHECK (relationship_type IN ('depends_on', 'connects_to', 'routes_to', 'manages')),
@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS topology_nodes (
 );
 
 CREATE TABLE IF NOT EXISTS topology_links (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     source VARCHAR(100) NOT NULL,
     target VARCHAR(100) NOT NULL,
     bandwidth VARCHAR(50)

@@ -29,7 +29,7 @@ ALTER TABLE detections ADD COLUMN IF NOT EXISTS last_triggered TIMESTAMP WITH TI
 
 -- 3. Create alerts Table
 CREATE TABLE IF NOT EXISTS alerts (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     rule_id UUID REFERENCES detections(id) ON DELETE SET NULL,
     telemetry_id UUID REFERENCES telemetry(id) ON DELETE CASCADE,
     affected_asset_id UUID REFERENCES assets(id) ON DELETE SET NULL,

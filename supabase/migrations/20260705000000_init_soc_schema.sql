@@ -3,7 +3,7 @@
 -- Target Platform: PostgreSQL (Compatible with Supabase)
 
 -- Enable UUID Extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- =======================================================
 -- SECTION 1: IDENTITY AND ACCESS MANAGEMENT (IAM)
@@ -11,7 +11,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 1. Roles Table
 CREATE TABLE roles (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(50) NOT NULL UNIQUE,
     description TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
@@ -20,7 +20,7 @@ CREATE TABLE roles (
 
 -- 2. Permissions Table
 CREATE TABLE permissions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     code VARCHAR(100) NOT NULL UNIQUE,
     description TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
@@ -36,7 +36,7 @@ CREATE TABLE role_permissions (
 
 -- 4. Users Table (SOC Operators)
 CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email VARCHAR(255) NOT NULL UNIQUE,
     name VARCHAR(255) NOT NULL,
     status VARCHAR(20) DEFAULT 'Active' CHECK (status IN ('Active', 'Suspended', 'Pending')),
@@ -58,7 +58,7 @@ CREATE TABLE user_roles (
 
 -- 6. Infrastructure Assets Table
 CREATE TABLE assets (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     hostname VARCHAR(100) NOT NULL UNIQUE,
     ip VARCHAR(45) NOT NULL,
     mac VARCHAR(17) NOT NULL,
@@ -77,7 +77,7 @@ CREATE TABLE assets (
 
 -- 7. Network Interfaces Table
 CREATE TABLE network_interfaces (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     asset_id UUID REFERENCES assets(id) ON DELETE CASCADE NOT NULL,
     name VARCHAR(50) NOT NULL,
     ip VARCHAR(45),
@@ -90,7 +90,7 @@ CREATE TABLE network_interfaces (
 
 -- 8. Active Network Services Table
 CREATE TABLE services (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     asset_id UUID REFERENCES assets(id) ON DELETE CASCADE NOT NULL,
     port INT NOT NULL CHECK (port >= 1 AND port <= 65535),
     protocol VARCHAR(10) DEFAULT 'TCP' CHECK (protocol IN ('TCP', 'UDP')),
@@ -103,7 +103,7 @@ CREATE TABLE services (
 
 -- 9. Software Inventory Table
 CREATE TABLE software_inventory (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     asset_id UUID REFERENCES assets(id) ON DELETE CASCADE NOT NULL,
     name VARCHAR(255) NOT NULL,
     version VARCHAR(100) NOT NULL,
@@ -114,7 +114,7 @@ CREATE TABLE software_inventory (
 
 -- 10. Vulnerabilities Registry (CVEs)
 CREATE TABLE vulnerabilities (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     cve VARCHAR(20) NOT NULL UNIQUE,
     cvss NUMERIC(3,1) NOT NULL CHECK (cvss >= 0.0 AND cvss <= 10.0),
     summary TEXT,
@@ -125,7 +125,7 @@ CREATE TABLE vulnerabilities (
 
 -- 11. Asset Vulnerabilities Map
 CREATE TABLE asset_vulnerabilities (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     asset_id UUID REFERENCES assets(id) ON DELETE CASCADE NOT NULL,
     vulnerability_id UUID REFERENCES vulnerabilities(id) ON DELETE CASCADE NOT NULL,
     patched BOOLEAN DEFAULT FALSE NOT NULL,
@@ -142,7 +142,7 @@ CREATE TABLE asset_vulnerabilities (
 
 -- 12. Threat Sources Table (Feed Providers)
 CREATE TABLE threat_sources (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL UNIQUE,
     feed_type VARCHAR(50) NOT NULL,
     active BOOLEAN DEFAULT TRUE NOT NULL,
@@ -153,7 +153,7 @@ CREATE TABLE threat_sources (
 
 -- 13. Threat Events Table (Live Honeypots Hits)
 CREATE TABLE threat_events (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     ip VARCHAR(45) NOT NULL,
     lat NUMERIC(9,6) NOT NULL CHECK (lat >= -90.0 AND lat <= 90.0),
     lon NUMERIC(9,6) NOT NULL CHECK (lon >= -180.0 AND lon <= 180.0),
@@ -166,7 +166,7 @@ CREATE TABLE threat_events (
 
 -- 14. Indicators of Compromise (IOCs) Table
 CREATE TABLE iocs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     value VARCHAR(255) NOT NULL UNIQUE,
     ioc_type VARCHAR(20) NOT NULL CHECK (ioc_type IN ('IP', 'Domain', 'URL', 'Hash')),
     asn VARCHAR(100),
@@ -185,7 +185,7 @@ CREATE TABLE iocs (
 
 -- 15. Detections Rules Table (Sigma / YARA Configurations)
 CREATE TABLE detections (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
     rule_type VARCHAR(20) NOT NULL CHECK (rule_type IN ('Sigma', 'YARA', 'Custom')),
     severity VARCHAR(20) NOT NULL CHECK (severity IN ('low', 'medium', 'high', 'critical')),
@@ -202,7 +202,7 @@ CREATE TABLE detections (
 
 -- 16. Security Alerts Table
 CREATE TABLE alerts (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     rule_id UUID REFERENCES detections(id) ON DELETE SET NULL,
     title VARCHAR(255) NOT NULL,
     severity VARCHAR(20) NOT NULL CHECK (severity IN ('low', 'medium', 'high', 'critical')),
@@ -219,7 +219,7 @@ CREATE TABLE alerts (
 
 -- 17. Incidents Table
 CREATE TABLE incidents (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     summary VARCHAR(255) NOT NULL,
     severity VARCHAR(20) NOT NULL CHECK (severity IN ('low', 'medium', 'high', 'critical')),
     status VARCHAR(20) DEFAULT 'Active' CHECK (status IN ('Active', 'Investigating', 'Mitigated', 'Closed')),
@@ -234,7 +234,7 @@ CREATE TABLE incidents (
 
 -- 18. Incident Notes / Comments Table
 CREATE TABLE incident_notes (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     incident_id UUID REFERENCES incidents(id) ON DELETE CASCADE NOT NULL,
     author VARCHAR(100) NOT NULL,
     note TEXT NOT NULL,
@@ -244,7 +244,7 @@ CREATE TABLE incident_notes (
 
 -- 19. Incident Timeline Events Table
 CREATE TABLE timeline_events (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     incident_id UUID REFERENCES incidents(id) ON DELETE CASCADE NOT NULL,
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     author VARCHAR(100) NOT NULL,
@@ -259,7 +259,7 @@ CREATE TABLE timeline_events (
 
 -- 20. Base Telemetry Raw Logs Table
 CREATE TABLE telemetry (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     hostname VARCHAR(100) NOT NULL,
     user_name VARCHAR(100) NOT NULL,
     event_type VARCHAR(50) NOT NULL,
@@ -272,7 +272,7 @@ CREATE TABLE telemetry (
 
 -- 21. Process Creation Events
 CREATE TABLE process_events (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     telemetry_id UUID REFERENCES telemetry(id) ON DELETE CASCADE,
     process_name VARCHAR(255) NOT NULL,
     parent_process VARCHAR(255),
@@ -283,7 +283,7 @@ CREATE TABLE process_events (
 
 -- 22. Network Connection Sockets
 CREATE TABLE network_events (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     telemetry_id UUID REFERENCES telemetry(id) ON DELETE CASCADE,
     source_ip VARCHAR(45) NOT NULL,
     source_port INT NOT NULL,
@@ -297,7 +297,7 @@ CREATE TABLE network_events (
 
 -- 23. DNS Queries
 CREATE TABLE dns_events (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     telemetry_id UUID REFERENCES telemetry(id) ON DELETE CASCADE,
     query VARCHAR(255) NOT NULL,
     resolved_ip VARCHAR(45),
@@ -307,7 +307,7 @@ CREATE TABLE dns_events (
 
 -- 24. Authentications Logs
 CREATE TABLE auth_events (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     telemetry_id UUID REFERENCES telemetry(id) ON DELETE CASCADE,
     logon_type VARCHAR(50) NOT NULL,
     status VARCHAR(20) NOT NULL CHECK (status IN ('Success', 'Failure')),
@@ -318,7 +318,7 @@ CREATE TABLE auth_events (
 
 -- 25. USB Device Mounts
 CREATE TABLE usb_events (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     telemetry_id UUID REFERENCES telemetry(id) ON DELETE CASCADE,
     device_name VARCHAR(255) NOT NULL,
     serial_number VARCHAR(100),
@@ -329,7 +329,7 @@ CREATE TABLE usb_events (
 
 -- 26. PowerShell Execution Telemetry
 CREATE TABLE powershell_events (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     telemetry_id UUID REFERENCES telemetry(id) ON DELETE CASCADE,
     script_block TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
@@ -338,7 +338,7 @@ CREATE TABLE powershell_events (
 
 -- 27. Registry Keys Manipulations
 CREATE TABLE registry_events (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     telemetry_id UUID REFERENCES telemetry(id) ON DELETE CASCADE,
     key_name TEXT NOT NULL,
     value_name VARCHAR(255),
@@ -349,7 +349,7 @@ CREATE TABLE registry_events (
 
 -- 28. Scheduled Tasks Persistence
 CREATE TABLE scheduled_tasks (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     telemetry_id UUID REFERENCES telemetry(id) ON DELETE CASCADE,
     task_name VARCHAR(255) NOT NULL,
     command TEXT,
@@ -364,7 +364,7 @@ CREATE TABLE scheduled_tasks (
 
 -- 29. Malware File Samples
 CREATE TABLE malware_samples (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     filename VARCHAR(255) NOT NULL,
     filesize VARCHAR(50),
     md5 CHAR(32) NOT NULL,
@@ -383,7 +383,7 @@ CREATE TABLE malware_samples (
 
 -- 30. Malware Sandboxing Reports
 CREATE TABLE malware_reports (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     sample_id UUID REFERENCES malware_samples(id) ON DELETE CASCADE NOT NULL,
     analysis_details JSONB NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
@@ -392,7 +392,7 @@ CREATE TABLE malware_reports (
 
 -- 31. Case Compliance Reports
 CREATE TABLE reports (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
     classification VARCHAR(50) NOT NULL,
     author VARCHAR(100) NOT NULL,
@@ -408,7 +408,7 @@ CREATE TABLE reports (
 
 -- 32. Audit Logs Table
 CREATE TABLE audit_logs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE SET NULL,
     action VARCHAR(100) NOT NULL,
     ip_address VARCHAR(45),
@@ -418,7 +418,7 @@ CREATE TABLE audit_logs (
 
 -- 33. Plugins Directory Table
 CREATE TABLE plugins (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL UNIQUE,
     version VARCHAR(20),
     enabled BOOLEAN DEFAULT TRUE NOT NULL,
@@ -428,7 +428,7 @@ CREATE TABLE plugins (
 
 -- 34. System Settings Table
 CREATE TABLE system_settings (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     key VARCHAR(100) NOT NULL UNIQUE,
     value TEXT NOT NULL,
     description TEXT,
@@ -438,7 +438,7 @@ CREATE TABLE system_settings (
 
 -- 35. Cron/Celery Jobs Monitoring
 CREATE TABLE jobs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
     status VARCHAR(20) CHECK (status IN ('Running', 'Pending', 'Success', 'Failed')),
     duration_sec INT,
@@ -449,7 +449,7 @@ CREATE TABLE jobs (
 
 -- 36. System Health Monitoring
 CREATE TABLE system_health (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     cpu_usage NUMERIC(5,2) NOT NULL,
     memory_usage NUMERIC(5,2) NOT NULL,
     redis_connected BOOLEAN NOT NULL,
