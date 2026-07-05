@@ -77,13 +77,14 @@ class JobWorkerManager:
         connector_name = job.get("connector_id") or "default"
 
         # Determine plugin executor name
-        # If connector_id is not null we map it to nmap, virustotal, nuclei, etc.
         plugin_name = "default"
-        if "nmap" in job_name.lower() or job_type == "scan":
+        if job_type == "enrich":
+            plugin_name = "orchestrator"
+        elif "nmap" in job_name.lower() or job_type == "scan":
             plugin_name = "nmap"
-        if "virustotal" in job_name.lower() or job_type == "enrich":
+        elif "virustotal" in job_name.lower():
             plugin_name = "virustotal"
-        if "nuclei" in job_name.lower():
+        elif "nuclei" in job_name.lower():
             plugin_name = "nuclei"
 
         logger.info(f"Running job {job_id} [{job_name}] using plugin {plugin_name}")
