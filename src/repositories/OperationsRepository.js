@@ -94,6 +94,40 @@ const INITIAL_API_KEYS = [
   { id: generateUUID(), name: 'Deprecated Key', key_prefix: 'ts_live_gh78', scopes: ['read'], created_by: null, last_used: new Date(Date.now() - 200 * 86400000).toISOString(), expires_at: null, is_active: false, created_at: new Date(Date.now() - 201 * 86400000).toISOString() }
 ];
 
+const BACKEND_URL = 'http://localhost:8000/api/v1';
+
+async function checkBackend() {
+  try {
+    // Try to reach health check with a short timeout to prevent UI lag
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 600);
+    const res = await fetch('http://localhost:8000/health', { 
+      method: 'GET', 
+      signal: controller.signal 
+    });
+    clearTimeout(timeoutId);
+    return res.ok;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function getAuthHeaders() {
+  try {
+    const { data } = await supabase.auth.getSession();
+    const token = data?.session?.access_token;
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : { 'Authorization': 'Bearer dev-token' })
+    };
+  } catch (e) {
+    return { 
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer dev-token'
+    };
+  }
+}
+
 export class OperationsRepository {
   constructor() {
     this.connectors = [...INITIAL_CONNECTORS];
@@ -106,6 +140,19 @@ export class OperationsRepository {
 
   // --- JOB QUEUE ---
   async getJobs(filters = {}) {
+    if (await checkBackend()) {
+      try {
+        const headers = await getAuthHeaders();
+        const url = new URL(`${BACKEND_URL}/jobs`);
+        if (filters.status) url.searchParams.append('status_filter', filters.status);
+        if (filters.type) url.searchParams.append('type_filter', filters.type);
+        const res = await fetch(url, { headers });
+        if (res.ok) return await res.json();
+      } catch (e) {
+        console.warn('Backend fetch jobs failed, falling back:', e);
+      }
+    }
+
     try {
       let query = supabase.from('jobs').select('*');
       if (filters.status) query = query.eq('status', filters.status);
@@ -123,6 +170,31 @@ export class OperationsRepository {
   }
 
   async createJob(jobData) {
+    if (await checkBackend()) {
+      try {
+        const headers = await getAuthHeaders();
+        const res = await fetch(`${BACKEND_URL}/jobs`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            name: jobData.name || 'Job Process',
+            type: jobData.type || 'scan',
+            priority: jobData.priority || 5,
+            payload: jobData.payload || {},
+            connector_id: jobData.connector_id || null,
+            scheduled_at: jobData.scheduled_at || null
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          this.jobs.unshift(data);
+          return data;
+        }
+      } catch (e) {
+        console.warn('Backend create job failed, falling back:', e);
+      }
+    }
+
     const newJob = {
       id: generateUUID(),
       name: jobData.name || 'Job Process',
@@ -157,6 +229,38 @@ export class OperationsRepository {
   }
 
   async updateJobStatus(id, status, progress, result, errorText = null) {
+    if (await checkBackend()) {
+      try {
+        const headers = await getAuthHeaders();
+        let endpoint = `${BACKEND_URL}/jobs/${id}`;
+        
+        if (status === 'cancelled') {
+          endpoint = `${BACKEND_URL}/jobs/${id}/cancel`;
+        } else if (status === 'paused') {
+          endpoint = `${BACKEND_URL}/jobs/${id}/pause`;
+        } else if (status === 'running') {
+          endpoint = `${BACKEND_URL}/jobs/${id}/resume`;
+        }
+
+        const method = (status === 'cancelled' || status === 'paused' || status === 'running') ? 'POST' : 'PATCH';
+        
+        const res = await fetch(endpoint, {
+          method,
+          headers,
+          ...(method === 'PATCH' ? { body: JSON.stringify({ status, progress, result, error: errorText }) } : {})
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          const idx = this.jobs.findIndex(j => j.id === id);
+          if (idx !== -1) this.jobs[idx] = data;
+          return data;
+        }
+      } catch (e) {
+        console.warn('Backend update job status failed, falling back:', e);
+      }
+    }
+
     try {
       const updates = { status, updated_at: new Date().toISOString() };
       if (progress !== null && progress !== undefined) updates.progress = progress;
@@ -192,6 +296,22 @@ export class OperationsRepository {
 
   // --- CONNECTORS ---
   async getConnectors(category = null) {
+    if (await checkBackend()) {
+      try {
+        const headers = await getAuthHeaders();
+        const res = await fetch(`${BACKEND_URL}/plugins`, { headers });
+        if (res.ok) {
+          const plugins = await res.json();
+          if (category && category !== 'all') {
+            return plugins.filter(c => c.category === category);
+          }
+          return plugins;
+        }
+      } catch (e) {
+        console.warn('Backend fetch plugins failed, falling back:', e);
+      }
+    }
+
     try {
       let query = supabase.from('connectors').select('*');
       if (category && category !== 'all') query = query.eq('category', category);
@@ -261,6 +381,16 @@ export class OperationsRepository {
 
   // --- SCHEDULED TASKS ---
   async getScheduledTasks() {
+    if (await checkBackend()) {
+      try {
+        const headers = await getAuthHeaders();
+        const res = await fetch(`${BACKEND_URL}/scheduler`, { headers });
+        if (res.ok) return await res.json();
+      } catch (e) {
+        console.warn('Backend fetch scheduler tasks failed, falling back:', e);
+      }
+    }
+
     try {
       const { data, error } = await supabase.from('scheduled_tasks').select('*');
       if (!error && data && data.length > 0) return data;
@@ -271,6 +401,31 @@ export class OperationsRepository {
   }
 
   async createScheduledTask(task) {
+    if (await checkBackend()) {
+      try {
+        const headers = await getAuthHeaders();
+        const res = await fetch(`${BACKEND_URL}/scheduler/jobs`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            name: task.name,
+            description: task.description || '',
+            cron_expression: task.cron_expression,
+            job_type: task.job_type,
+            connector_id: task.connector_id || null,
+            payload: task.payload || {}
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          this.scheduledTasks.push(data);
+          return data;
+        }
+      } catch (e) {
+        console.warn('Backend create scheduled task failed, falling back:', e);
+      }
+    }
+
     const newTask = {
       id: generateUUID(),
       name: task.name,
@@ -302,6 +457,24 @@ export class OperationsRepository {
   }
 
   async toggleTask(id) {
+    if (await checkBackend()) {
+      try {
+        const headers = await getAuthHeaders();
+        const res = await fetch(`${BACKEND_URL}/scheduler/${id}/toggle`, {
+          method: 'POST',
+          headers
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const idx = this.scheduledTasks.findIndex(t => t.id === id);
+          if (idx !== -1) this.scheduledTasks[idx] = data;
+          return data;
+        }
+      } catch (e) {
+        console.warn('Backend toggle task failed, falling back:', e);
+      }
+    }
+
     const idx = this.scheduledTasks.findIndex(t => t.id === id);
     if (idx === -1) return null;
     const nextVal = !this.scheduledTasks[idx].enabled;
