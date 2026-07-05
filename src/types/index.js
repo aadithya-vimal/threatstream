@@ -227,7 +227,7 @@ export class DNSEvent extends BaseModel {
 }
 
 /**
- * Network Telemetry Event Model
+ * Network Telemetry Event Model - Socket connectivity mapping mapped to ATT&CK tactics
  */
 export class NetworkEvent extends BaseModel {
   constructor(data = {}) {
