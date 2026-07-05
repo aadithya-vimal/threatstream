@@ -116,7 +116,7 @@ export class Host extends BaseModel {
 }
 
 /**
- * Network Interface Model
+ * Network Interface Model - Physical and virtual network interfaces mapping
  */
 export class NetworkInterface extends BaseModel {
   constructor(data = {}) {
