@@ -236,7 +236,7 @@ export const Assets = () => {
         description="Unified corporate asset inventory, live risk scoring engines, network topology correlations, and plug-in vulnerability scanner controls."
       />
 
-      {/* Overview Cards Row */}
+      {/* Overview Cards Row - Attack Surface Dashboard Metrics */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '20px' }}>
         <MetricCard title="Total Assets Registered" value={stats.total} status="info" subtitle="Hosts, cloud instances, and sites" />
         <MetricCard title="Avg Security Score" value={`${Math.max(10, 100 - stats.riskAvg)}/100`} status="low" subtitle="Inverse of network risk weight" />
