@@ -123,11 +123,27 @@ class JobWorkerManager:
                 .eq("id", job_id) \
                 .execute()
 
+        # Secure credential management: retrieve secrets using Service Role Key
+        connector_config = {}
+        target_conn_id = job.get("connector_id")
         try:
-            # Instantiate and run plugin
-            plugin = PluginManager.get_plugin(plugin_name, config=job.get("payload", {}))
+            if target_conn_id:
+                conn_res = supabase_client.table("connectors").select("config").eq("id", str(target_conn_id)).execute()
+                if conn_res.data and len(conn_res.data) > 0:
+                    connector_config = conn_res.data[0].get("config") or {}
+            else:
+                # Direct fallback: find connector by plugin type name
+                conn_res = supabase_client.table("connectors").select("config").eq("name", plugin_name).execute()
+                if conn_res.data and len(conn_res.data) > 0:
+                    connector_config = conn_res.data[0].get("config") or {}
+        except Exception as ce:
+            logger.warn(f"Failed to fetch connector secrets: {str(ce)}")
+
+        try:
+            # Instantiate plugin with secure configuration keys
+            plugin = PluginManager.get_plugin(plugin_name, config=connector_config)
             
-            # Use run_in_executor to avoid blocking the asyncio event loop for blocking CPU/IO plugins
+            # Use run_in_executor to avoid blocking the asyncio event loop
             loop = asyncio.get_running_loop()
             result = await loop.run_in_executor(
                 None,
