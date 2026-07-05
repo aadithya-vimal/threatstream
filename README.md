@@ -373,5 +373,41 @@ interface ThreatFeedConnector {
 
 ---
 
-ThreatStream combines cutting-edge visualization technology with real-time data streaming to create an unparalleled cyber threat monitoring experience.
+## Asset Intelligence & Attack Surface Management Specifications
 
+ThreatStream features an enterprise-grade Asset Intelligence Platform capable of discovery profiling, network mapping, and weighted risk analysis.
+
+### 1. Enterprise Asset Data Model
+Every discovered object (Servers, Workstations, Cloud VMs, IoT, switches, routers, storage containers) is registered in the database with the following fields:
+* **Identification**: Hostname, display name, MAC address, IPs, serial number, vendor, model, OS architecture.
+* **Environment Context**: Production, Development, Testing, business unit, location, owner department.
+* **Security Context**: Internet-facing flag, Cloud Provider metadata, risk score, security score.
+
+### 2. Multi-Tier Relational Mapping
+Assets connect directly to active threat sectors, vulnerabilities, and network links:
+```
+[ Ingress Port / Listening Service ] ──► [ Vulnerability (CVE) ] ──► [ Threat Actor ]
+                 │                                │
+                 ▼                                ▼
+       [ Network Interface ] ──────────► [ Host asset node ] ─────► [ Active incident ]
+```
+
+### 3. Attack Surface Risk Engine
+The risk evaluation engine calculates real-time risk, security, and exposure indexes:
+* **Inputs**: Criticality value (0.2 - 1.0 weight multiplier), open port counts, internet exposure flag (+30 penalty), unpatched CVE counts (+15 to +25 penalty), exploit availability, and active mitigation controls (applied patch credits).
+
+### 4. Pluggable Scanner Plugin Interface
+Vulnerability and port scanners implement a common coordination plugin interface:
+```typescript
+interface ScannerPlugin {
+  id: string;
+  name: string;
+  description: string;
+  
+  executeScan(targetSubnet: string): Promise<ScanTelemetryOutput>;
+}
+```
+
+---
+
+ThreatStream combines cutting-edge visualization technology with real-time data streaming to create an unparalleled cyber threat monitoring experience.

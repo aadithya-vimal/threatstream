@@ -121,3 +121,28 @@ Maintains relational mapping links between indicators and assets/incidents/vulne
 * Attributes: `target_type` (Asset, Incident, CVE), `target_id`, `relationship_score`.
 
 All TIP tables have RLS enabled by default to permit read-only select actions to all authenticated SOC operators, while restricting insert/update/delete operations to designated security personnel roles.
+
+---
+
+## 6. Asset Intelligence & Attack Surface Schema
+
+The platform implements the following tables to manage assets relationships and network pathways:
+
+### 1. `asset_relationships`
+Tracks logical and network topology connections between mapped assets.
+* Primary Key: `id` (UUID)
+* Foreign Key: `source_asset_id` references `assets.id`, `target_asset_id` references `assets.id`
+* Attributes: `relationship_type` (`depends_on`, `connects_to`, `routes_to`, `manages`).
+
+### 2. `topology_nodes`
+Tracks physical and logical switch/firewall nodes on the network.
+* Primary Key: `id` (VARCHAR)
+* Attributes: `label`, `type`, `zone`.
+
+### 3. `topology_links`
+Tracks connections between network topology nodes.
+* Primary Key: `id` (UUID)
+* Attributes: `source`, `target`, `bandwidth`.
+
+All Asset Intelligence tables have RLS active, with select rules allowing read access to authenticated SOC operators.
+

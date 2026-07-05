@@ -187,4 +187,27 @@ The Threat Intelligence Platform is built on top of our 3-tier architecture to s
 * **Correlation Engine**: Correlates incoming honeypots data (destination targets, source IPs) with active campaigns, malware families, and attributed threat actors using the `ioc_correlations` mapping schema.
 * **Plug-in Connector Framework**: Allows feed integrations to implement a common interface. Raw indicators collected by background daemons are written directly to `iocs` and mapped to `threat_actors` or `campaigns` to populate the dashboards dynamically.
 
+---
+
+## 8. Asset Intelligence & Attack Surface Management Architecture
+
+The Asset Intelligence Platform is built on top of our 3-tier architecture to support exploration, analysis, and correlations:
+
+```
+[ UI Pages / Assets ] (Tabs: Dashboard, Directory, Discovery, Topology)
+               │
+               ▼
+[ Business Layer / AssetService ] (Calculates metrics, runs Risk Engine calculations, exports CycloneDX SBOM)
+               │
+               ▼
+[ Repository Layer / AssetRepository ] (Queries PostgreSQL tables: assets, services, software_inventory, asset_relationships)
+               │
+               ▼
+[ Database Layer / Supabase PostgreSQL ] (Enforces RLS policies and cascades)
+```
+
+* **Asset Risk Engine (Weighted Matrix Engine)**: Dynamically evaluates the risk posture of every registered asset on fetch. The score is computed using criticality weights, port density metrics, internet-facing penalties, unpatched CVE vulnerability severity values, and active control credits (patches applied).
+* **Pluggable Scanner Plugin Coordinator**: Coordinates CLI scans using standard executors. It coordinates Nmap, RustScan, Masscan, Nuclei, WhatWeb, SSLyze, testssl.sh, Nikto, OpenVAS, and Greenbone. Telemetry outputs are parsed and written directly to the database.
+
+
 
