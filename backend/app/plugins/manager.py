@@ -4,6 +4,7 @@ from typing import Dict, Any, Type
 from app.plugins.base import BasePlugin
 from app.plugins.virustotal import VirusTotalPlugin
 from app.plugins.orchestrator import EnrichmentOrchestrator
+from app.plugins.discovery import DiscoveryOrchestrator
 
 logger = logging.getLogger("threatstream.plugins")
 
@@ -140,6 +141,7 @@ class PluginManager:
         "virustotal": VirusTotalPlugin,
         "nuclei": NucleiPlugin,
         "orchestrator": EnrichmentOrchestrator,
+        "discovery_orchestrator": DiscoveryOrchestrator,
         "default": DefaultPlugin
     }
 
