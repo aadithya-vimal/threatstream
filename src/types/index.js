@@ -275,6 +275,10 @@ export class Detection extends BaseModel {
     this.description = data.description || '';
     this.definition = data.definition || '';
     this.author = data.author || '';
+    this.version = data.version || '1.0';
+    this.tags = Array.isArray(data.tags) ? data.tags : [];
+    this.execution_count = typeof data.execution_count === 'number' ? data.execution_count : 0;
+    this.last_triggered = data.last_triggered || null;
   }
 }
 
@@ -285,11 +289,17 @@ export class Alert extends BaseModel {
   constructor(data = {}) {
     super(data);
     this.rule_id = data.rule_id || null;
-    this.title = data.title || '';
-    this.severity = data.severity || 'medium';
-    this.hostname = data.hostname || '';
-    this.details = data.details || '';
-    this.status = data.status || 'New';
+    this.telemetry_id = data.telemetry_id || null;
+    this.affected_asset_id = data.affected_asset_id || null;
+    this.severity = data.severity || 'medium'; // 'informational' | 'low' | 'medium' | 'high' | 'critical'
+    this.mitre_id = data.mitre_id || '';
+    this.mitre_name = data.mitre_name || '';
+    this.ioc_value = data.ioc_value || '';
+    this.threat_actor_id = data.threat_actor_id || null;
+    this.campaign_id = data.campaign_id || null;
+    this.risk_score = typeof data.risk_score === 'number' ? data.risk_score : 0;
+    this.evidence = data.evidence || null;
+    this.status = data.status || 'New'; // 'New' | 'In Progress' | 'Resolved' | 'False Positive'
   }
 }
 
