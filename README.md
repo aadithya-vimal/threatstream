@@ -574,14 +574,14 @@ ThreatStream includes a comprehensive operations management panel:
 
 ---
 
-### 🚀 Backend Execution Engine
+### 🛡️ Threat Intelligence Connector Framework
 
-ThreatStream features an asynchronous background job processing engine built on FastAPI:
+ThreatStream implements a production-grade, secure, and extensible Threat Intelligence Connector Framework:
 
-- **Asynchronous Worker**: Claims and runs queued jobs (scans, feed syncs, backups, YARA triggers) sequentially or concurrently.
-- **Common Plugin Interface**: Standardised `BasePlugin` structure enforcing common initialize, validate, execute, and cleanup lifecycles.
-- **Timed APScheduler**: Registers active scheduled tasks in database and fires automated jobs.
-- **FastAPI REST API**: Comprehensive protected routers managing job statuses (Create, Cancel, Pause, Resume, Retry), plugin parameters, and cron logs.
+- **Unified Interface**: Extends `BasePlugin` to enforce `initialize()`, `authenticate()`, `validate()`, `execute()`, `health()`, and `cleanup()`.
+- **VirusTotal Production Connector**: Provides real enrichment for domains, IPs, URLs, and file hashes (MD5, SHA-1, SHA-256) through the VirusTotal API v3.
+- **Secure Credentials**: Credentials are saved in Supabase and only read on the backend by the Service Role Key. Secrets are never exposed to the frontend.
+- **Intelligent Caching**: Keeps indicator results cached in `enrichment_results` for 24 hours to prevent exceeding provider API rate limits. Bypassing cache is supported through the UI.
 
 #### Running the Backend API
 1. Navigate to the backend directory:
@@ -600,4 +600,5 @@ ThreatStream features an asynchronous background job processing engine built on 
 ---
 
 ThreatStream combines cutting-edge visualization technology with real-time data streaming to create an unparalleled cyber threat monitoring experience.
+
 

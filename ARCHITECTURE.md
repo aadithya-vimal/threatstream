@@ -438,17 +438,54 @@ Every long-running action (scans, feed syncs, backups, YARA analysis) is seriali
 - **Graceful Control**: Active jobs are registered in memory. Pause, resume, and cancel operations are monitored inside the plugin progress callbacks by checking the real-time status of the job in the database.
 - **Failures Isolation**: Job executions are executed inside thread executors to keep the main worker loop non-blocking. Exceptions are captured and saved to the job `error` field, preventing worker crashes.
 
-### 11.3 Common Plugin Interface
-Every plugin extends the abstract `BasePlugin` class and implements four lifecycle methods:
-- `initialize(self) -> bool`: Verifies credentials, configurations, and binary dependencies.
-- `validate(self, payload: Dict[str, Any]) -> bool`: Inspects input parameters for vulnerabilities or range issues.
-- `execute(self, payload: Dict[str, Any], progress_callback) -> Dict[str, Any]`: Performs the core operation and invokes `progress_callback(int)` periodically.
-- `cleanup(self) -> bool`: Discards files, closes network descriptors, and frees memory.
+### 11.3 Threat Intelligence Connector Framework
 
-### 11.4 Timed Scheduler Integrations
+All threat intelligence integrations inherit from a unified connector structure based on the abstract `BasePlugin` class.
+
+#### 11.3.1 Required Method Signatures
+Every connector wrapper must implement six core lifecycle methods:
+- `initialize(self) -> bool`: Verifies API URLs, endpoints, and caches connectivity state.
+- `authenticate(self) -> bool`: Validates configured credentials against the remote service.
+- `validate(self, payload: Dict[str, Any]) -> bool`: Confirms the target payload formats match expected indicators (IP, domain, URL, hash).
+- `execute(self, payload: Dict[str, Any], progress_callback) -> Dict[str, Any]`: Executes real API requests, emits progress updates (0-100), parses threat metadata, and returns clean results.
+- `health(self) -> Dict[str, Any]`: Checks latency metrics, auth flags, and remaining quotas.
+- `cleanup(self) -> bool`: Tears down HTTP sessions and cleans up files.
+
+#### 11.3.2 Metadata Schema
+Every connector entry registers:
+- `name` (unique string key)
+- `display_name` (user-facing title)
+- `category` (`scanner` | `collector` | `edr` | `siem` | `threat_intel` | `enrichment`)
+- `version` (semantic string)
+- `description` (synopsis text)
+- `config` (JSONB storing API keys, hosts, timeouts)
+- `health` (JSONB storing status, quota remaining, last successful sync timestamp)
+- `status` (`active` | `inactive` | `error` | `not_configured`)
+
+### 11.4 Secure Credential Management
+API tokens and client secrets are handled with high security:
+- **No Frontend Exposure**: secrets are never sent back to the React UI. Fields show masked placeholders (`••••••••••••••••`) during retrieval.
+- **Service Role Verification**: Secrets are fetched only on the backend using the Supabase Service Role Key when spawning the job.
+- **Credential Rotation**: Saving new configurations calls `.authenticate()` immediately to validate credentials before updating database rows.
+- **Drift Auditing**: Configuration changes write a trace entry to the immutable `audit_logs` table.
+
+### 11.5 VirusTotal Production Connector
+A production-ready connector wrapper interacts with the real VirusTotal API v3:
+- **Supported Targets**: IP addresses, domain names, URLs, MD5, SHA-1, and SHA-256 hashes.
+- **URL Handling**: URL identifiers are converted into base64 url-safe representation without padding character (`=`).
+- **Data Extracted**: Detection ratio (malicious/total engines count), detailed vendor list, filenames, popular threat labels, file type descriptions, community reputation scores, and dates.
+- **Rate Limit Guarding**: Detects `429 Too Many Requests` responses and automatically retries after a 2-second sleep backoff.
+
+### 11.6 Intelligent Caching Layer
+To optimize performance and respect external API quotas, ThreatStream utilizes an automatic caching database table:
+- **Table**: `enrichment_results`
+- **Validity Window**: 24 hours. Queries for matching `ioc_value` within this window return results immediately without calling the remote API.
+- **Forced Bypass**: Passing `bypass_cache: true` in the job payload forces a fresh remote API query, updating the cache with the new value.
+
+### 11.7 Timed Scheduler Integrations
 Vulnerability scans, database backups, and intelligence feed pulls are scheduled using `APScheduler`. The scheduler polls the `scheduled_tasks` table on startup, schedules cron jobs, and when fired, inserts a new `queued` job into the background queue table for workers to consume.
 
-### 11.5 API Endpoints Summary
+### 11.8 API Endpoints Summary
 
 | Method | Endpoint | Description | Scope |
 |---|---|---|---|
@@ -462,6 +499,8 @@ Vulnerability scans, database backups, and intelligence feed pulls are scheduled
 | `POST` | `/api/v1/jobs/{id}/retry` | Clone and retry a failed job | Auth |
 | `GET` | `/api/v1/plugins` | List all connector plugins | Auth |
 | `POST` | `/api/v1/plugins/{id}/execute` | Run a plugin directly as a job | Auth |
+| `POST` | `/api/v1/plugins/{id}/config` | Securely configure secrets & API keys | Auth |
+| `POST` | `/api/v1/plugins/{id}/test` | Trigger connectivity health checks | Auth |
 | `GET` | `/api/v1/scheduler` | List scheduler tasks status | Auth |
 | `POST` | `/api/v1/scheduler/jobs` | Register a new cron task | Auth |
 | `POST` | `/api/v1/scheduler/{id}/toggle` | Enable or disable a cron task | Auth |
@@ -488,6 +527,8 @@ Vulnerability scans, database backups, and intelligence feed pulls are scheduled
 | Settings Hub | ✅ Live | SystemSettings | OperationsRepository | OperationsService |
 | Admin Panel | ✅ Live | Administration | UserRepository | UserService |
 | Backend Job Engine | ✅ Live | — | — | FastAPI / Workers |
+| VT Production Connector| ✅ Live | — | — | FastAPI / Plugins |
+
 
 
 
