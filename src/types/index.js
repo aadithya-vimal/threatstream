@@ -158,7 +158,7 @@ export class Service extends BaseModel {
 }
 
 /**
- * Vulnerability Model
+ * Vulnerability Model - CVE reference mapping database entries
  */
 export class Vulnerability extends BaseModel {
   constructor(data = {}) {
