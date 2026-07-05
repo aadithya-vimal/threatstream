@@ -332,6 +332,7 @@ export const Incidents = () => {
               </Panel>
 
               {/* Remediations playbooks */}
+              {/* Playbooks - Containment, Eradication, Recovery checklist steps */}
               <Panel title="Remediation Playbook Checklist">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {playbookItems.map(item => (
