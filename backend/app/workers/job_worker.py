@@ -80,7 +80,9 @@ class JobWorkerManager:
         plugin_name = "default"
         if job_type == "enrich":
             plugin_name = "orchestrator"
-        elif "nmap" in job_name.lower() or job_type == "scan":
+        elif job_type == "scan":
+            plugin_name = "discovery_orchestrator"
+        elif "nmap" in job_name.lower():
             plugin_name = "nmap"
         elif "virustotal" in job_name.lower():
             plugin_name = "virustotal"
