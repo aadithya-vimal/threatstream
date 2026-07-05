@@ -334,4 +334,44 @@ ThreatStream is designed as a read-only visualization platform with security bes
 
 ---
 
+## Threat Intelligence Platform (TIP) Specifications
+
+ThreatStream is equipped with a complete Threat Intelligence Platform module supporting ingest, search, correlation, and export of Indicators of Compromise (IOCs).
+
+### 1. Unified IOC Data Model
+Indicators are stored in the database mapped to the following entities catalog:
+* **Types Supported**: IP (IPv4 & IPv6), Domain, Subdomain, Hostname, URL, URI, Email, File Hashes (MD5, SHA-1, SHA-256, SHA-512), TLS/JA3 Certificate Fingerprints, ASN, CIDR blocks, registry keys, process names, and CVE/CWE references.
+* **Standard Fields**: Value, severity classification (`low`, `medium`, `high`, `critical`), confidence rate (0-100), reputation score, timezone dates (`first_seen`, `last_seen`, `expiration`), tags list, references, and geographic/WHOIS attributes.
+
+### 2. Mapped Relationship Vectors
+The data model implements logical mappings between IOC entries and structural threat campaigns:
+```
+[ IP / Domain Indicator ] ────► [ Malware Family ] ────► [ Affected Asset ]
+            │                           │
+            ▼                           ▼
+    [ Cyber Campaign ] ────────► [ Threat Actor Group ] ──► [ Incident Ticket ]
+```
+
+### 3. Campaign & Actor Profiling
+* **Threat Actors**: Tracks aliases, geographic origin, primary motivations, target industries, risk scores, and known malware signatures.
+* **Campaigns**: Tracks date ranges, affected sectors, target regions, references, and related CVE vulnerabilities.
+* **Malware Families**: Classifies capabilities, aliases, known C2 server IPs, and MITRE ATT&CK tactical techniques.
+
+### 4. Plug-in Feed Connector Interface
+Custom feed integrations (e.g. AbuseIPDB, GreyNoise, VirusTotal) implement a common connector plugin interface:
+```typescript
+interface ThreatFeedConnector {
+  id: string;
+  name: string;
+  active: boolean;
+  
+  initialize(): Promise<boolean>;
+  pollIOCs(since: Date): Promise<IOC[]>;
+  enrichIndicator(ioc: IOC): Promise<IOCEnrichmentData>;
+}
+```
+
+---
+
 ThreatStream combines cutting-edge visualization technology with real-time data streaming to create an unparalleled cyber threat monitoring experience.
+
