@@ -152,6 +152,9 @@ class DiscoveryOrchestrator(BasePlugin):
         Normalizes custom scanner outputs into the Unified Discovery Asset Schema.
         Returns a list of discovered host objects.
         """
+        if isinstance(raw, dict) and "discovered_hosts" in raw:
+            return raw["discovered_hosts"]
+
         hosts = []
         # Parse based on target IP representation
         host_ip = target
@@ -398,77 +401,136 @@ class DiscoveryOrchestrator(BasePlugin):
 
     def execute(self, payload: Dict[str, Any], progress_callback=None) -> Dict[str, Any]:
         """
-        Orchestrates the entire discovery scan pipeline.
+        Orchestrates the entire discovery scan pipeline (concurrently or sequentially).
         """
         target = payload.get("target", "")
-        if not target:
+        pipeline_stages = payload.get("pipeline")  # e.g., ["rustscan", "nmap", "whatweb"]
+        job_id = payload.get("job_id")
+
+        if not target and not pipeline_stages:
             raise ValueError("Discovery target scope is missing.")
 
         if progress_callback:
             progress_callback(10)
 
-        # 1. Fetch enabled scanners
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            active_scanners = loop.run_until_complete(self._fetch_active_scanners())
-        except Exception as e:
-            logger.error(f"Failed to fetch scanners: {str(e)}")
-            active_scanners = []
-
-        if not active_scanners:
-            logger.warning("No active discovery scanners registered.")
-            if progress_callback:
-                progress_callback(100)
-            return {
-                "status": "completed",
-                "assets_count": 0,
-                "message": "No active scanners deployed.",
-                "discovered_hosts": []
-            }
-
-        if progress_callback:
-            progress_callback(20)
-
-        # 2. Run scans concurrently
-        tasks = []
-        for scanner in active_scanners:
-            tasks.append(self._execute_scanner_async(scanner, target))
-
-        logger.info(f"Orchestrating {len(tasks)} scanners for target scope: {target}")
-        scanner_runs = []
-        if tasks:
-            try:
-                scanner_runs = loop.run_until_complete(asyncio.gather(*tasks))
-            except Exception as ge:
-                logger.error(f"Orchestration gather failed: {str(ge)}")
-            finally:
-                loop.close()
-
-        if progress_callback:
-            progress_callback(70)
-
-        # 3. Normalize outputs
         normalized_hosts = []
         completed_scanners = []
         failed_scanners = []
+        start_time = time.perf_counter()
 
-        for run in scanner_runs:
-            scanner_name = run["scanner"]
-            if run["status"] == "success":
-                completed_scanners.append(scanner_name)
-                norm = self._normalize_scanner_output(scanner_name, run["result"], target)
-                normalized_hosts.extend(norm)
-            else:
-                failed_scanners.append(scanner_name)
+        if pipeline_stages:
+            # ─── SEQUENTIAL PIPELINE EXECUTION ───
+            logger.info(f"Orchestrating sequential scan pipeline: {pipeline_stages}")
+            current_target = target
+
+            for idx, stage in enumerate(pipeline_stages):
+                # If target is empty, try to resolve from previous stages
+                if not current_target and normalized_hosts:
+                    unique_ips = list(set([h["ip"] for h in normalized_hosts if h.get("ip")]))
+                    if unique_ips:
+                        current_target = ",".join(unique_ips)
+
+                if not current_target:
+                    logger.warn(f"Skipping pipeline stage '{stage}' - no targets resolved.")
+                    continue
+
+                logger.info(f"Running pipeline stage {idx+1}/{len(pipeline_stages)}: {stage} targeting: {current_target}")
+                
+                # Fetch connector config details if available
+                config = {}
+                try:
+                    res = supabase_client.table("connectors") \
+                        .select("config") \
+                        .eq("plugin_type", stage) \
+                        .execute()
+                    if res.data:
+                        config = res.data[0].get("config") or {}
+                except Exception as dbe:
+                    logger.warn(f"Failed to fetch connector config for stage {stage}: {str(dbe)}")
+
+                try:
+                    plugin = PluginManager.get_plugin(stage, config=config)
+                    
+                    # Execute synchronous invocation
+                    stage_payload = {
+                        "target": current_target,
+                        "job_id": job_id
+                    }
+                    # Map custom Nuclei/Nmap payload fields
+                    if stage == "nuclei":
+                        stage_payload["profile"] = payload.get("profile", "default")
+                        stage_payload["severity"] = payload.get("severity")
+                        stage_payload["tags"] = payload.get("tags")
+                        stage_payload["custom_templates"] = payload.get("custom_templates")
+
+                    raw_result = plugin.execute(stage_payload)
+                    plugin.cleanup()
+
+                    completed_scanners.append(stage)
+                    norm = self._normalize_scanner_output(stage, raw_result, current_target)
+                    normalized_hosts.extend(norm)
+
+                except Exception as e:
+                    logger.error(f"Pipeline stage {stage} execution failed: {str(e)}")
+                    failed_scanners.append(stage)
+
+                if progress_callback:
+                    progress_callback(int(10 + (idx + 1) * 70 / len(pipeline_stages)))
+        else:
+            # ─── CONCURRENT PLUGGABLE SCANNER RUN ───
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                active_scanners = loop.run_until_complete(self._fetch_active_scanners())
+            except Exception as e:
+                logger.error(f"Failed to fetch scanners: {str(e)}")
+                active_scanners = []
+
+            if not active_scanners:
+                logger.warning("No active discovery scanners registered.")
+                if progress_callback:
+                    progress_callback(100)
+                return {
+                    "status": "completed",
+                    "assets_count": 0,
+                    "message": "No active scanners deployed.",
+                    "discovered_hosts": []
+                }
+
+            if progress_callback:
+                progress_callback(20)
+
+            tasks = []
+            for scanner in active_scanners:
+                tasks.append(self._execute_scanner_async(scanner, target))
+
+            logger.info(f"Orchestrating {len(tasks)} scanners concurrently for target scope: {target}")
+            scanner_runs = []
+            if tasks:
+                try:
+                    scanner_runs = loop.run_until_complete(asyncio.gather(*tasks))
+                except Exception as ge:
+                    logger.error(f"Orchestration gather failed: {str(ge)}")
+                finally:
+                    loop.close()
+
+            # Normalize outputs
+            for run in scanner_runs:
+                scanner_name = run["scanner"]
+                if run["status"] == "success":
+                    completed_scanners.append(scanner_name)
+                    norm = self._normalize_scanner_output(scanner_name, run["result"], target)
+                    normalized_hosts.extend(norm)
+                else:
+                    failed_scanners.append(scanner_name)
 
         if progress_callback:
             progress_callback(80)
 
-        # 4. Merge duplicate assets
+        # Merge duplicate assets
         merged_assets = self._merge_discovery_results(normalized_hosts)
 
-        # 5. Persist to database
+        # Persist to database
         saved_count = self._persist_discovered_assets(merged_assets)
 
         if progress_callback:
@@ -482,7 +544,7 @@ class DiscoveryOrchestrator(BasePlugin):
             "discovered_hosts": merged_assets,
             "timeline": {
                 "started_at": datetime.utcnow().isoformat(),
-                "duration_ms": int(time.perf_counter() * 1000) % 3000
+                "duration_ms": int((time.perf_counter() - start_time) * 1000)
             }
         }
 

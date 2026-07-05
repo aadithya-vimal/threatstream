@@ -7,6 +7,11 @@ from app.plugins.orchestrator import EnrichmentOrchestrator
 from app.plugins.discovery import DiscoveryOrchestrator
 from app.plugins.nmap import NmapDiscoveryPlugin
 from app.plugins.nuclei import NucleiDiscoveryPlugin
+from app.plugins.whatweb import WhatWebDiscoveryPlugin
+from app.plugins.sslyze import SSLyzeDiscoveryPlugin
+from app.plugins.masscan import MasscanDiscoveryPlugin
+from app.plugins.rustscan import RustScanDiscoveryPlugin
+from app.plugins.nikto import NiktoDiscoveryPlugin
 
 logger = logging.getLogger("threatstream.plugins")
 
@@ -142,6 +147,11 @@ class PluginManager:
         "nmap": NmapDiscoveryPlugin,
         "virustotal": VirusTotalPlugin,
         "nuclei": NucleiDiscoveryPlugin,
+        "whatweb": WhatWebDiscoveryPlugin,
+        "sslyze": SSLyzeDiscoveryPlugin,
+        "masscan": MasscanDiscoveryPlugin,
+        "rustscan": RustScanDiscoveryPlugin,
+        "nikto": NiktoDiscoveryPlugin,
         "orchestrator": EnrichmentOrchestrator,
         "discovery_orchestrator": DiscoveryOrchestrator,
         "default": DefaultPlugin
