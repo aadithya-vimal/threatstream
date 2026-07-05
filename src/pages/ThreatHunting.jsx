@@ -159,7 +159,7 @@ export function ThreatHunting() {
             <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0' }}>Investigation console — KQL-powered adversary hunt platform</p>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)', padding: '4px 10px', borderRadius: 4, border: '1px solid var(--border-color)', backgroundColor: 'rgba(16,185,129,0.05)', color: '#10b981' }}>● Live</span>
+            <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 4, border: '1px solid var(--border-color)', backgroundColor: 'rgba(16,185,129,0.05)', color: '#10b981' }}>● Live</span>
             <button style={{ padding: '8px 16px', backgroundColor: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: 5, color: '#3b82f6', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>+ New Hunt</button>
           </div>
         </div>

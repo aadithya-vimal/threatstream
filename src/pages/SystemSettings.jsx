@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Panel } from '../components/Panel';
 import { SectionHeader } from '../components/SectionHeader';
 import { StatusBadge } from '../components/StatusBadge';
+import DashboardLayout from '../layouts/DashboardLayout';
+import { Icon } from '../components/Icons';
 
 /* ─────────────────────────────────────────────
    Shared micro-components
@@ -985,67 +987,69 @@ export const SystemSettings = () => {
   const [activeSection, setActiveSection] = useState('general');
 
   return (
-    <div style={{ display: 'flex', height: '100%', minHeight: 0, gap: '0', overflow: 'hidden' }}>
-      {/* Left Sidebar */}
-      <aside
-        style={{
-          width: '210px',
-          flexShrink: 0,
-          backgroundColor: 'var(--panel-bg)',
-          borderRight: '1px solid var(--border-color)',
-          display: 'flex',
-          flexDirection: 'column',
-          overflowY: 'auto',
-          paddingTop: '8px',
-          paddingBottom: '8px',
-        }}
-      >
-        <div style={{ padding: '12px 16px 8px', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-          Settings
-        </div>
-        {NAV_ITEMS.map(({ key, label, icon }) => {
-          const active = activeSection === key;
-          return (
-            <button
-              key={key}
-              onClick={() => setActiveSection(key)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                padding: '9px 16px',
-                backgroundColor: active ? 'var(--color-blue-bg)' : 'transparent',
-                border: 'none',
-                borderLeft: `3px solid ${active ? 'var(--color-blue)' : 'transparent'}`,
-                color: active ? 'var(--color-blue)' : 'var(--text-secondary)',
-                fontSize: '13px',
-                fontWeight: active ? 600 : 400,
-                cursor: 'pointer',
-                width: '100%',
-                textAlign: 'left',
-                transition: 'all 150ms',
-              }}
-              className={active ? '' : 'sidebar-item-hover'}
-            >
-              <span style={{ fontSize: '16px', width: '20px', textAlign: 'center' }}>{icon}</span>
-              {label}
-            </button>
-          );
-        })}
-      </aside>
+    <DashboardLayout>
+      <div style={{ display: 'flex', height: '100%', minHeight: 0, gap: '0', overflow: 'hidden' }}>
+        {/* Left Sidebar */}
+        <aside
+          style={{
+            width: '210px',
+            flexShrink: 0,
+            backgroundColor: 'var(--panel-bg)',
+            borderRight: '1px solid var(--border-color)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflowY: 'auto',
+            paddingTop: '8px',
+            paddingBottom: '8px',
+          }}
+        >
+          <div style={{ padding: '12px 16px 8px', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            Settings
+          </div>
+          {NAV_ITEMS.map(({ key, label, icon }) => {
+            const active = activeSection === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setActiveSection(key)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '9px 16px',
+                  backgroundColor: active ? 'var(--color-blue-bg)' : 'transparent',
+                  border: 'none',
+                  borderLeft: `3px solid ${active ? 'var(--color-blue)' : 'transparent'}`,
+                  color: active ? 'var(--color-blue)' : 'var(--text-secondary)',
+                  fontSize: '13px',
+                  fontWeight: active ? 600 : 400,
+                  cursor: 'pointer',
+                  width: '100%',
+                  textAlign: 'left',
+                  transition: 'all 150ms',
+                }}
+                className={active ? '' : 'sidebar-item-hover'}
+              >
+                <span style={{ fontSize: '16px', width: '20px', textAlign: 'center' }}>{icon}</span>
+                {label}
+              </button>
+            );
+          })}
+        </aside>
 
-      {/* Main Content */}
-      <main
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '28px 32px',
-          backgroundColor: 'var(--bg-primary)',
-        }}
-      >
-        {SECTION_MAP[activeSection]}
-      </main>
-    </div>
+        {/* Main Content */}
+        <main
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: '28px 32px',
+            backgroundColor: 'var(--bg-primary)',
+          }}
+        >
+          {SECTION_MAP[activeSection]}
+        </main>
+      </div>
+    </DashboardLayout>
   );
 };
 
