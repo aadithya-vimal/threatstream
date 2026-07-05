@@ -146,3 +146,19 @@ Tracks connections between network topology nodes.
 
 All Asset Intelligence tables have RLS active, with select rules allowing read access to authenticated SOC operators.
 
+---
+
+## 7. Endpoint Telemetry & Alerts Schema
+
+The platform implements the following tables to manage event logs and triggers:
+
+### 1. `telemetry` (Expanded)
+Stores normalized telemetry events collected by forwarding agents.
+* Attributes: `pid`, `ppid`, `source` (Sysmon/Auditd/Zeek), `severity`, `mitre_id`, `mitre_name`, `mitre_tactic`, `parent_process`, `command_line`, `hash`, `raw_event` (JSONB), `normalized_event` (JSONB), `risk_score`, `correlation_id` (UUID).
+
+### 2. `alerts` (New)
+Stores security incidents triggered by matching rule definitions.
+* Primary Key: `id` (UUID)
+* Foreign Key: `rule_id` references `detections.id`, `telemetry_id` references `telemetry.id`, `affected_asset_id` references `assets.id`, `threat_actor_id` references `threat_actors.id`, `campaign_id` references `campaigns.id`
+* Attributes: `severity` (Critical, High, Medium, Low, Info), `ioc_value`, `risk_score`, `evidence` (JSONB), `status` (New, In Progress, Resolved).
+

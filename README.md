@@ -410,4 +410,38 @@ interface ScannerPlugin {
 
 ---
 
+## Endpoint Telemetry Platform & Detection Engineering Specifications
+
+ThreatStream is equipped with a high-fidelity Endpoint Telemetry Normalization Engine and live matching Rule Library.
+
+### 1. Telemetry Data Platform
+Supports normalized ingestion of Host Processes, Network Connections, Registry changes, DNS lookups, Scheduled Tasks, Driver loads, PowerShell blocks, and Linux syscalls. Each event contains:
+* **Event Metrics**: UUID, timestamp, process tree, PPID, parent process, hash, raw JSON payload, risk index, and correlation ID.
+* **Source Adapters**: Pre-defined adapters mapping Sysmon log format, Linux Auditd syscalls, Zeek DNS/conn log structures, Suricata alerts, Falco container profiles, and OSQuery snapshots.
+
+### 2. Live Detection Engine & Rule Library
+Standardized matching engine supporting Sigma YAML definitions and YARA metadata evaluations:
+```
+[ Raw Agent Stream Log ] ──► [ Event Normalizer ] ──► [ Rule Evaluator Engine ] ──► [ Threat Alert ]
+                                                              │
+                                                     (Sigma / YARA Catalog)
+```
+* **Alert Classifications**: Generates alerts categorized into Critical, High, Medium, Low, and Informational alerts containing triggered rules, affected assets, MITRE mapping, and correlation evidence.
+
+### 3. Forwarder Connector Interface
+Endpoint log forwarders and SIEM agents implement a common ingestion plugin interface:
+```typescript
+interface EDRForwarderConnector {
+  id: string;
+  name: string;
+  active: boolean;
+  
+  initialize(): Promise<boolean>;
+  onTelemetryReceived(callback: (rawPayload: any) => void): void;
+}
+```
+
+---
+
 ThreatStream combines cutting-edge visualization technology with real-time data streaming to create an unparalleled cyber threat monitoring experience.
+

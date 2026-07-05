@@ -209,5 +209,29 @@ The Asset Intelligence Platform is built on top of our 3-tier architecture to su
 * **Asset Risk Engine (Weighted Matrix Engine)**: Dynamically evaluates the risk posture of every registered asset on fetch. The score is computed using criticality weights, port density metrics, internet-facing penalties, unpatched CVE vulnerability severity values, and active control credits (patches applied).
 * **Pluggable Scanner Plugin Coordinator**: Coordinates CLI scans using standard executors. It coordinates Nmap, RustScan, Masscan, Nuclei, WhatWeb, SSLyze, testssl.sh, Nikto, OpenVAS, and Greenbone. Telemetry outputs are parsed and written directly to the database.
 
+---
+
+## 9. Endpoint Telemetry & Detection Engineering Architecture
+
+The Telemetry and Detection Platform is built on top of our 3-tier architecture:
+
+```
+[ UI Pages / ThreatHunting ] (Tabs: Dashboard, Explorer, Rules, Connectors)
+               │
+               ▼
+[ Business Layer / TelemetryService ] (Runs EventNormalizer, executes DetectionEngine matching, writes Alerts)
+               │
+               ▼
+[ Repository Layer / TelemetryRepository ] (Queries PostgreSQL tables: telemetry, alerts, detections)
+               │
+               ▼
+[ Database Layer / Supabase PostgreSQL ] (Enforces RLS policies and cascades)
+```
+
+* **Event Normalization Layer**: Maps heterogeneous logs (Sysmon, Windows Event Log, Linux Auditd, OSQuery snapshot, Zeek, Suricata, CrowdSec, Falco) to a unified event schema with standard PID, PPID, user, command line, severity, and correlation ID fields.
+* **Detection Engine Matcher**: Runs Sigma YAML queries and YARA metadata filters against incoming telemetry payloads in real-time. Matches trigger automated alerts containing evidence details, correlation identifiers, and MITRE mapping context.
+* **Alert & Timeline Engine**: Structures security alerts into chronological visual trees representing parent/child processes execution flow and logical threat actors attribution maps.
+
+
 
 
