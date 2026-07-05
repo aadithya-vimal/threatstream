@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
+import { OperationsService } from '../services/OperationsService';
 
 // ─── Mock Data ───────────────────────────────────────────────────────────────
 
@@ -154,23 +155,157 @@ export function IOCEnrichment() {
   const [enriched, setEnriched] = useState(false);
   const [resultTab, setResultTab] = useState('Provider Results');
   const [historyFilter, setHistoryFilter] = useState('');
+  
+  // Real backend connection states
+  const [jobProgress, setJobProgress] = useState(0);
+  const [jobStatus, setJobStatus] = useState('');
+  const [realResult, setRealResult] = useState(null);
+  
   const inputRef = useRef(null);
+  const opsService = new OperationsService();
 
   useEffect(() => {
     setDetectedType(detectIOCType(iocInput));
     setEnriched(false);
+    setRealResult(null);
+    setJobProgress(0);
   }, [iocInput]);
 
-  const handleEnrich = () => {
+  // Parse URL search params to auto-enrich if provided
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const iocParam = params.get('ioc');
+    if (iocParam) {
+      setIocInput(iocParam);
+      // Trigger execution directly using parameter value
+      const autoTrigger = async () => {
+        setEnriching(true);
+        setJobStatus('queued');
+        try {
+          const type = detectIOCType(iocParam);
+          const job = await opsService.createJob({
+            name: `VirusTotal IOC Enrichment: ${iocParam.trim()}`,
+            type: 'enrich',
+            payload: {
+              ioc_value: iocParam.trim(),
+              ioc_type: type === 'IPv4' ? 'ip' : type.toLowerCase()
+            }
+          });
+          if (!job || !job.id) {
+            setTimeout(() => {
+              setEnriching(false);
+              setEnriched(true);
+              setJobProgress(100);
+            }, 1800);
+            return;
+          }
+          const pollInterval = setInterval(async () => {
+            try {
+              const jobsList = await opsService.getJobs();
+              const currentJob = jobsList.find(j => j.id === job.id);
+              if (currentJob) {
+                setJobProgress(currentJob.progress || 0);
+                setJobStatus(currentJob.status);
+                if (currentJob.status === 'completed') {
+                  clearInterval(pollInterval);
+                  setRealResult(currentJob.result);
+                  setEnriching(false);
+                  setEnriched(true);
+                } else if (currentJob.status === 'failed' || currentJob.status === 'cancelled') {
+                  clearInterval(pollInterval);
+                  setEnriching(false);
+                  alert(`Enrichment job failed: ${currentJob.error || 'Unknown error'}`);
+                }
+              }
+            } catch (err) {
+              console.error("Enrichment auto polling error:", err);
+            }
+          }, 1000);
+        } catch (e) {
+          console.warn("Auto enrichment failed, using offline simulation:", e);
+          setTimeout(() => {
+            setEnriching(false);
+            setEnriched(true);
+          }, 1800);
+        }
+      };
+      autoTrigger();
+    }
+  }, []);
+
+  const handleEnrich = async (bypassCache = false) => {
     if (!iocInput.trim()) return;
     setEnriching(true);
-    setTimeout(() => { setEnriching(false); setEnriched(true); }, 1800);
+    setEnriched(false);
+    setRealResult(null);
+    setJobProgress(0);
+    setJobStatus('queued');
+
+    try {
+      const type = detectIOCType(iocInput);
+      // Construct payload for VirusTotal execution
+      const payload = {
+        ioc_value: iocInput.trim(),
+        ioc_type: type === 'IPv4' ? 'ip' : type.toLowerCase(),
+        bypass_cache: bypassCache
+      };
+
+      const job = await opsService.createJob({
+        name: `VirusTotal IOC Enrichment: ${iocInput.trim()}`,
+        type: 'enrich',
+        payload
+      });
+
+      if (!job || !job.id) {
+        // Fallback to mock behavior if backend is unavailable
+        setTimeout(() => {
+          setEnriching(false);
+          setEnriched(true);
+          setJobProgress(100);
+        }, 1800);
+        return;
+      }
+
+      // Start polling status
+      const pollInterval = setInterval(async () => {
+        try {
+          const jobsList = await opsService.getJobs();
+          const currentJob = jobsList.find(j => j.id === job.id);
+          if (currentJob) {
+            setJobProgress(currentJob.progress || 0);
+            setJobStatus(currentJob.status);
+
+            if (currentJob.status === 'completed') {
+              clearInterval(pollInterval);
+              setRealResult(currentJob.result);
+              setEnriching(false);
+              setEnriched(true);
+            } else if (currentJob.status === 'failed' || currentJob.status === 'cancelled') {
+              clearInterval(pollInterval);
+              setEnriching(false);
+              alert(`Enrichment job failed: ${currentJob.error || 'Unknown error'}`);
+            }
+          }
+        } catch (err) {
+          console.error("Enrichment polling error:", err);
+        }
+      }, 1000);
+
+    } catch (e) {
+      console.warn("Backend enrichment trigger failed, using offline simulation:", e);
+      setTimeout(() => {
+        setEnriching(false);
+        setEnriched(true);
+      }, 1800);
+    }
   };
 
   const handleClear = () => {
     setIocInput('');
     setDetectedType(null);
     setEnriched(false);
+    setRealResult(null);
+    setJobProgress(0);
     inputRef.current?.focus();
   };
 
@@ -257,12 +392,18 @@ export function IOCEnrichment() {
                   <div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Aggregate Verdict — {iocInput}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <VerdictBadge verdict="Malicious" />
-                      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{activeProviders.length}/{activeProviders.length} providers agree · Confidence 93%</span>
+                      <VerdictBadge verdict={realResult ? realResult.verdict : 'Malicious'} />
+                      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                        {realResult ? (
+                          `VirusTotal Engine Detects: ${realResult.detection_ratio || 'N/A'}`
+                        ) : (
+                          `${activeProviders.length}/${activeProviders.length} providers agree · Confidence 93%`
+                        )}
+                      </span>
                     </div>
                   </div>
                   <div style={{ flex: 1 }} />
-                  <ScoreRing score={78} label="Risk Score" />
+                  <ScoreRing score={realResult ? (realResult.risk_score !== undefined ? realResult.risk_score : 78) : 78} label="Risk Score" />
                 </div>
 
                 {/* Result tabs */}
@@ -277,14 +418,20 @@ export function IOCEnrichment() {
                 <div style={{ padding: 16, overflowY: 'auto', maxHeight: 320 }}>
                   {enriching && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div style={{ padding: '10px 14px', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 5, border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)' }}>
+                          <span>Background Job State: <strong style={{ color: '#eab308', textTransform: 'uppercase' }}>{jobStatus}</strong></span>
+                          <span>Progress: {jobProgress}%</span>
+                        </div>
+                        <div style={{ width: '100%', height: 6, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', backgroundColor: '#3b82f6', borderRadius: 3, width: `${jobProgress}%`, transition: 'width 0.2s' }} />
+                        </div>
+                      </div>
                       {activeProviders.map((p, i) => (
                         <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 5, border: '1px solid var(--border-color)' }}>
                           <span style={{ fontSize: 18 }}>{p.icon}</span>
                           <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: 'var(--text-primary)' }}>{p.name}</span>
-                          <div style={{ width: 80, height: 5, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden' }}>
-                            <div style={{ height: '100%', backgroundColor: '#3b82f6', borderRadius: 3, width: `${Math.min(100, (Date.now() % 1000) / 10)}%`, animation: 'none' }} />
-                          </div>
-                          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Querying...</span>
+                          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Running job...</span>
                         </div>
                       ))}
                     </div>
@@ -293,8 +440,27 @@ export function IOCEnrichment() {
                   {enriched && resultTab === 'Provider Results' && (
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                       {activeProviders.map(p => {
-                        const res = PROVIDER_RESULTS_MOCK[p.id] || { verdict: 'Malicious', confidence: 85, score: 68, findings: ['Threat identified', 'Active at time of query'] };
-                        const color = res.verdict === 'Malicious' ? '#ef4444' : res.verdict === 'Suspicious' ? '#eab308' : '#10b981';
+                        let res = PROVIDER_RESULTS_MOCK[p.id];
+                        if (p.id === 'vt' && realResult) {
+                          const details = [];
+                          if (realResult.detection_ratio) details.push(`Detection Ratio: ${realResult.detection_ratio}`);
+                          if (realResult.popular_threat_label && realResult.popular_threat_label !== 'Unknown') details.push(`Threat Label: ${realResult.popular_threat_label}`);
+                          if (realResult.file_type && realResult.file_type !== 'N/A') details.push(`File Type: ${realResult.file_type}`);
+                          if (realResult.names && realResult.names.length > 0) details.push(`Names: ${realResult.names.slice(0, 3).join(', ')}`);
+                          if (realResult.first_seen) {
+                            const dateVal = typeof realResult.first_seen === 'number' ? realResult.first_seen * 1000 : realResult.first_seen;
+                            details.push(`First Seen: ${new Date(dateVal).toLocaleDateString()}`);
+                          }
+                          if (realResult.reputation !== undefined) details.push(`Community Reputation: ${realResult.reputation}`);
+                          
+                          res = {
+                            verdict: realResult.verdict ? realResult.verdict.charAt(0).toUpperCase() + realResult.verdict.slice(1) : 'Clean',
+                            confidence: 100,
+                            findings: details.length > 0 ? details : ['Analyzed successfully, no threats identified.']
+                          };
+                        }
+                        
+                        const color = res.verdict === 'Malicious' || res.verdict === 'malicious' ? '#ef4444' : res.verdict === 'Suspicious' || res.verdict === 'suspicious' ? '#eab308' : '#10b981';
                         return (
                           <div key={p.id} style={{ backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 6, padding: 14, border: `1px solid ${color}20` }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
