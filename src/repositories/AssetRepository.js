@@ -270,7 +270,7 @@ export class AssetRepository {
   }
 
   /**
-   * Fetch Switch-Routing Topology Map nodes
+   * Fetch Switch-Routing Topology Map nodes - correlation engine mapping
    */
   async getNetworkTopology() {
     try {
