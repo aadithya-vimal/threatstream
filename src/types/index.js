@@ -144,7 +144,7 @@ export class OpenPort extends BaseModel {
 }
 
 /**
- * Active Service Model
+ * Active Service Model - Running port daemon listener mapping
  */
 export class Service extends BaseModel {
   constructor(data = {}) {
