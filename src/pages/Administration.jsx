@@ -1,6 +1,6 @@
 /**
  * src/pages/Administration.jsx
- * Enterprise SOC Administration and Systems Configuration Panel
+ * Enterprise SOC Administration and Systems Configuration Panel - User Directory
  */
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
