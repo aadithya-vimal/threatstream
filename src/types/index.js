@@ -76,6 +76,29 @@ export class Asset extends BaseModel {
     this.owner = data.owner || '';
     this.last_seen = data.last_seen || new Date().toISOString();
     this.patch_status = data.patch_status || 'Up to Date';
+    this.display_name = data.display_name || '';
+    this.ipv6 = data.ipv6 || '';
+    this.architecture = data.architecture || '';
+    this.manufacturer = data.manufacturer || '';
+    this.model = data.model || '';
+    this.serial_number = data.serial_number || '';
+    this.environment = data.environment || 'Production'; // 'Production' | 'Development' | 'Testing'
+    this.department = data.department || '';
+    this.business_unit = data.business_unit || '';
+    this.tags = Array.isArray(data.tags) ? data.tags : [];
+    this.security_score = typeof data.security_score === 'number' ? data.security_score : 100;
+    this.internet_facing = typeof data.internet_facing === 'boolean' ? data.internet_facing : false;
+    this.cloud_provider = data.cloud_provider || '';
+    this.location = data.location || '';
+    this.first_seen = data.first_seen || new Date().toISOString();
+    this.lifecycle_status = data.lifecycle_status || 'Active';
+    // Sub-registries & relations mappings
+    this.networkInterfaces = Array.isArray(data.networkInterfaces) ? data.networkInterfaces : [];
+    this.openPorts = Array.isArray(data.openPorts) ? data.openPorts : [];
+    this.services = Array.isArray(data.services) ? data.services : [];
+    this.detectedCVEs = Array.isArray(data.detectedCVEs) ? data.detectedCVEs : [];
+    this.installedSoftware = Array.isArray(data.installedSoftware) ? data.installedSoftware : [];
+    this.recommendations = Array.isArray(data.recommendations) ? data.recommendations : [];
   }
 }
 
