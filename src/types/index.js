@@ -131,7 +131,7 @@ export class NetworkInterface extends BaseModel {
 }
 
 /**
- * Open Port Model
+ * Open Port Model - Listening socket port indicator
  */
 export class OpenPort extends BaseModel {
   constructor(data = {}) {
