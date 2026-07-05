@@ -6,6 +6,7 @@ from app.plugins.virustotal import VirusTotalPlugin
 from app.plugins.orchestrator import EnrichmentOrchestrator
 from app.plugins.discovery import DiscoveryOrchestrator
 from app.plugins.nmap import NmapDiscoveryPlugin
+from app.plugins.nuclei import NucleiDiscoveryPlugin
 
 logger = logging.getLogger("threatstream.plugins")
 
@@ -140,7 +141,7 @@ class PluginManager:
     _registry: Dict[str, Type[BasePlugin]] = {
         "nmap": NmapDiscoveryPlugin,
         "virustotal": VirusTotalPlugin,
-        "nuclei": NucleiPlugin,
+        "nuclei": NucleiDiscoveryPlugin,
         "orchestrator": EnrichmentOrchestrator,
         "discovery_orchestrator": DiscoveryOrchestrator,
         "default": DefaultPlugin

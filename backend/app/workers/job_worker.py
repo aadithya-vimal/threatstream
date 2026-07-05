@@ -147,10 +147,13 @@ class JobWorkerManager:
             plugin = PluginManager.get_plugin(plugin_name, config=connector_config)
             
             # Use run_in_executor to avoid blocking the asyncio event loop
-            loop = asyncio.get_running_loop()
+            job_payload = job.get("payload", {}) or {}
+            if isinstance(job_payload, dict):
+                job_payload["job_id"] = job_id
+            
             result = await loop.run_in_executor(
                 None,
-                lambda: plugin.execute(job.get("payload", {}), progress_callback)
+                lambda: plugin.execute(job_payload, progress_callback)
             )
 
             # Cleanup
