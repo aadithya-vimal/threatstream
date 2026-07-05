@@ -237,3 +237,9 @@ The Discovery Orchestrator parses unified scans and records data to:
 * **`services`**: Overrides and syncs open ports, protocol (TCP/UDP), product, and service versions.
 * **`asset_vulnerabilities`**: Maps vulnerability matches (CVEs) found during template checks to the corresponding asset.
 
+### 5. Nmap Discovery Scanner Integration
+Executes real binary command `nmap` and parses the standard XML format outputs (`-oX -`):
+* Tracks scan statuses, latency milliseconds, and parsed banners.
+* Supports timing and profiling matrices: Quick Scan (`-T4 -F`), Full TCP Scan (`-T4 -p-`), UDP Scan (`-sU -T4 -F`), Service detection (`-sV -T4`), OS guessing (`-O -T4`), Aggressive (`-A -T4`).
+* Whitelists target host inputs to avoid shell command injections.
+
