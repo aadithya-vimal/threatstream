@@ -432,9 +432,29 @@ export const ThreatIntelligence = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxHeight: '680px', overflowY: 'auto', paddingRight: '4px' }}>
                   <div>
                     <span style={{ fontSize: '15px', fontWeight: 700, fontFamily: 'monospace', color: 'var(--color-blue)', wordBreak: 'break-all' }}>{selectedIOCDetails.value}</span>
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '6px', alignItems: 'center' }}>
                       <StatusBadge status={selectedIOCDetails.severity} text={selectedIOCDetails.severity} />
                       <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Confidence: {selectedIOCDetails.confidence}%</span>
+                    </div>
+                    <div style={{ marginTop: '10px' }}>
+                      <button
+                        onClick={() => window.location.href = `/ioc-enrichment?ioc=${encodeURIComponent(selectedIOCDetails.value)}`}
+                        style={{
+                          padding: '6px 12px',
+                          backgroundColor: '#2563eb',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        ⚡ Enrich with VirusTotal
+                      </button>
                     </div>
                   </div>
 
