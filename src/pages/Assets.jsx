@@ -15,6 +15,7 @@ import LoadingState from '../components/LoadingState';
 import EmptyState from '../components/EmptyState';
 import { Icon } from '../components/Icons';
 import { AssetService } from '../services/AssetService';
+import { OperationsService } from '../services/OperationsService';
 
 const assetService = new AssetService();
 
@@ -53,6 +54,16 @@ export const Assets = () => {
   const [scannerId, setScannerId] = useState('nmap');
   const [isScanning, setIsScanning] = useState(false);
   const [scanOutput, setScanOutput] = useState(null);
+
+  // Discovery orchestrator states
+  const [jobProgress, setJobProgress] = useState(0);
+  const [jobStatus, setJobStatus] = useState('');
+  const [discoveredHosts, setDiscoveredHosts] = useState([]);
+  const [runningScanners, setRunningScanners] = useState([]);
+  const [failedScanners, setFailedScanners] = useState([]);
+  const [scanTimeline, setScanTimeline] = useState(null);
+
+  const opsService = new OperationsService();
 
   // Load Platform Datasets
   useEffect(() => {
@@ -193,18 +204,85 @@ export const Assets = () => {
     alert('Assets ownership updated successfully.');
   };
 
-  // Run mock discovery check
+  // Run discovery scan via backend job orchestrator
   const executeScan = async () => {
     setIsScanning(true);
     setScanOutput(null);
+    setDiscoveredHosts([]);
+    setJobProgress(0);
+    setJobStatus('queued');
+    setRunningScanners([]);
+    setFailedScanners([]);
+
     try {
-      await new Promise(resolve => setTimeout(resolve, 2500));
-      const res = await assetService.runDiscovery(scannerId, scanTarget);
-      setScanOutput(res);
-    } catch (err) {
-      alert(`Scan execution failed: ${err.message}`);
-    } finally {
-      setIsScanning(false);
+      const job = await opsService.createJob({
+        name: `Asset Discovery Scan: ${scanTarget}`,
+        type: 'scan',
+        payload: {
+          target: scanTarget,
+          scanner: scannerId
+        }
+      });
+
+      if (!job || !job.id) {
+        // Mock fallback
+        setTimeout(async () => {
+          try {
+            const res = await assetService.runDiscovery(scannerId, scanTarget);
+            setScanOutput(res);
+          } catch (e) {
+            console.error(e);
+          } finally {
+            setIsScanning(false);
+          }
+        }, 2500);
+        return;
+      }
+
+      const pollInterval = setInterval(async () => {
+        try {
+          const jobsList = await opsService.getJobs();
+          const currentJob = jobsList.find(j => j.id === job.id);
+          if (currentJob) {
+            setJobProgress(currentJob.progress || 0);
+            setJobStatus(currentJob.status);
+
+            if (currentJob.status === 'completed') {
+              clearInterval(pollInterval);
+              setIsScanning(false);
+              const result = currentJob.result || {};
+              setScanOutput(result);
+              setDiscoveredHosts(result.discovered_hosts || []);
+              setRunningScanners(result.scanners_run || []);
+              setFailedScanners(result.scanners_failed || []);
+              setScanTimeline(result.timeline || null);
+              
+              // Refresh active assets directory list from backend
+              const updatedList = await assetService.getAssets();
+              setAssets(updatedList);
+            } else if (currentJob.status === 'failed' || currentJob.status === 'cancelled') {
+              clearInterval(pollInterval);
+              setIsScanning(false);
+              alert(`Scan execution failed: ${currentJob.error || 'Unknown error'}`);
+            }
+          }
+        } catch (err) {
+          console.error("Discovery scan polling error:", err);
+        }
+      }, 1000);
+
+    } catch (e) {
+      console.warn("Backend scan trigger failed, using offline simulation:", e);
+      setTimeout(async () => {
+        try {
+          const res = await assetService.runDiscovery(scannerId, scanTarget);
+          setScanOutput(res);
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setIsScanning(false);
+        }
+      }, 2500);
     }
   };
 
@@ -655,52 +733,106 @@ export const Assets = () => {
             </div>
           </Panel>
 
-          <Panel title="Scanner CLI Terminal Console Output">
+          <Panel title="Discovery Scan Status & Results">
             {isScanning ? (
-              <LoadingState message={`Executing binary scan on ${scanTarget} using ${scannerId}...`} />
-            ) : scanOutput ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={{ padding: '4px 8px', backgroundColor: 'var(--bg-secondary)', borderLeft: '3px solid var(--color-low)', fontSize: '11px', color: 'var(--color-low)', fontWeight: 600 }}>
-                  SCAN EXECUTION COMPLETED SUCCESSFULLY
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <LoadingState message={`Executing Discovery on target: ${scanTarget}...`} />
+                <div style={{ padding: '14px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', borderRadius: 6, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                    <span>Orchestrated Job Status: <strong style={{ color: 'var(--color-orange)', textTransform: 'uppercase' }}>{jobStatus}</strong></span>
+                    <span>Progress: {jobProgress}%</span>
+                  </div>
+                  <div style={{ width: '100%', height: '8px', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden' }}>
+                    <div style={{ width: `${jobProgress}%`, height: '100%', backgroundColor: 'var(--color-blue)', borderRadius: 4, transition: 'width 0.2s' }}></div>
+                  </div>
                 </div>
-                <pre style={{
-                  backgroundColor: 'var(--bg-primary)',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: '4px',
-                  color: '#34d399',
-                  fontFamily: 'monospace',
-                  fontSize: '12px',
-                  padding: '16px',
-                  overflowX: 'auto',
-                  maxHeight: '320px',
-                  lineHeight: '1.5'
-                }}>
-                  {scannerId === 'nmap' && (
-                    `$ nmap -sV -p- ${scanTarget}
-Starting Nmap 7.92 ( https://nmap.org ) at 2026-07-05 11:43 UTC
-Nmap scan report for ${scanTarget}
-Host is up (0.00012s latency).
-PORT     STATE SERVICE VERSION
-22/tcp   open  ssh     OpenSSH 8.2p1
-80/tcp   open  http    Apache httpd 2.4.41
-443/tcp  open  https   Apache httpd 2.4.41`
-                  )}
-                  {scannerId === 'nuclei' && (
-                    `$ nuclei -target ${scanTarget}
-[CVE-2021-44228] [http] [critical] Apache Log4j RCE matched on target gateway.
-[INFO] Scanning completed. 1 critical vulnerability discovered.`
-                  )}
-                  {scannerId === 'sslyze' && (
-                    `$ sslyze --regular ${scanTarget}
-SCAN RESULTS FOR: ${scanTarget}:443
-  * Protocols supported: TLS 1.2, TLS 1.3
-  * Cipher suite audits: All ciphers compliant.`
-                  )}
-                  {!['nmap', 'nuclei', 'sslyze'].includes(scannerId) && (
-                    `[MOCK OUTPUT] Executed scanner daemon plugin: ${scannerId}
-Output: Target ${scanTarget} profiled. No anomalies identified.`
-                  )}
-                </pre>
+              </div>
+            ) : scanOutput ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ padding: '6px 12px', backgroundColor: 'rgba(16,185,129,0.1)', borderLeft: '4px solid #10b981', fontSize: '12px', color: '#10b981', fontWeight: 700 }}>
+                  ORCHESTRATED DISCOVERY COMPLETED SUCCESSFULLY
+                </div>
+
+                {discoveredHosts && discoveredHosts.length > 0 ? (
+                  <div>
+                    <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Discovered Ingress Assets</h4>
+                    <DataTable
+                      headers={[
+                        { key: 'ip', label: 'IP Address' },
+                        { key: 'hostname', label: 'Hostname' },
+                        { key: 'os', label: 'Operating System' },
+                        { key: 'ports', label: 'Open Ports' },
+                        { key: 'asn', label: 'ASN' },
+                        { key: 'geoip', label: 'Location' }
+                      ]}
+                      data={discoveredHosts.map(host => ({
+                        ip: <strong style={{ fontFamily: 'monospace' }}>{host.ip}</strong>,
+                        hostname: <span style={{ color: 'var(--color-blue)', fontFamily: 'monospace' }}>{host.hostname}</span>,
+                        os: host.os,
+                        ports: (
+                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                            {host.ports.map(p => (
+                              <span key={p.port} style={{ padding: '2px 6px', backgroundColor: 'rgba(59,130,246,0.15)', color: '#3b82f6', borderRadius: 4, fontSize: 10, fontWeight: 700 }}>
+                                {p.port}/{p.service}
+                              </span>
+                            ))}
+                          </div>
+                        ),
+                        asn: host.asn,
+                        geoip: host.geoip
+                      }))}
+                    />
+                  </div>
+                ) : (
+                  <div style={{ padding: '14px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 5, fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                    No corporate assets resolved on active subnets. Check target configuration.
+                  </div>
+                )}
+
+                {scanTimeline && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, padding: 12, backgroundColor: 'rgba(0,0,0,0.15)', borderRadius: 5, border: '1px solid var(--border-color)', fontSize: '12px' }}>
+                    <div>
+                      <span style={{ color: 'var(--text-secondary)' }}>Started At:</span>{' '}
+                      <strong>{new Date(scanTimeline.started_at).toLocaleString()}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-secondary)' }}>Scan Duration:</span>{' '}
+                      <strong>{scanTimeline.duration_ms} ms</strong>
+                    </div>
+                    {runningScanners.length > 0 && (
+                      <div style={{ gridColumn: 'span 2' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>Triggered Scanners:</span>{' '}
+                        <strong>{runningScanners.join(', ')}</strong>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div>
+                  <h4 style={{ margin: '0 0 8px 0', fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Scanner Console Log Outputs</h4>
+                  <pre style={{
+                    backgroundColor: 'var(--bg-primary)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '4px',
+                    color: '#34d399',
+                    fontFamily: 'monospace',
+                    fontSize: '11px',
+                    padding: '12px',
+                    overflowX: 'auto',
+                    maxHeight: '180px',
+                    lineHeight: '1.4'
+                  }}>
+                    {scanOutput.discovered_hosts ? (
+                      JSON.stringify(scanOutput, null, 2)
+                    ) : (
+                      `$ mock-scan --target ${scanTarget}\n` +
+                      (scannerId === 'nmap' ? 
+                        `Starting Nmap 7.92 ( https://nmap.org )\nNmap scan report for ${scanTarget}\n22/tcp open ssh OpenSSH\n80/tcp open http Apache` :
+                        `[Mock Ingress logs] Completed scan against ${scanTarget} using ${scannerId}.`
+                      )
+                    )}
+                  </pre>
+                </div>
               </div>
             ) : (
               <EmptyState 
