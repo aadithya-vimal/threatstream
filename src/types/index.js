@@ -336,7 +336,7 @@ export class SystemSettings extends BaseModel {
 }
 
 /**
- * Threat Actor Model
+ * Threat Actor Model - Group profiles mapping database entities
  */
 export class ThreatActor extends BaseModel {
   constructor(data = {}) {
