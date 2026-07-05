@@ -574,7 +574,30 @@ ThreatStream includes a comprehensive operations management panel:
 
 ---
 
+### 🚀 Backend Execution Engine
+
+ThreatStream features an asynchronous background job processing engine built on FastAPI:
+
+- **Asynchronous Worker**: Claims and runs queued jobs (scans, feed syncs, backups, YARA triggers) sequentially or concurrently.
+- **Common Plugin Interface**: Standardised `BasePlugin` structure enforcing common initialize, validate, execute, and cleanup lifecycles.
+- **Timed APScheduler**: Registers active scheduled tasks in database and fires automated jobs.
+- **FastAPI REST API**: Comprehensive protected routers managing job statuses (Create, Cancel, Pause, Resume, Retry), plugin parameters, and cron logs.
+
+#### Running the Backend API
+1. Navigate to the backend directory:
+   ```bash
+   cd backend
+   ```
+2. Install python dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Run the uvicorn development server:
+   ```bash
+   uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+   ```
+
+---
+
 ThreatStream combines cutting-edge visualization technology with real-time data streaming to create an unparalleled cyber threat monitoring experience.
-
-
 

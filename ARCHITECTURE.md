@@ -394,7 +394,81 @@ Supports three backup channels:
 
 ---
 
-## 11. Final Product Modules Summary
+## 11. Backend Execution Engine Architecture
+
+A production-ready FastAPI backend is located in the `backend/` directory to coordinate and execute all long-running tasks.
+
+### 11.1 Directory Structure
+```
+backend/
+├── app/
+│   ├── api/
+│   │   └── endpoints/         <-- REST API routes (jobs, plugins, scheduler)
+│   ├── core/                  <-- Security, JWT tokens validation, and config parameters
+│   ├── database/              <-- Service Role Supabase Client
+│   ├── models/                <-- Job state models
+│   ├── schemas/               <-- Pydantic request/response schemas
+│   ├── plugins/               <-- Interface base classes and connectors stubs
+│   ├── scheduler/             <-- APScheduler task triggers
+│   ├── workers/               <-- Async background loops and queue claimers
+│   └── main.py                <-- FastAPI entrypoint and startup events
+└── requirements.txt
+```
+
+### 11.2 Job Execution Flow & Worker Lifecycle
+Every long-running action (scans, feed syncs, backups, YARA analysis) is serialized as a Job in the `jobs` database table.
+
+```
+[Frontend Button]
+       │ (HTTP POST /api/v1/jobs)
+       ▼
+[FastAPI Server] ──(Insert 'queued' job into database)──> [Supabase Table: jobs]
+                                                                  │
+                                                                  ▼
+[Worker Poll Loop] <──(Claims job, updates state to 'running')────┘
+       │
+       ├─► [Loads selected plugin by name]
+       ├─► [Executes payload & captures progress callback]
+       │
+       ▼
+[Completed / Failed] ──(Updates status and saves final result)──> [Supabase Table: jobs]
+```
+
+- **Claims Model**: Bypasses row-level security using the Service Role Key to poll for `queued` jobs, ordered by priority. The worker uses a atomic update lock to claim jobs (updates status to `running` where status was `queued`).
+- **Graceful Control**: Active jobs are registered in memory. Pause, resume, and cancel operations are monitored inside the plugin progress callbacks by checking the real-time status of the job in the database.
+- **Failures Isolation**: Job executions are executed inside thread executors to keep the main worker loop non-blocking. Exceptions are captured and saved to the job `error` field, preventing worker crashes.
+
+### 11.3 Common Plugin Interface
+Every plugin extends the abstract `BasePlugin` class and implements four lifecycle methods:
+- `initialize(self) -> bool`: Verifies credentials, configurations, and binary dependencies.
+- `validate(self, payload: Dict[str, Any]) -> bool`: Inspects input parameters for vulnerabilities or range issues.
+- `execute(self, payload: Dict[str, Any], progress_callback) -> Dict[str, Any]`: Performs the core operation and invokes `progress_callback(int)` periodically.
+- `cleanup(self) -> bool`: Discards files, closes network descriptors, and frees memory.
+
+### 11.4 Timed Scheduler Integrations
+Vulnerability scans, database backups, and intelligence feed pulls are scheduled using `APScheduler`. The scheduler polls the `scheduled_tasks` table on startup, schedules cron jobs, and when fired, inserts a new `queued` job into the background queue table for workers to consume.
+
+### 11.5 API Endpoints Summary
+
+| Method | Endpoint | Description | Scope |
+|---|---|---|---|
+| `POST` | `/api/v1/jobs` | Enqueue a new execution job | Auth |
+| `GET` | `/api/v1/jobs` | Query platform background jobs | Auth |
+| `GET` | `/api/v1/jobs/{id}` | Inspect detail status and logs | Auth |
+| `DELETE` | `/api/v1/jobs/{id}` | Delete job history record | Auth |
+| `POST` | `/api/v1/jobs/{id}/cancel` | Cancel a running/queued job | Auth |
+| `POST` | `/api/v1/jobs/{id}/pause` | Pause an active execution | Auth |
+| `POST` | `/api/v1/jobs/{id}/resume` | Resume a paused execution | Auth |
+| `POST` | `/api/v1/jobs/{id}/retry` | Clone and retry a failed job | Auth |
+| `GET` | `/api/v1/plugins` | List all connector plugins | Auth |
+| `POST` | `/api/v1/plugins/{id}/execute` | Run a plugin directly as a job | Auth |
+| `GET` | `/api/v1/scheduler` | List scheduler tasks status | Auth |
+| `POST` | `/api/v1/scheduler/jobs` | Register a new cron task | Auth |
+| `POST` | `/api/v1/scheduler/{id}/toggle` | Enable or disable a cron task | Auth |
+
+---
+
+## 12. Final Product Modules Summary
 
 | Module | Status | Pages | Repository | Service |
 |---|---|---|---|---|
@@ -413,6 +487,8 @@ Supports three backup channels:
 | Audit Trail | ✅ Live | AuditLog | OperationsRepository | OperationsService |
 | Settings Hub | ✅ Live | SystemSettings | OperationsRepository | OperationsService |
 | Admin Panel | ✅ Live | Administration | UserRepository | UserService |
+| Backend Job Engine | ✅ Live | — | — | FastAPI / Workers |
+
 
 
 
