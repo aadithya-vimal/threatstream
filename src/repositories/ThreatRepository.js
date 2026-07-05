@@ -7,6 +7,21 @@ import { Threat, IOC } from '../types';
 
 export class ThreatRepository {
   constructor() {
+    this.mockActors = [
+      { id: 'actor-1', name: 'APT29 (Cozy Bear)', aliases: ['UNC2452', 'NOBELIUM'], country: 'RU', motivation: 'Espionage', target_industries: ['Government', 'Defense', 'NGO'], risk_score: 90, status: 'Active', description: 'Russian state-sponsored cyber espionage group active since at least 2008.', mitre_techniques: ['T1071', 'T1566'], created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+      { id: 'actor-2', name: 'Lazarus Group', aliases: ['Hidden Cobra', 'APT38'], country: 'KP', motivation: 'Financial Gain', target_industries: ['Banking', 'Cryptocurrency', 'Aerospace'], risk_score: 95, status: 'Active', description: 'State-sponsored cyber warfare agency targeting financial nodes.', mitre_techniques: ['T1190', 'T1566'], created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
+    ];
+    this.mockCampaigns = [
+      { id: 'camp-1', name: 'Operation Midnight Breach', description: 'Spear-phishing campaign distributing custom loaders targeting utility networks.', start_date: '2026-03-01', end_date: '2026-05-15', status: 'Completed', target_regions: ['North America', 'Western Europe'], affected_industries: ['Utilities', 'Finance'], references: ['https://www.cisa.gov/midnight-breach-advisory'], created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
+    ];
+    this.mockMalware = [
+      { id: 'mal-1', name: 'LockBit', aliases: ['ABCD Ransomware'], malware_type: 'Ransomware', capabilities: ['Data Encrypted for Impact', 'Inhibit System Recovery'], description: 'Highly active ransomware-as-a-service (RaaS) malware strain.', mitre_techniques: ['T1486', 'T1490'], created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
+    ];
+    this.mockCorrelations = [
+      { id: 'corr-1', ioc_id: 'intel-001', target_type: 'asset', target_id: 'asset-001', relationship_score: 85 },
+      { id: 'corr-2', ioc_id: 'intel-001', target_type: 'incident', target_id: 'inc-001', relationship_score: 90 }
+    ];
+
     // High-fidelity fallback mock dataset
     this.mockThreats = [];
     this.mockIOCs = [
@@ -290,6 +305,77 @@ export class ThreatRepository {
       console.warn('ThreatRepository: fetching IOC from mock catalog.', err.message);
       const found = this.mockIOCs.find(item => item.id === id);
       return found ? new IOC(found) : null;
+    }
+  }
+
+  /**
+   * Fetch all threat actors.
+   */
+  async getThreatActors() {
+    try {
+      const { data, error } = await supabase
+        .from('threat_actors')
+        .select('*')
+        .order('risk_score', { ascending: false });
+
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.warn('ThreatRepository: falling back to mock threat actors.', err.message);
+      return this.mockActors;
+    }
+  }
+
+  /**
+   * Fetch all campaigns.
+   */
+  async getCampaigns() {
+    try {
+      const { data, error } = await supabase
+        .from('campaigns')
+        .select('*')
+        .order('start_date', { ascending: false });
+
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.warn('ThreatRepository: falling back to mock campaigns.', err.message);
+      return this.mockCampaigns;
+    }
+  }
+
+  /**
+   * Fetch all malware families.
+   */
+  async getMalwareFamilies() {
+    try {
+      const { data, error } = await supabase
+        .from('malware_families')
+        .select('*');
+
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.warn('ThreatRepository: falling back to mock malware families.', err.message);
+      return this.mockMalware;
+    }
+  }
+
+  /**
+   * Fetch related assets/incidents/vulnerabilities correlations for a specific IOC.
+   */
+  async getIOCCorrelations(iocId) {
+    try {
+      const { data, error } = await supabase
+        .from('ioc_correlations')
+        .select('*')
+        .eq('ioc_id', iocId);
+
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.warn('ThreatRepository: falling back to mock correlations.', err.message);
+      return this.mockCorrelations.filter(c => c.ioc_id === iocId);
     }
   }
 }

@@ -220,6 +220,22 @@ export class ThreatService {
     stats.confidenceAvg = stats.total > 0 ? Math.round(confidenceSum / stats.total) : 0;
     return stats;
   }
+
+  async getThreatActors() {
+    return await this.threatRepository.getThreatActors();
+  }
+
+  async getCampaigns() {
+    return await this.threatRepository.getCampaigns();
+  }
+
+  async getMalwareFamilies() {
+    return await this.threatRepository.getMalwareFamilies();
+  }
+
+  async getIOCCorrelations(iocId) {
+    return await this.threatRepository.getIOCCorrelations(iocId);
+  }
 }
 
 export default ThreatService;

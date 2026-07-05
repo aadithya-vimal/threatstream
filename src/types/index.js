@@ -47,6 +47,14 @@ export class IOC extends BaseModel {
     this.source_feed = data.source_feed || '';
     this.last_seen = data.last_seen || new Date().toISOString();
     this.description = data.description || '';
+    this.expiration = data.expiration || null;
+    this.status = data.status || 'Active'; // 'Active' | 'Expired' | 'False Positive' | 'Review'
+    this.threat_actor_id = data.threat_actor_id || null;
+    this.campaign_id = data.campaign_id || null;
+    this.malware_family_id = data.malware_family_id || null;
+    this.tags = Array.isArray(data.tags) ? data.tags : [];
+    this.references = Array.isArray(data.references) ? data.references : [];
+    this.geolocation = data.geolocation || null;
   }
 }
 
@@ -324,5 +332,70 @@ export class SystemSettings extends BaseModel {
     this.key = data.key || '';
     this.value = data.value || '';
     this.description = data.description || '';
+  }
+}
+
+/**
+ * Threat Actor Model
+ */
+export class ThreatActor extends BaseModel {
+  constructor(data = {}) {
+    super(data);
+    this.name = data.name || '';
+    this.aliases = Array.isArray(data.aliases) ? data.aliases : [];
+    this.country = data.country || '';
+    this.motivation = data.motivation || '';
+    this.target_industries = Array.isArray(data.target_industries) ? data.target_industries : [];
+    this.known_campaigns = Array.isArray(data.known_campaigns) ? data.known_campaigns : [];
+    this.known_malware = Array.isArray(data.known_malware) ? data.known_malware : [];
+    this.mitre_techniques = Array.isArray(data.mitre_techniques) ? data.mitre_techniques : [];
+    this.description = data.description || '';
+    this.risk_score = typeof data.risk_score === 'number' ? data.risk_score : 50;
+    this.status = data.status || 'Active';
+  }
+}
+
+/**
+ * Campaign Model
+ */
+export class Campaign extends BaseModel {
+  constructor(data = {}) {
+    super(data);
+    this.name = data.name || '';
+    this.description = data.description || '';
+    this.start_date = data.start_date || '';
+    this.end_date = data.end_date || '';
+    this.status = data.status || 'Active';
+    this.target_regions = Array.isArray(data.target_regions) ? data.target_regions : [];
+    this.affected_industries = Array.isArray(data.affected_industries) ? data.affected_industries : [];
+    this.references = Array.isArray(data.references) ? data.references : [];
+  }
+}
+
+/**
+ * Malware Family Model
+ */
+export class MalwareFamily extends BaseModel {
+  constructor(data = {}) {
+    super(data);
+    this.name = data.name || '';
+    this.aliases = Array.isArray(data.aliases) ? data.aliases : [];
+    this.malware_type = data.malware_type || 'Trojan';
+    this.capabilities = Array.isArray(data.capabilities) ? data.capabilities : [];
+    this.mitre_techniques = Array.isArray(data.mitre_techniques) ? data.mitre_techniques : [];
+    this.description = data.description || '';
+  }
+}
+
+/**
+ * IOC Correlation Link Model
+ */
+export class IOCCorrelation extends BaseModel {
+  constructor(data = {}) {
+    super(data);
+    this.ioc_id = data.ioc_id || null;
+    this.target_type = data.target_type || ''; // 'asset' | 'incident' | 'vulnerability'
+    this.target_id = data.target_id || null;
+    this.relationship_score = typeof data.relationship_score === 'number' ? data.relationship_score : 50;
   }
 }
