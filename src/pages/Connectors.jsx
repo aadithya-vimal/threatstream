@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import SectionHeader from '../components/SectionHeader';
 import Panel from '../components/Panel';
 import StatusBadge from '../components/StatusBadge';
 import { Icon } from '../components/Icons';
+import { OperationsService } from '../services/OperationsService';
 
 const INITIAL_CONNECTORS = [
   // Scanners
@@ -69,9 +70,41 @@ export const Connectors = () => {
   const [connectors, setConnectors] = useState(INITIAL_CONNECTORS);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedConn, setSelectedConn] = useState(INITIAL_CONNECTORS[0]);
+  const [selectedConn, setSelectedConn] = useState(null);
   const [configFields, setConfigFields] = useState({ apiKey: '', host: '', timeout: '30' });
   const [testingStatus, setTestingStatus] = useState('');
+  
+  const opsService = new OperationsService();
+
+  useEffect(() => {
+    const fetchConns = async () => {
+      try {
+        const list = await opsService.getConnectors();
+        if (list && list.length > 0) {
+          setConnectors(list);
+          setSelectedConn(list[0]);
+          setConfigFields({
+            apiKey: list[0].config?.api_key || list[0].config?.API_KEY || '',
+            host: list[0].config?.host || '',
+            timeout: list[0].config?.timeout || '30'
+          });
+        }
+      } catch (e) {
+        console.warn("Failed to load connectors from backend:", e);
+      }
+    };
+    fetchConns();
+  }, []);
+
+  const handleSelectConn = (conn) => {
+    setSelectedConn(conn);
+    setTestingStatus('');
+    setConfigFields({
+      apiKey: conn.config?.api_key || conn.config?.API_KEY || '',
+      host: conn.config?.host || '',
+      timeout: conn.config?.timeout || '30'
+    });
+  };
 
   const filteredConnectors = connectors.filter(c => {
     const matchesSearch = c.display_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -80,24 +113,40 @@ export const Connectors = () => {
     return matchesSearch && matchesCategory;
   });
 
-  const handleTestConnection = () => {
+  const handleTestConnection = async () => {
+    if (!selectedConn) return;
     setTestingStatus('testing');
-    setTimeout(() => {
-      setTestingStatus('success');
-    }, 1500);
+    try {
+      const report = await opsService.testConnectorHealth(selectedConn.name);
+      if (report && (report.status === 'active' || report.status === 'connected' || report.status === 'success')) {
+        setTestingStatus('success');
+      } else {
+        setTestingStatus('failed');
+        alert(`Connection test status: ${report?.status || 'Unknown status'}`);
+      }
+    } catch (e) {
+      setTestingStatus('failed');
+      alert(`Connection test failed: ${e.message}`);
+    }
   };
 
-  const handleSaveConfig = () => {
-    setConnectors(prev => prev.map(c => 
-      c.name === selectedConn.name 
-        ? { ...c, status: 'active', health: { last_check: new Date().toISOString(), latency: '120ms' } } 
-        : c
-    ));
-    setSelectedConn(prev => ({
-      ...prev,
-      status: 'active',
-      health: { last_check: new Date().toISOString(), latency: '120ms' }
-    }));
+  const handleSaveConfig = async () => {
+    if (!selectedConn) return;
+    try {
+      const config = {
+        api_key: configFields.apiKey,
+        host: configFields.host,
+        timeout: configFields.timeout
+      };
+      const updated = await opsService.updateConnectorConfig(selectedConn.name, config);
+      if (updated) {
+        setConnectors(prev => prev.map(c => c.name === selectedConn.name ? updated : c));
+        setSelectedConn(updated);
+        alert("Connector configuration successfully deployed.");
+      }
+    } catch (e) {
+      alert("Failed to deploy configuration: " + e.message);
+    }
   };
 
   return (
@@ -164,10 +213,7 @@ export const Connectors = () => {
             return (
               <div
                 key={c.name}
-                onClick={() => {
-                  setSelectedConn(c);
-                  setTestingStatus('');
-                }}
+                onClick={() => handleSelectConn(c)}
                 style={{
                   padding: '16px',
                   borderRadius: '8px',
