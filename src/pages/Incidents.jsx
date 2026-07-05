@@ -458,6 +458,7 @@ export const Incidents = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               
               {/* Chronological Timeline Reconstruction */}
+              {/* Timeline Engine - chronological event reconstruction from telemetry, notes, alerts */}
               <Panel title="Timeline Reconstruction History">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', borderLeft: '2px solid var(--border-color)', paddingLeft: '14px', position: 'relative', overflowY: 'auto', maxHeight: '350px' }}>
                   {selectedIncident.timeline.map((item, idx) => (
