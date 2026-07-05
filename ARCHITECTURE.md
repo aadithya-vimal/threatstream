@@ -256,6 +256,118 @@ The Incident Response and Forensics Platform is built on top of our 3-tier archi
 * **Forensic Evidence Cabinet**: Collects screenshots, memory dumps, PCAP flows, and registry exports. Includes cryptographic hash checks (SHA-256) and chain of custody logs.
 * **Investigation Graph Generator**: Logical link engine mapping nodes (`[Incident Case]` -> `[Host Asset]` -> `[Malware Family]` -> `[Threat Actor Group]` -> `[Related IOC Domain]`).
 
+---
+
+## 8. Threat Analysis Platform
+
+### 8.1 Malware Analysis Engine
+
+Full static analysis workspace for every file type:
+
+```
+PE / ELF / Mach-O / APK / PDF / Office / Archive / Script
+```
+
+**Data Model** (`MalwareSampleModel`):
+- Cryptographic: MD5, SHA1, SHA256, SSDeep, ImpHash
+- Static: Sections, Imports, Exports, Strings, Resources
+- PE-specific: TLS Callbacks, Digital Signature, Compile Time
+- Classification: Entropy gauge, Architecture, Compiler, Packer
+- Relationships: Threat Actor, Campaign, Incident, IOC, CVE
+
+**Analysis Tabs**: Overview · Strings · Imports · Exports · Sections · Hashes · YARA · MITRE · Behavior
+
+```
+[ UI: MalwareAnalysis.jsx ] (Split panel: Sample Library + Analysis Workspace)
+               │
+               ▼
+[ MalwareService ] (Static profiling, graph building, enrichment dispatch)
+               │
+               ▼
+[ MalwareRepository ] (malware_samples, yara_rules, hunt_sessions tables)
+               │
+               ▼
+[ Supabase PostgreSQL ] (threat_analysis migration)
+```
+
+### 8.2 YARA Rule Platform
+
+Enterprise rule lifecycle management:
+
+- **YARARule** model: name, author, version, category, severity, definition, MITRE mapping
+- Rule categories: Ransomware, Credential Dumping, Lateral Movement, Persistence, C2, Exfiltration
+- Execution counter + last triggered timestamp
+- Rule versioning for audit purposes
+- Future: live execution engine against telemetry stream
+
+### 8.3 Threat Hunting Workspace
+
+KQL-like investigation console:
+
+- **HuntSession** model: query, query_type, analyst, status, result_count, bookmarks
+- Query types: KQL · IOC · Process · Timeline · MITRE · Asset · Cross-platform
+- Saved hunt library with bookmark management
+- Recent searches tracking
+- Result tabs: Events · Timeline · Process Tree · Assets · IOC Pivots
+
+### 8.4 Enrichment Engine
+
+Provider-agnostic IOC enrichment architecture:
+
+| Provider | Type | IOC Support |
+|---|---|---|
+| VirusTotal | Threat Intel | hash, ip, domain, url |
+| Hybrid Analysis | Sandbox | hash, url |
+| Any.Run | Sandbox | hash, url |
+| AbuseIPDB | Reputation | ip |
+| GreyNoise | Noise Filter | ip |
+| Shodan | Attack Surface | ip, domain |
+| Censys | Asset Discovery | ip, domain |
+| URLHaus | Malware URLs | url, domain, hash |
+| OTX AlienVault | OSINT | ip, domain, hash, url |
+| MISP | Threat Sharing | ip, domain, hash, url |
+| OpenCTI | CTI Platform | ip, domain, hash, url |
+
+Architecture: `EnrichmentService.enrichIOC()` fans out to all active, compatible providers and aggregates results.
+
+### 8.5 Graph Investigation Engine
+
+Universal entity relationship graph:
+
+```
+Asset ──> Incident ──> Alert ──> IOC ──> Threat Actor
+  │                                          │
+  └──> Vulnerability                         ▼
+                                        Campaign ──> Malware ──> Hash
+                                                         │
+                                                         ▼
+                                                  CVE ──> MITRE ──> Telemetry
+```
+
+**GraphNode** model: `{ id, label, type, risk_score, metadata }`
+
+Node types: `asset` | `incident` | `alert` | `ioc` | `actor` | `campaign` | `malware` | `cve` | `mitre`
+
+Future: Force-directed D3.js or Sigma.js visualization engine.
+
+---
+
+## 9. Platform Modules Summary
+
+| Module | Status | Pages | Repository | Service |
+|---|---|---|---|---|
+| Authentication | ✅ Live | Login, Reset | — | AuthContext |
+| Threat Intelligence | ✅ Live | ThreatIntelligence | IOCRepository | ThreatIntelService |
+| Asset Intelligence | ✅ Live | Assets, Network, Vulnerabilities | AssetRepository | AssetService |
+| Endpoint Telemetry | ✅ Live | Endpoints | TelemetryRepository | TelemetryService |
+| Detection Engineering | ✅ Live | — | DetectionRepository | DetectionService |
+| Incident Response | ✅ Live | Incidents | IncidentRepository | IncidentService |
+| Malware Analysis | ✅ Live | MalwareAnalysis, YARAPlatform | MalwareRepository | MalwareService |
+| Threat Hunting | ✅ Live | ThreatHunting | MalwareRepository | MalwareService |
+| IOC Enrichment | ✅ Live | IOCEnrichment | — | MalwareService |
+| Graph Investigation | ✅ Live | GraphInvestigation | — | MalwareService |
+
+
 
 
 

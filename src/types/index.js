@@ -460,3 +460,111 @@ export class IOCCorrelation extends BaseModel {
     this.relationship_score = typeof data.relationship_score === 'number' ? data.relationship_score : 50;
   }
 }
+
+/**
+ * Malware Sample Analysis Model - Full static analysis entity
+ */
+export class MalwareSampleModel extends BaseModel {
+  constructor(data = {}) {
+    super(data);
+    this.filename = data.filename || '';
+    this.file_type = data.file_type || 'PE';
+    this.file_size = data.file_size || '';
+    this.md5 = data.md5 || '';
+    this.sha1 = data.sha1 || '';
+    this.sha256 = data.sha256 || '';
+    this.ssdeep = data.ssdeep || '';
+    this.entropy = typeof data.entropy === 'number' ? data.entropy : 0.0;
+    this.compiler = data.compiler || '';
+    this.packer = data.packer || '';
+    this.architecture = data.architecture || 'x86';
+    this.digital_signature = data.digital_signature || 'Unsigned';
+    this.compile_time = data.compile_time || null;
+    this.risk_score = typeof data.risk_score === 'number' ? data.risk_score : 0;
+    this.verdict = data.verdict || 'clean';
+    this.sections = Array.isArray(data.sections) ? data.sections : [];
+    this.imports = Array.isArray(data.imports) ? data.imports : [];
+    this.exports = Array.isArray(data.exports) ? data.exports : [];
+    this.strings = Array.isArray(data.strings) ? data.strings : [];
+    this.tls_callbacks = Array.isArray(data.tls_callbacks) ? data.tls_callbacks : [];
+    this.resources = Array.isArray(data.resources) ? data.resources : [];
+    this.version_info = data.version_info || {};
+    this.yara_matches = Array.isArray(data.yara_matches) ? data.yara_matches : [];
+    this.mitre_techniques = Array.isArray(data.mitre_techniques) ? data.mitre_techniques : [];
+    this.behavior_summary = data.behavior_summary || '';
+    this.threat_actor_id = data.threat_actor_id || null;
+    this.campaign_id = data.campaign_id || null;
+    this.incident_id = data.incident_id || null;
+    this.tags = Array.isArray(data.tags) ? data.tags : [];
+  }
+}
+
+/**
+ * YARA Rule Model - Detection and hunting rule definitions
+ */
+export class YARARule extends BaseModel {
+  constructor(data = {}) {
+    super(data);
+    this.name = data.name || '';
+    this.description = data.description || '';
+    this.author = data.author || '';
+    this.version = data.version || '1.0';
+    this.category = data.category || 'Detection';
+    this.tags = Array.isArray(data.tags) ? data.tags : [];
+    this.rule_type = data.rule_type || 'Detection';
+    this.severity = data.severity || 'medium';
+    this.status = data.status || 'Active';
+    this.definition = data.definition || '';
+    this.mitre_id = data.mitre_id || '';
+    this.execution_count = typeof data.execution_count === 'number' ? data.execution_count : 0;
+    this.last_triggered = data.last_triggered || null;
+  }
+}
+
+/**
+ * Hunt Session Model - Saved threat hunt queries and bookmarks
+ */
+export class HuntSession extends BaseModel {
+  constructor(data = {}) {
+    super(data);
+    this.name = data.name || '';
+    this.query = data.query || '';
+    this.query_type = data.query_type || 'KQL';
+    this.description = data.description || '';
+    this.analyst = data.analyst || '';
+    this.status = data.status || 'Draft';
+    this.result_count = typeof data.result_count === 'number' ? data.result_count : 0;
+    this.tags = Array.isArray(data.tags) ? data.tags : [];
+    this.bookmarked = typeof data.bookmarked === 'boolean' ? data.bookmarked : false;
+  }
+}
+
+/**
+ * Enrichment Result Model - IOC provider enrichment response
+ */
+export class EnrichmentResult extends BaseModel {
+  constructor(data = {}) {
+    super(data);
+    this.ioc_value = data.ioc_value || '';
+    this.ioc_type = data.ioc_type || 'ip';
+    this.provider = data.provider || '';
+    this.reputation = data.reputation || 'Unknown';
+    this.confidence = typeof data.confidence === 'number' ? data.confidence : 0;
+    this.risk_score = typeof data.risk_score === 'number' ? data.risk_score : 0;
+    this.raw_result = data.raw_result || {};
+    this.enriched_at = data.enriched_at || new Date().toISOString();
+  }
+}
+
+/**
+ * Graph Node Model - Universal entity node for relationship graphs
+ */
+export class GraphNode {
+  constructor(data = {}) {
+    this.id = data.id || '';
+    this.label = data.label || '';
+    this.type = data.type || 'unknown'; // 'asset'|'incident'|'alert'|'ioc'|'actor'|'campaign'|'malware'|'cve'|'mitre'
+    this.risk_score = typeof data.risk_score === 'number' ? data.risk_score : 0;
+    this.metadata = data.metadata || {};
+  }
+}

@@ -14,8 +14,17 @@ export const Sidebar = ({ collapsed = false, onToggle }) => {
     { name: 'Vulnerabilities', path: '/vulnerabilities', icon: 'vulnerabilities' },
     { name: 'Threat Hunting', path: '/threat-hunting', icon: 'hunting' },
     { name: 'Malware Analysis', path: '/malware-analysis', icon: 'malware' },
+    { name: 'IOC Enrichment', path: '/ioc-enrichment', icon: 'enrichment' },
+    { name: 'YARA Platform', path: '/yara-platform', icon: 'yara' },
+    { name: 'Graph Investigation', path: '/graph-investigation', icon: 'graph' },
     { name: 'Incidents', path: '/incidents', icon: 'incidents' },
     { name: 'Reports', path: '/reports', icon: 'reports' },
+    // Operations Platform
+    { name: 'Operations', path: '/operations', icon: 'operations' },
+    { name: 'Connectors', path: '/connectors', icon: 'connectors' },
+    { name: 'Audit Log', path: '/audit-log', icon: 'auditlog' },
+    { name: 'Backup Manager', path: '/backup-manager', icon: 'backup' },
+    { name: 'Settings', path: '/settings', icon: 'administration' },
     { name: 'Administration', path: '/administration', icon: 'administration' },
   ];
 

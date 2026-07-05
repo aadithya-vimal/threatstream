@@ -170,6 +170,41 @@ The platform implements the following changes to manage active incident cases:
 
 ### 1. `incidents` (Expanded)
 Tracks security tickets generated or created manually by SOC triage analysts.
-* Attributes: `title`, `description`, `priority`, `assignee`, `reporter`, `category`, `source_alert_id`, `risk_score`, `closed_at`, `resolution`, `classification`, `tags`, `affected_assets`, `affected_users`, `evidence` (JSONB containing cryptographic SHA-256 hashes and chain of custody logs), `timeline` (JSONB containing trace logs), `playbook_checklist` (JSONB containing checkable tasks), `tasks` (JSONB representing task board cards), `comments` (JSONB containing internal comments feed).
+* Attributes: `title`, `description`, `priority`, `assignee`, `reporter`, `category`, `source_alert_id`, `risk_score`, `closed_at`, `resolution`, `classification`, `tags`, `affected_assets`, `affected_users`, `evidence` (JSONB containing cryptographic SHA-256 hashes and chain of custody logs), `timeline` (JSONB containing trace logs), `playbook_checklist` (JSONB containing checkable tasks), `tasks` (JSONB representing task board cards), `comments` (JSONB containing internal comments feed).---
 
+## 9. Threat Analysis Platform Schema
+
+Migration: `20260705000500_threat_analysis.sql`
+
+### `malware_samples` (Expanded)
+Full static analysis record per submitted file.
+* **Cryptographic**: `md5`, `sha1`, `sha256`, `ssdeep`
+* **Static Analysis**: `sections` JSONB, `imports` JSONB, `exports` JSONB, `strings` JSONB, `tls_callbacks` JSONB, `resources` JSONB, `version_info` JSONB
+* **Classification**: `file_type` CHECK (PE/ELF/Mach-O/APK/PDF/Office/Archive/Script), `entropy` DECIMAL, `architecture`, `compiler`, `packer`, `digital_signature`, `compile_time`
+* **Verdict**: `risk_score` INT, `verdict` CHECK (clean/low/medium/high/critical)
+* **Relationships**: `threat_actor_id` UUID FK, `campaign_id` UUID FK, `incident_id` UUID FK
+* **ATT&CK**: `yara_matches` JSONB, `mitre_techniques` JSONB, `behavior_summary` TEXT
+
+### `yara_rules`
+YARA detection and hunting rule library.
+* `name` UNIQUE, `author`, `version`, `category`, `rule_type` (Detection/Classification/Attribution/Hunting)
+* `severity` CHECK (informational/low/medium/high/critical), `status` CHECK (Active/Testing/Deprecated)
+* `definition` TEXT — full YARA rule syntax
+* `mitre_id`, `execution_count` INT, `last_triggered` TIMESTAMPTZ
+
+### `hunt_sessions`
+Saved threat hunting queries and bookmarks.
+* `name`, `query`, `query_type` (KQL/IOC/Process/Timeline/MITRE/Asset/Cross)
+* `analyst`, `status` CHECK (Draft/Active/Completed), `result_count` INT
+* `bookmarked` BOOLEAN, `tags` VARCHAR[]
+
+### `enrichment_results`
+IOC provider enrichment response cache.
+* `ioc_value`, `ioc_type` (ip/domain/hash/url)
+* `provider` — enrichment provider name
+* `reputation`, `confidence` INT, `risk_score` INT
+* `raw_result` JSONB — provider response payload
+* `enriched_at` TIMESTAMPTZ
+
+### Total Table Count: 44 tables across 9 domains
 

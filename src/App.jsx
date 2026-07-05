@@ -18,6 +18,9 @@ import Endpoints from './pages/Endpoints';
 import Vulnerabilities from './pages/Vulnerabilities';
 import ThreatHunting from './pages/ThreatHunting';
 import MalwareAnalysis from './pages/MalwareAnalysis';
+import IOCEnrichment from './pages/IOCEnrichment';
+import YARAPlatform from './pages/YARAPlatform';
+import GraphInvestigation from './pages/GraphInvestigation';
 import Incidents from './pages/Incidents';
 import Reports from './pages/Reports';
 import Administration from './pages/Administration';
@@ -72,6 +75,21 @@ function App() {
             <Route path="/malware-analysis" element={
               <ProtectedRoute requiredPermission="read:intel">
                 <MalwareAnalysis />
+              </ProtectedRoute>
+            } />
+            <Route path="/ioc-enrichment" element={
+              <ProtectedRoute requiredPermission="read:intel">
+                <IOCEnrichment />
+              </ProtectedRoute>
+            } />
+            <Route path="/yara-platform" element={
+              <ProtectedRoute requiredPermission="read:intel">
+                <YARAPlatform />
+              </ProtectedRoute>
+            } />
+            <Route path="/graph-investigation" element={
+              <ProtectedRoute requiredPermission="read:intel">
+                <GraphInvestigation />
               </ProtectedRoute>
             } />
             <Route path="/incidents" element={

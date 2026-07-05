@@ -465,6 +465,100 @@ Response checklists containing Containment, Eradication, and Recovery milestones
 
 ---
 
+## 🔬 Threat Analysis Platform
+
+ThreatStream's Threat Analysis Platform combines Malware Analysis, Threat Hunting, IOC Enrichment, YARA Rule Management, and Graph Investigation into a unified investigation workspace.
+
+---
+
+### Malware Analysis Engine
+
+Full static analysis for PE, ELF, Mach-O, APK, PDF, Office documents, Archives, and Scripts.
+
+**Every sample stores:**
+- Cryptographic: MD5, SHA1, SHA256, SSDeep
+- Static: Sections, Imports, Exports, Strings, Resources, Version Info
+- PE-specific: TLS Callbacks, Digital Signature, Compile Time
+- Classification: Entropy, Architecture, Compiler, Packer
+- Relationships: Threat Actor, Campaign, Incident, IOC, CVE
+
+**Analysis Workspace Tabs:**
+`Overview` · `Strings` · `Imports` · `Exports` · `Sections` · `Hashes` · `YARA Matches` · `MITRE Mapping` · `Behavior`
+
+---
+
+### YARA Rule Platform
+
+Enterprise YARA rule lifecycle management system.
+
+| Feature | Detail |
+|---|---|
+| Rule Categories | Ransomware, Credential Dumping, Lateral Movement, Persistence, C2, Exfiltration |
+| Rule Types | Detection, Classification, Attribution, Hunting |
+| Metadata | Author, Version, Severity, MITRE mapping |
+| Analytics | Execution count, last triggered timestamp |
+
+---
+
+### Threat Hunting Workspace
+
+KQL-like investigation console with saved hunts and bookmarks.
+
+**Query Types:**
+`KQL` · `IOC Search` · `Process Tree` · `Timeline` · `MITRE ATT&CK` · `Asset Cross-Search`
+
+**Capabilities:**
+- Save and bookmark hunt sessions
+- Time-range scoped queries (1H / 6H / 24H / 7D / 30D / Custom)
+- Results: Events, Timeline, Process Tree, Assets, IOC Pivots
+
+---
+
+### IOC Enrichment Engine
+
+Provider-agnostic enrichment architecture for every indicator type.
+
+**Supported Providers (11):**
+
+| Provider | Status | IOC Types |
+|---|---|---|
+| VirusTotal | Active | hash, ip, domain, url |
+| Hybrid Analysis | Active | hash, url |
+| Any.Run | Not Configured | hash, url |
+| AbuseIPDB | Active | ip |
+| GreyNoise | Active | ip |
+| Shodan | Not Configured | ip, domain |
+| Censys | Not Configured | ip, domain |
+| URLHaus | Active | url, domain, hash |
+| OTX AlienVault | Active | ip, domain, hash, url |
+| MISP | Not Configured | ip, domain, hash, url |
+| OpenCTI | Not Configured | ip, domain, hash, url |
+
+---
+
+### Graph Investigation Engine
+
+Universal relationship graph connecting every security entity:
+
+```
+Asset → Incident → Alert → IOC → Threat Actor → Campaign → Malware → Hash → CVE → MITRE → Telemetry
+```
+
+**Node types:** Asset · Incident · Alert · IOC · Threat Actor · Campaign · Malware · CVE · MITRE
+
+---
+
+### Hunt Analytics Dashboard
+
+- Top Hunts by frequency
+- Most Triggered YARA Rules
+- Top Malware Families
+- Most Queried Assets
+- IOC Pivot Statistics
+- MITRE ATT&CK Coverage Heatmap
+
+---
+
 ThreatStream combines cutting-edge visualization technology with real-time data streaming to create an unparalleled cyber threat monitoring experience.
 
 
