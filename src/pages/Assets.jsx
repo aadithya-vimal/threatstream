@@ -50,8 +50,10 @@ export const Assets = () => {
   const [selectedAssetIds, setSelectedAssetIds] = useState([]);
 
   // Scanner States
-  const [scanTarget, setScanTarget] = useState('10.100.4.0/24');
+  const [scanTarget, setScanTarget] = useState('127.0.0.1');
   const [scannerId, setScannerId] = useState('nmap');
+  const [scanProfile, setScanProfile] = useState('default');
+  const [customArgs, setCustomArgs] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [scanOutput, setScanOutput] = useState(null);
 
@@ -220,7 +222,9 @@ export const Assets = () => {
         type: 'scan',
         payload: {
           target: scanTarget,
-          scanner: scannerId
+          scanner: scannerId,
+          profile: scanProfile,
+          custom_arguments: customArgs
         }
       });
 
@@ -689,7 +693,7 @@ export const Assets = () => {
                     fontSize: '13px'
                   }}
                 >
-                  <option value="nmap">Nmap Port Scanner (Core)</option>
+                  <option value="nmap">Nmap Port Scanner (Core Production)</option>
                   <option value="rustscan">RustScan Accelerated Scanner (Core)</option>
                   <option value="masscan">Masscan Ingress IP Scout</option>
                   <option value="nuclei">Nuclei Vulnerability Template Scanner</option>
@@ -701,6 +705,59 @@ export const Assets = () => {
                   <option value="greenbone">Greenbone Security Feed</option>
                 </select>
               </div>
+
+              {scannerId === 'nmap' && (
+                <>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Nmap Scan Profile</label>
+                    <select
+                      value={scanProfile}
+                      onChange={e => setScanProfile(e.target.value)}
+                      style={{
+                        padding: '10px',
+                        backgroundColor: 'var(--bg-secondary)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '4px',
+                        color: 'var(--text-primary)',
+                        outline: 'none',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <option value="default">Default (-sS -sV -O -T4)</option>
+                      <option value="quick">Quick Scan (-T4 -F)</option>
+                      <option value="full_tcp">Full TCP Port Sweep (-T4 -p-)</option>
+                      <option value="udp">UDP Scan (-sU -T4 -F)</option>
+                      <option value="version">Service Version Detection (-sV -T4)</option>
+                      <option value="os">OS Fingerprinting (-O -T4)</option>
+                      <option value="service">Service Detection (-sV -T4)</option>
+                      <option value="aggressive">Aggressive Scan (-A -T4)</option>
+                      <option value="custom">Custom Command Arguments</option>
+                    </select>
+                  </div>
+
+                  {scanProfile === 'custom' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Custom Arguments</label>
+                      <input 
+                        type="text" 
+                        value={customArgs}
+                        onChange={e => setCustomArgs(e.target.value)}
+                        style={{
+                          padding: '10px',
+                          backgroundColor: 'var(--bg-secondary)',
+                          border: '1px solid var(--border-color)',
+                          borderRadius: '4px',
+                          color: 'var(--text-primary)',
+                          outline: 'none',
+                          fontSize: '13px',
+                          fontFamily: 'monospace'
+                        }}
+                        placeholder="e.g. -sS -p 22,80,443 -Pn"
+                      />
+                    </div>
+                  )}
+                </>
+              )}
 
               <button
                 onClick={executeScan}
