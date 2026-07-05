@@ -165,3 +165,26 @@ Real-time notifications and Attack Globe arcs synchronization are powered by Pos
 [ ThreatService & React Globe State ] (Attack arc render animation)
 ```
 
+---
+
+## 7. Threat Intelligence Platform (TIP) Module Architecture
+
+The Threat Intelligence Platform is built on top of our 3-tier architecture to support exploration, analysis, and correlations:
+
+```
+[ UI Pages / ThreatIntelligence ] (Tabs: Dashboard, Explorer, Actors, Campaigns, Malware, Connectors)
+               │
+               ▼
+[ Business Layer / ThreatService ] (Calculates metrics, manages enrichments, exports STIX 2.1)
+               │
+               ▼
+[ Repository Layer / ThreatRepository ] (Queries PostgreSQL tables: threat_actors, campaigns, malware_families, iocs, correlations)
+               │
+               ▼
+[ Database Layer / Supabase PostgreSQL ] (Enforces RLS policies and cascades)
+```
+
+* **Correlation Engine**: Correlates incoming honeypots data (destination targets, source IPs) with active campaigns, malware families, and attributed threat actors using the `ioc_correlations` mapping schema.
+* **Plug-in Connector Framework**: Allows feed integrations to implement a common interface. Raw indicators collected by background daemons are written directly to `iocs` and mapped to `threat_actors` or `campaigns` to populate the dashboards dynamically.
+
+
