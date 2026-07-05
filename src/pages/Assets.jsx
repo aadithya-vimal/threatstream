@@ -51,7 +51,9 @@ export const Assets = () => {
 
   // Scanner States
   const [scanTarget, setScanTarget] = useState('127.0.0.1');
-  const [scannerId, setScannerId] = useState('nmap');
+  const [scannerId, setScannerId] = useState('pipeline');
+  const [scanPreset, setScanPreset] = useState('quick_discovery');
+  const [selectedStages, setSelectedStages] = useState(['rustscan', 'nmap', 'whatweb']);
   const [scanProfile, setScanProfile] = useState('default');
   const [customArgs, setCustomArgs] = useState('');
   const [nucleiTargetSource, setNucleiTargetSource] = useState('direct');
@@ -61,6 +63,7 @@ export const Assets = () => {
   const [nucleiTags, setNucleiTags] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [scanOutput, setScanOutput] = useState(null);
+  const [currentStage, setCurrentStage] = useState('');
 
   // Discovery orchestrator states
   const [jobProgress, setJobProgress] = useState(0);
@@ -211,6 +214,30 @@ export const Assets = () => {
     alert('Assets ownership updated successfully.');
   };
 
+  const handlePresetChange = (preset) => {
+    setScanPreset(preset);
+    if (preset === 'quick_discovery') {
+      setSelectedStages(['rustscan', 'whatweb']);
+    } else if (preset === 'deep_discovery') {
+      setSelectedStages(['rustscan', 'nmap', 'whatweb', 'sslyze']);
+    } else if (preset === 'web_assessment') {
+      setSelectedStages(['nmap', 'whatweb', 'nikto', 'nuclei']);
+    } else if (preset === 'infra_audit') {
+      setSelectedStages(['masscan', 'nmap', 'sslyze']);
+    } else if (preset === 'tls_audit') {
+      setSelectedStages(['nmap', 'sslyze']);
+    } else if (preset === 'vuln_assessment') {
+      setSelectedStages(['rustscan', 'nmap', 'whatweb', 'nuclei']);
+    }
+  };
+
+  const toggleStage = (stage) => {
+    setScanPreset('custom');
+    setSelectedStages(prev => 
+      prev.includes(stage) ? prev.filter(s => s !== stage) : [...prev, stage]
+    );
+  };
+
   // Run discovery scan via backend job orchestrator
   const executeScan = async () => {
     setIsScanning(true);
@@ -239,6 +266,7 @@ export const Assets = () => {
       const jobPayload = {
         target: finalTarget,
         scanner: scannerId,
+        pipeline: scannerId === 'pipeline' ? selectedStages : null,
         profile: scannerId === 'nuclei' ? nucleiTemplates : scanProfile,
         custom_arguments: scannerId === 'nmap' ? customArgs : null,
         severity: scannerId === 'nuclei' && nucleiSeverity !== 'all' ? nucleiSeverity : null,
@@ -247,8 +275,12 @@ export const Assets = () => {
         report_id: resolvedReportId
       };
 
+      const jobName = scannerId === 'pipeline'
+        ? `Discovery Pipeline [Preset: ${scanPreset.toUpperCase()}]: ${finalTarget}`
+        : `${scannerId === 'nuclei' ? 'Nuclei Vulnerability' : 'Nmap Discovery'} Scan: ${finalTarget || 'Chained Targets'}`;
+
       const job = await opsService.createJob({
-        name: `${scannerId === 'nuclei' ? 'Nuclei Vulnerability' : 'Nmap Discovery'} Scan: ${finalTarget || 'Chained Targets'}`,
+        name: jobName,
         type: 'scan',
         payload: jobPayload
       });
@@ -718,18 +750,94 @@ export const Assets = () => {
                     fontSize: '13px'
                   }}
                 >
+                  <option value="pipeline">Multi-Scanner Discovery Pipeline [Builder]</option>
                   <option value="nmap">Nmap Port Scanner (Core Production)</option>
                   <option value="rustscan">RustScan Accelerated Scanner (Core)</option>
                   <option value="masscan">Masscan Ingress IP Scout</option>
                   <option value="nuclei">Nuclei Vulnerability Template Scanner</option>
                   <option value="whatweb">WhatWeb App Profiler</option>
                   <option value="sslyze">SSLyze Certificate Analyzer</option>
-                  <option value="testssl">testssl.sh TLS Analyzer</option>
                   <option value="nikto">Nikto Web Server Scanner</option>
-                  <option value="openvas">OpenVAS Manager</option>
-                  <option value="greenbone">Greenbone Security Feed</option>
                 </select>
               </div>
+
+               {scannerId === 'pipeline' && (
+                <>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Scan Preset Profile</label>
+                    <select
+                      value={scanPreset}
+                      onChange={e => handlePresetChange(e.target.value)}
+                      style={{
+                        padding: '10px',
+                        backgroundColor: 'var(--bg-secondary)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '4px',
+                        color: 'var(--text-primary)',
+                        outline: 'none',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <option value="quick_discovery">Quick Discovery (RustScan + WhatWeb)</option>
+                      <option value="deep_discovery">Deep Discovery (RustScan + Nmap + WhatWeb + SSLyze)</option>
+                      <option value="web_assessment">Web Assessment (Nmap + WhatWeb + Nikto + Nuclei)</option>
+                      <option value="infra_audit">Infrastructure Audit (Masscan + Nmap + SSLyze)</option>
+                      <option value="tls_audit">TLS Audit (Nmap + SSLyze)</option>
+                      <option value="vuln_assessment">Vulnerability Assessment (RustScan + Nmap + WhatWeb + Nuclei)</option>
+                      <option value="custom">Custom Pipeline [Builder]</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Active Pipeline Execution Stages</label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {['rustscan', 'masscan', 'nmap', 'whatweb', 'nuclei', 'nikto', 'sslyze'].map(stage => {
+                        const active = selectedStages.includes(stage);
+                        return (
+                          <div 
+                            key={stage}
+                            onClick={() => toggleStage(stage)}
+                            style={{
+                              padding: '6px 12px',
+                              borderRadius: '20px',
+                              border: active ? '1px solid var(--color-blue)' : '1px solid var(--border-color)',
+                              backgroundColor: active ? 'rgba(59,130,246,0.1)' : 'transparent',
+                              color: active ? 'var(--color-blue)' : 'var(--text-secondary)',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              textTransform: 'uppercase',
+                              transition: 'all 0.15s ease'
+                            }}
+                          >
+                            {stage}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '12px', backgroundColor: 'rgba(0,0,0,0.15)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Execution Flow Sequence Map</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
+                      {selectedStages.length > 0 ? (
+                        selectedStages.map((stage, sIdx) => (
+                          <React.Fragment key={stage}>
+                            <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', backgroundColor: 'var(--bg-secondary)', padding: '4px 8px', borderRadius: '4px' }}>
+                              {stage}
+                            </span>
+                            {sIdx < selectedStages.length - 1 && (
+                              <span style={{ color: 'var(--text-muted)' }}>➔</span>
+                            )}
+                          </React.Fragment>
+                        ))
+                      ) : (
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>No stages active. Select stages above to build pipeline.</span>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
 
               {scannerId === 'nmap' && (
                 <>
@@ -952,7 +1060,112 @@ export const Assets = () => {
                   ORCHESTRATED VULNERABILITY SCAN COMPLETED SUCCESSFULLY
                 </div>
 
-                {scannerId === 'nuclei' ? (
+                 {scannerId === 'pipeline' ? (
+                  <>
+                    {/* Pipeline details cards */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                      <div style={{ padding: 12, borderRadius: 6, backgroundColor: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Scan Pipeline Preset</div>
+                        <strong style={{ fontSize: 14, color: 'var(--color-blue)', display: 'block', marginTop: 4 }}>{scanPreset.replace('_', ' ').toUpperCase()}</strong>
+                      </div>
+                      <div style={{ padding: 12, borderRadius: 6, backgroundColor: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)' }}>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Completed Stages</div>
+                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
+                          {(scanOutput.scanners_run || []).map(s => (
+                            <span key={s} style={{ padding: '2px 6px', backgroundColor: 'rgba(16,185,129,0.2)', color: '#10b981', borderRadius: 4, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>
+                              {s}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <div style={{ padding: 12, borderRadius: 6, backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Failed Stages</div>
+                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
+                          {(scanOutput.scanners_failed || []).length > 0 ? (
+                            (scanOutput.scanners_failed || []).map(s => (
+                              <span key={s} style={{ padding: '2px 6px', backgroundColor: 'rgba(239,68,68,0.2)', color: '#ef4444', borderRadius: 4, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>
+                                {s}
+                              </span>
+                            ))
+                          ) : (
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>None</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {discoveredHosts && discoveredHosts.length > 0 ? (
+                      <div>
+                        <h4 style={{ margin: '15px 0 10px 0', fontSize: '13px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Discovered Pipeline Assets</h4>
+                        <DataTable
+                          headers={[
+                            { key: 'ip', label: 'Host Details' },
+                            { key: 'ports', label: 'Services (Ports)' },
+                            { key: 'technologies', label: 'Technologies (WhatWeb)' },
+                            { key: 'certificates', label: 'SSL/TLS (SSLyze)' },
+                            { key: 'attribution', label: 'Scanner Attribution' }
+                          ]}
+                          data={discoveredHosts.map(host => ({
+                            ip: (
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <strong style={{ fontFamily: 'monospace' }}>{host.ip}</strong>
+                                <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{host.hostname}</span>
+                              </div>
+                            ),
+                            ports: (
+                              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                {(host.ports || []).map(p => (
+                                  <span key={p.port} style={{ padding: '2px 6px', backgroundColor: 'rgba(59,130,246,0.15)', color: '#3b82f6', borderRadius: 4, fontSize: 10, fontWeight: 700 }}>
+                                    {p.port}/{p.service}
+                                  </span>
+                                ))}
+                              </div>
+                            ),
+                            technologies: (
+                              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                {(host.technologies || []).length > 0 ? (
+                                  (host.technologies || []).map(t => (
+                                    <span key={t} style={{ padding: '2px 6px', backgroundColor: 'rgba(234,179,8,0.15)', color: '#eab308', borderRadius: 4, fontSize: 10, fontWeight: 700 }}>
+                                      {t}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>—</span>
+                                )}
+                              </div>
+                            ),
+                            certificates: (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                {(host.certificates || []).length > 0 ? (
+                                  (host.certificates || []).map((c, idx) => (
+                                    <div key={idx} style={{ fontSize: 10, color: 'var(--text-primary)' }}>
+                                      🛡️ {c.subject} <span style={{ color: 'var(--text-muted)' }}>({c.issuer})</span>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>—</span>
+                                )}
+                              </div>
+                            ),
+                            attribution: (
+                              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                {Object.keys(host.attribution || {}).map(attrKey => (
+                                  <span key={attrKey} style={{ fontSize: 9, padding: '2px 6px', backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)', borderRadius: 3 }}>
+                                    {attrKey}: {host.attribution[attrKey].join(', ')}
+                                  </span>
+                                ))}
+                              </div>
+                            )
+                          }))}
+                        />
+                      </div>
+                    ) : (
+                      <div style={{ padding: '14px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 5, fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                        No target assets resolved during scan pipeline. Check target settings.
+                      </div>
+                    )}
+                  </>
+                ) : scannerId === 'nuclei' ? (
                   <>
                     {/* Severity distribution grid */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
