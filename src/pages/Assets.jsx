@@ -54,6 +54,11 @@ export const Assets = () => {
   const [scannerId, setScannerId] = useState('nmap');
   const [scanProfile, setScanProfile] = useState('default');
   const [customArgs, setCustomArgs] = useState('');
+  const [nucleiTargetSource, setNucleiTargetSource] = useState('direct');
+  const [nucleiSeverity, setNucleiSeverity] = useState('all');
+  const [nucleiTemplates, setNucleiTemplates] = useState('default');
+  const [nucleiCustomDir, setNucleiCustomDir] = useState('');
+  const [nucleiTags, setNucleiTags] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [scanOutput, setScanOutput] = useState(null);
 
@@ -217,15 +222,35 @@ export const Assets = () => {
     setFailedScanners([]);
 
     try {
-      const job = await opsService.createJob({
-        name: `Asset Discovery Scan: ${scanTarget}`,
-        type: 'scan',
-        payload: {
-          target: scanTarget,
-          scanner: scannerId,
-          profile: scanProfile,
-          custom_arguments: customArgs
+      let resolvedReportId = null;
+      let finalTarget = scanTarget;
+
+      if (scannerId === 'nuclei' && nucleiTargetSource === 'chain') {
+        const jobsList = await opsService.getJobs();
+        const completedScans = jobsList.filter(j => j.type === 'scan' && j.status === 'completed' && j.name.includes("Discovery"));
+        if (completedScans.length > 0) {
+          resolvedReportId = completedScans[0].id;
+          finalTarget = ""; // Chained targets will be resolved on the backend
+        } else {
+          alert("No completed discovery scans found to chain from. Falling back to direct target scan.");
         }
+      }
+
+      const jobPayload = {
+        target: finalTarget,
+        scanner: scannerId,
+        profile: scannerId === 'nuclei' ? nucleiTemplates : scanProfile,
+        custom_arguments: scannerId === 'nmap' ? customArgs : null,
+        severity: scannerId === 'nuclei' && nucleiSeverity !== 'all' ? nucleiSeverity : null,
+        tags: scannerId === 'nuclei' ? nucleiTags : null,
+        custom_templates: scannerId === 'nuclei' && nucleiTemplates === 'custom' ? nucleiCustomDir : null,
+        report_id: resolvedReportId
+      };
+
+      const job = await opsService.createJob({
+        name: `${scannerId === 'nuclei' ? 'Nuclei Vulnerability' : 'Nmap Discovery'} Scan: ${finalTarget || 'Chained Targets'}`,
+        type: 'scan',
+        payload: jobPayload
       });
 
       if (!job || !job.id) {
@@ -759,6 +784,123 @@ export const Assets = () => {
                 </>
               )}
 
+              {scannerId === 'nuclei' && (
+                <>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Target Input Source</label>
+                    <select
+                      value={nucleiTargetSource}
+                      onChange={e => setNucleiTargetSource(e.target.value)}
+                      style={{
+                        padding: '10px',
+                        backgroundColor: 'var(--bg-secondary)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '4px',
+                        color: 'var(--text-primary)',
+                        outline: 'none',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <option value="direct">Direct IP / Scope Input</option>
+                      <option value="chain">Chain from last Nmap Scan report</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Template Suite Profile</label>
+                    <select
+                      value={nucleiTemplates}
+                      onChange={e => setNucleiTemplates(e.target.value)}
+                      style={{
+                        padding: '10px',
+                        backgroundColor: 'var(--bg-secondary)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '4px',
+                        color: 'var(--text-primary)',
+                        outline: 'none',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <option value="default">Default Templates Suite</option>
+                      <option value="critical">Critical Vulnerabilities Only</option>
+                      <option value="high_critical">High & Critical CVE checks</option>
+                      <option value="http">HTTP Web Audits</option>
+                      <option value="network">Network Protocols</option>
+                      <option value="dns">DNS Enumeration</option>
+                      <option value="ssl">SSL/TLS configuration</option>
+                      <option value="exposures">Exposures scan</option>
+                      <option value="misconfiguration">Misconfiguration audits</option>
+                      <option value="cves">Known CVE templates</option>
+                      <option value="custom">Custom Template Directory</option>
+                    </select>
+                  </div>
+
+                  {nucleiTemplates === 'custom' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Custom Directory Path</label>
+                      <input 
+                        type="text" 
+                        value={nucleiCustomDir}
+                        onChange={e => setNucleiCustomDir(e.target.value)}
+                        style={{
+                          padding: '10px',
+                          backgroundColor: 'var(--bg-secondary)',
+                          border: '1px solid var(--border-color)',
+                          borderRadius: '4px',
+                          color: 'var(--text-primary)',
+                          outline: 'none',
+                          fontSize: '13px'
+                        }}
+                        placeholder="e.g. /home/user/nuclei-templates/custom"
+                      />
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Vulnerability Severity Limit</label>
+                    <select
+                      value={nucleiSeverity}
+                      onChange={e => setNucleiSeverity(e.target.value)}
+                      style={{
+                        padding: '10px',
+                        backgroundColor: 'var(--bg-secondary)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '4px',
+                        color: 'var(--text-primary)',
+                        outline: 'none',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <option value="all">All Severities</option>
+                      <option value="critical">Critical only</option>
+                      <option value="high">High & above</option>
+                      <option value="medium">Medium & above</option>
+                      <option value="low">Low & above</option>
+                      <option value="info">Informational only</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Custom Target Tags Filter</label>
+                    <input 
+                      type="text" 
+                      value={nucleiTags}
+                      onChange={e => setNucleiTags(e.target.value)}
+                      style={{
+                        padding: '10px',
+                        backgroundColor: 'var(--bg-secondary)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '4px',
+                        color: 'var(--text-primary)',
+                        outline: 'none',
+                        fontSize: '13px'
+                      }}
+                      placeholder="e.g. cve,log4j,wordpress"
+                    />
+                  </div>
+                </>
+              )}
+
               <button
                 onClick={executeScan}
                 disabled={isScanning}
@@ -793,7 +935,7 @@ export const Assets = () => {
           <Panel title="Discovery Scan Status & Results">
             {isScanning ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <LoadingState message={`Executing Discovery on target: ${scanTarget}...`} />
+                <LoadingState message={`Executing ${scannerId === 'nuclei' ? 'Nuclei CVE templates' : 'Discovery'} on target: ${scanTarget || 'Chained Targets'}...`} />
                 <div style={{ padding: '14px', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', borderRadius: 6, display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
                     <span>Orchestrated Job Status: <strong style={{ color: 'var(--color-orange)', textTransform: 'uppercase' }}>{jobStatus}</strong></span>
@@ -807,43 +949,101 @@ export const Assets = () => {
             ) : scanOutput ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div style={{ padding: '6px 12px', backgroundColor: 'rgba(16,185,129,0.1)', borderLeft: '4px solid #10b981', fontSize: '12px', color: '#10b981', fontWeight: 700 }}>
-                  ORCHESTRATED DISCOVERY COMPLETED SUCCESSFULLY
+                  ORCHESTRATED VULNERABILITY SCAN COMPLETED SUCCESSFULLY
                 </div>
 
-                {discoveredHosts && discoveredHosts.length > 0 ? (
-                  <div>
-                    <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Discovered Ingress Assets</h4>
-                    <DataTable
-                      headers={[
-                        { key: 'ip', label: 'IP Address' },
-                        { key: 'hostname', label: 'Hostname' },
-                        { key: 'os', label: 'Operating System' },
-                        { key: 'ports', label: 'Open Ports' },
-                        { key: 'asn', label: 'ASN' },
-                        { key: 'geoip', label: 'Location' }
-                      ]}
-                      data={discoveredHosts.map(host => ({
-                        ip: <strong style={{ fontFamily: 'monospace' }}>{host.ip}</strong>,
-                        hostname: <span style={{ color: 'var(--color-blue)', fontFamily: 'monospace' }}>{host.hostname}</span>,
-                        os: host.os,
-                        ports: (
-                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                            {host.ports.map(p => (
-                              <span key={p.port} style={{ padding: '2px 6px', backgroundColor: 'rgba(59,130,246,0.15)', color: '#3b82f6', borderRadius: 4, fontSize: 10, fontWeight: 700 }}>
-                                {p.port}/{p.service}
-                              </span>
-                            ))}
-                          </div>
-                        ),
-                        asn: host.asn,
-                        geoip: host.geoip
-                      }))}
-                    />
-                  </div>
+                {scannerId === 'nuclei' ? (
+                  <>
+                    {/* Severity distribution grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
+                      <div style={{ padding: 10, borderRadius: 5, backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', textAlign: 'center' }}>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>CRITICAL</div>
+                        <strong style={{ fontSize: 18, color: '#ef4444' }}>{scanOutput.counts?.critical || 0}</strong>
+                      </div>
+                      <div style={{ padding: 10, borderRadius: 5, backgroundColor: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.2)', textAlign: 'center' }}>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>HIGH</div>
+                        <strong style={{ fontSize: 18, color: '#f97316' }}>{scanOutput.counts?.high || 0}</strong>
+                      </div>
+                      <div style={{ padding: 10, borderRadius: 5, backgroundColor: 'rgba(234,179,8,0.1)', border: '1px solid rgba(234,179,8,0.2)', textAlign: 'center' }}>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>MEDIUM</div>
+                        <strong style={{ fontSize: 18, color: '#eab308' }}>{scanOutput.counts?.medium || 0}</strong>
+                      </div>
+                      <div style={{ padding: 10, borderRadius: 5, backgroundColor: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', textAlign: 'center' }}>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>LOW</div>
+                        <strong style={{ fontSize: 18, color: '#3b82f6' }}>{scanOutput.counts?.low || 0}</strong>
+                      </div>
+                      <div style={{ padding: 10, borderRadius: 5, backgroundColor: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', textAlign: 'center' }}>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>INFO</div>
+                        <strong style={{ fontSize: 18, color: '#10b981' }}>{scanOutput.counts?.info || 0}</strong>
+                      </div>
+                    </div>
+
+                    {scanOutput.findings && scanOutput.findings.length > 0 ? (
+                      <div>
+                        <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Matched Vulnerability Findings</h4>
+                        <DataTable
+                          headers={[
+                            { key: 'template_id', label: 'Template ID' },
+                            { key: 'template_name', label: 'Template Name' },
+                            { key: 'severity', label: 'Severity' },
+                            { key: 'host', label: 'Affected Asset' },
+                            { key: 'protocol', label: 'Protocol' },
+                            { key: 'cve', label: 'CVE ID' }
+                          ]}
+                          data={scanOutput.findings.map((f, idx) => ({
+                            template_id: <span style={{ fontFamily: 'monospace', fontSize: 11 }}>{f.template_id}</span>,
+                            template_name: f.template_name,
+                            severity: <StatusBadge status={f.severity} text={f.severity.toUpperCase()} />,
+                            host: <span style={{ color: 'var(--color-blue)', fontFamily: 'monospace' }}>{f.host}</span>,
+                            protocol: <span style={{ textTransform: 'uppercase', fontSize: 10, padding: '2px 6px', borderRadius: 4, backgroundColor: 'var(--bg-primary)' }}>{f.protocol}</span>,
+                            cve: <strong style={{ fontFamily: 'monospace' }}>{f.cve || 'N/A'}</strong>
+                          }))}
+                        />
+                      </div>
+                    ) : (
+                      <div style={{ padding: '14px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 5, fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                        No vulnerabilities identified on targets. All checked template profiles clean.
+                      </div>
+                    )}
+                  </>
                 ) : (
-                  <div style={{ padding: '14px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 5, fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
-                    No corporate assets resolved on active subnets. Check target configuration.
-                  </div>
+                  <>
+                    {discoveredHosts && discoveredHosts.length > 0 ? (
+                      <div>
+                        <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Discovered Ingress Assets</h4>
+                        <DataTable
+                          headers={[
+                            { key: 'ip', label: 'IP Address' },
+                            { key: 'hostname', label: 'Hostname' },
+                            { key: 'os', label: 'Operating System' },
+                            { key: 'ports', label: 'Open Ports' },
+                            { key: 'asn', label: 'ASN' },
+                            { key: 'geoip', label: 'Location' }
+                          ]}
+                          data={discoveredHosts.map(host => ({
+                            ip: <strong style={{ fontFamily: 'monospace' }}>{host.ip}</strong>,
+                            hostname: <span style={{ color: 'var(--color-blue)', fontFamily: 'monospace' }}>{host.hostname}</span>,
+                            os: host.os,
+                            ports: (
+                              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                {host.ports.map(p => (
+                                  <span key={p.port} style={{ padding: '2px 6px', backgroundColor: 'rgba(59,130,246,0.15)', color: '#3b82f6', borderRadius: 4, fontSize: 10, fontWeight: 700 }}>
+                                    {p.port}/{p.service}
+                                  </span>
+                                ))}
+                              </div>
+                            ),
+                            asn: host.asn,
+                            geoip: host.geoip
+                          }))}
+                        />
+                      </div>
+                    ) : (
+                      <div style={{ padding: '14px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 5, fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                        No corporate assets resolved on active subnets. Check target configuration.
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {scanTimeline && (
@@ -879,14 +1079,10 @@ export const Assets = () => {
                     maxHeight: '180px',
                     lineHeight: '1.4'
                   }}>
-                    {scanOutput.discovered_hosts ? (
+                    {scanOutput.findings ? (
                       JSON.stringify(scanOutput, null, 2)
                     ) : (
-                      `$ mock-scan --target ${scanTarget}\n` +
-                      (scannerId === 'nmap' ? 
-                        `Starting Nmap 7.92 ( https://nmap.org )\nNmap scan report for ${scanTarget}\n22/tcp open ssh OpenSSH\n80/tcp open http Apache` :
-                        `[Mock Ingress logs] Completed scan against ${scanTarget} using ${scannerId}.`
-                      )
+                      JSON.stringify(scanOutput, null, 2)
                     )}
                   </pre>
                 </div>
