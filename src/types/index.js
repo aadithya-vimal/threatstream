@@ -356,7 +356,7 @@ export class ThreatActor extends BaseModel {
 }
 
 /**
- * Campaign Model
+ * Campaign Model - Campaign details tracking database entities
  */
 export class Campaign extends BaseModel {
   constructor(data = {}) {
