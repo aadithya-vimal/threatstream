@@ -2,12 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List, Dict, Any
 from uuid import UUID
 from datetime import datetime
+import logging
 from app.core.security import get_current_user
 from app.database.supabase_client import supabase_client
 from app.schemas.job import JobResponse
 from app.plugins.manager import PluginManager
 
 router = APIRouter()
+logger = logging.getLogger("threatstream.api.plugins")
 
 @router.get("/")
 async def list_plugins(current_user: dict = Depends(get_current_user)):
@@ -20,12 +22,13 @@ async def list_plugins(current_user: dict = Depends(get_current_user)):
 @router.post("/{id}/execute", response_model=JobResponse)
 async def execute_plugin(
     id: UUID, 
-    payload: Dict[str, Any] = {}, 
+    payload: Dict[str, Any] | None = None, 
     current_user: dict = Depends(get_current_user)
 ):
     """
     Directly triggers a connector execution by inserting a job in the background queue.
     """
+    payload = payload or {}
     # 1. Fetch connector info to resolve name
     conn_res = supabase_client.table("connectors").select("*").eq("id", str(id)).execute()
     if not conn_res.data:

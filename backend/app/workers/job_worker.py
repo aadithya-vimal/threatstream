@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 from datetime import datetime
 from typing import Dict, Set
 from app.database.supabase_client import supabase_client
@@ -71,6 +72,7 @@ class JobWorkerManager:
             await asyncio.sleep(settings.JOB_POLL_INTERVAL_SECONDS)
 
     async def _execute_job(self, job: dict):
+        loop = asyncio.get_running_loop()
         job_id = job["id"]
         job_name = job["name"]
         job_type = job["type"]
@@ -105,7 +107,7 @@ class JobWorkerManager:
             except Exception as e:
                 if isinstance(e, InterruptedError):
                     raise e
-                logger.warn(f"Failed to fetch job cancel status: {str(e)}")
+                logger.warning(f"Failed to fetch job cancel status: {str(e)}")
 
             # Wait if job is paused
             while job_id in self.paused_jobs:
@@ -140,14 +142,14 @@ class JobWorkerManager:
                 if conn_res.data and len(conn_res.data) > 0:
                     connector_config = conn_res.data[0].get("config") or {}
         except Exception as ce:
-            logger.warn(f"Failed to fetch connector secrets: {str(ce)}")
+            logger.warning(f"Failed to fetch connector secrets: {str(ce)}")
 
         try:
             # Instantiate plugin with secure configuration keys
             plugin = PluginManager.get_plugin(plugin_name, config=connector_config)
             
             # Use run_in_executor to avoid blocking the asyncio event loop
-            job_payload = job.get("payload", {}) or {}
+            job_payload = dict(job.get("payload", {}) or {})
             if isinstance(job_payload, dict):
                 job_payload["job_id"] = job_id
             
@@ -214,4 +216,3 @@ class JobWorkerManager:
 
 # Global worker manager instance
 worker_manager = JobWorkerManager()
-import time
