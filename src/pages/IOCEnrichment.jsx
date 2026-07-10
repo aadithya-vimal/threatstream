@@ -1,66 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
+import EmptyState from '../components/EmptyState';
+import LoadingState from '../components/LoadingState';
 import { OperationsService } from '../services/OperationsService';
 
-// ─── Mock Data ───────────────────────────────────────────────────────────────
-
-const PROVIDERS = [
-  { id: 'vt',         name: 'VirusTotal',      status: 'active',    icon: '🛡' },
-  { id: 'ha',         name: 'Hybrid Analysis', status: 'active',    icon: '🔬' },
-  { id: 'anyrun',     name: 'Any.Run',          status: 'inactive',  icon: '▶' },
-  { id: 'abuseipdb',  name: 'AbuseIPDB',        status: 'active',    icon: '🚫' },
-  { id: 'greynoise',  name: 'GreyNoise',        status: 'active',    icon: '📡' },
-  { id: 'shodan',     name: 'Shodan',           status: 'inactive',  icon: '🔍' },
-  { id: 'censys',     name: 'Censys',           status: 'inactive',  icon: '📊' },
-  { id: 'urlhaus',    name: 'URLHaus',          status: 'active',    icon: '🔗' },
-  { id: 'otx',        name: 'OTX AlienVault',   status: 'active',    icon: '👽' },
-  { id: 'misp',       name: 'MISP',             status: 'inactive',  icon: '🗂' },
-  { id: 'opencti',    name: 'OpenCTI',          status: 'inactive',  icon: '🕸' },
-];
-
-const IOC_HISTORY = [
-  { ioc: '185.220.101.47', type: 'IPv4',   providers: 6, verdict: 'malicious', confidence: 97, date: '2026-07-05 12:58', risk: 'critical' },
-  { ioc: 'lockbit3ouvrn4ot.onion', type: 'Domain', providers: 5, verdict: 'malicious', confidence: 99, date: '2026-07-05 11:33', risk: 'critical' },
-  { ioc: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', type: 'SHA256', providers: 4, verdict: 'malicious', confidence: 95, date: '2026-07-05 10:44', risk: 'critical' },
-  { ioc: 'update-service.net', type: 'Domain', providers: 5, verdict: 'suspicious', confidence: 72, date: '2026-07-05 09:21', risk: 'high' },
-  { ioc: '91.189.92.20', type: 'IPv4',   providers: 4, verdict: 'suspicious', confidence: 63, date: '2026-07-05 08:50', risk: 'high' },
-  { ioc: 'b14a7b8059d9c055954c92674ce60032', type: 'MD5',    providers: 3, verdict: 'malicious', confidence: 88, date: '2026-07-04 22:14', risk: 'high' },
-  { ioc: 'https://update-service.net/payload/stage2.exe', type: 'URL', providers: 5, verdict: 'malicious', confidence: 91, date: '2026-07-04 20:55', risk: 'critical' },
-  { ioc: '45.33.32.156', type: 'IPv4',   providers: 3, verdict: 'suspicious', confidence: 54, date: '2026-07-04 18:40', risk: 'medium' },
-  { ioc: 'analytics.supercleaner-api.com', type: 'Domain', providers: 4, verdict: 'suspicious', confidence: 68, date: '2026-07-04 16:22', risk: 'high' },
-  { ioc: '098f6bcd4621d373cade4e832627b4f6', type: 'MD5',    providers: 3, verdict: 'malicious', confidence: 82, date: '2026-07-04 14:08', risk: 'high' },
-];
-
-const PROVIDER_RESULTS_MOCK = {
-  vt:        { verdict: 'Malicious', confidence: 94, score: 78, findings: ['57/72 AV detections', 'C2 communication detected', 'Tor exit node confirmed', 'LockBit 3.0 family match'] },
-  ha:        { verdict: 'Malicious', confidence: 91, score: 72, findings: ['Confirmed C2 server activity', 'High threat level', 'Associated with LockBit campaign', 'No sandbox evasion'] },
-  abuseipdb: { verdict: 'Malicious', confidence: 97, score: 82, findings: ['Abuse confidence 97%', '1,284 abuse reports', 'Tor exit node', 'Last reported 2 hours ago'] },
-  greynoise: { verdict: 'Malicious', confidence: 89, score: 65, findings: ['Internet scanner activity', 'Shodan crawler tag', 'Offensive tool activity', 'Seen in 47 countries'] },
-  urlhaus:   { verdict: 'Malicious', confidence: 85, score: 70, findings: ['Active malware URL', 'Hosting LockBit payloads', 'First seen 14 days ago', 'Currently online'] },
-  otx:       { verdict: 'Malicious', confidence: 92, score: 75, findings: ['Tagged in 8 threat pulses', 'LockBit 3.0 IoC', 'C2 infrastructure', 'APT group association'] },
+const PROVIDER_DIRECTORY = {
+  vt: { name: 'VirusTotal', icon: '🛡' },
+  ha: { name: 'Hybrid Analysis', icon: '🔬' },
+  anyrun: { name: 'Any.Run', icon: '▶' },
+  abuseipdb: { name: 'AbuseIPDB', icon: '🚫' },
+  greynoise: { name: 'GreyNoise', icon: '📡' },
+  shodan: { name: 'Shodan', icon: '🔍' },
+  censys: { name: 'Censys', icon: '📊' },
+  urlhaus: { name: 'URLHaus', icon: '🔗' },
+  otx: { name: 'OTX AlienVault', icon: '👽' },
+  misp: { name: 'MISP', icon: '🗂' },
+  opencti: { name: 'OpenCTI', icon: '🕸' },
 };
-
-const RELATED_IOCS = [
-  { value: '185.220.101.48',  type: 'IPv4', rel: 'Same ASN', confidence: 87 },
-  { value: '185.220.101.33',  type: 'IPv4', rel: 'Same /24 subnet', confidence: 82 },
-  { value: 'lockbit3ouvrn4ot.onion', type: 'Domain', rel: 'C2 domain', confidence: 99 },
-  { value: 'e3b0c44298fc1c...', type: 'SHA256', rel: 'Payload dropper', confidence: 95 },
-  { value: 'update-service.net', type: 'Domain', rel: 'Stage 2 host', confidence: 72 },
-];
-
-const THREAT_ACTORS = [
-  { name: 'LockBit Group', type: 'Ransomware TA', confidence: 93, origin: 'Russia/RaaS' },
-  { name: 'UNC2165', type: 'Cybercrime', confidence: 68, origin: 'Unknown' },
-];
-
-const ENRICHMENT_TIMELINE = [
-  { ts: '12:58', provider: 'VirusTotal', verdict: 'Malicious', ms: 842 },
-  { ts: '12:58', provider: 'AbuseIPDB', verdict: 'Malicious', ms: 1102 },
-  { ts: '12:58', provider: 'GreyNoise', verdict: 'Malicious', ms: 920 },
-  { ts: '12:58', provider: 'OTX AlienVault', verdict: 'Malicious', ms: 1340 },
-  { ts: '12:58', provider: 'Hybrid Analysis', verdict: 'Malicious', ms: 2104 },
-  { ts: '12:58', provider: 'URLHaus', verdict: 'Malicious', ms: 750 },
-];
 
 // ─── Detect IOC type ──────────────────────────────────────────────────────────
 function detectIOCType(value) {
@@ -155,6 +111,9 @@ export function IOCEnrichment() {
   const [enriched, setEnriched] = useState(false);
   const [resultTab, setResultTab] = useState('Provider Results');
   const [historyFilter, setHistoryFilter] = useState('');
+  const [providers, setProviders] = useState([]);
+  const [historyRows, setHistoryRows] = useState([]);
+  const [providerLoading, setProviderLoading] = useState(true);
   
   // Real backend connection states
   const [jobProgress, setJobProgress] = useState(0);
@@ -163,6 +122,50 @@ export function IOCEnrichment() {
   
   const inputRef = useRef(null);
   const opsService = new OperationsService();
+
+  useEffect(() => {
+    const loadLiveProviderData = async () => {
+      try {
+        const [connectorRows, jobRows] = await Promise.all([
+          opsService.getConnectors('enrichment'),
+          opsService.getJobs({ type: 'enrich' })
+        ]);
+
+        setProviders((connectorRows || []).map((connector) => {
+          const directoryKey = connector.name?.toLowerCase?.() || connector.display_name?.toLowerCase?.() || '';
+          return {
+            id: connector.id,
+            name: connector.display_name || PROVIDER_DIRECTORY[directoryKey]?.name || connector.name,
+            icon: PROVIDER_DIRECTORY[directoryKey]?.icon || '🧩',
+            status: connector.status || 'inactive',
+          };
+        }));
+
+        setHistoryRows((jobRows || [])
+          .filter((job) => job.type === 'enrich')
+          .map((job) => {
+            const result = job.result || {};
+            return {
+              ioc: job.payload?.ioc_value || job.name,
+              type: String(job.payload?.ioc_type || job.payload?.iocType || 'Unknown').toUpperCase(),
+              providers: result.providers_status ? [...(result.providers_status.completed || []), ...(result.providers_status.failed || [])].length : 0,
+              verdict: result.verdict || (job.status === 'completed' ? 'clean' : 'unknown'),
+              confidence: result.confidence || 0,
+              date: job.completed_at || job.created_at || '',
+              risk: result.risk_level || 'medium',
+            };
+          }));
+      } catch (err) {
+        console.error('Failed to load live IOC enrichment metadata.', err);
+        setProviders([]);
+        setHistoryRows([]);
+      } finally {
+        setProviderLoading(false);
+      }
+    };
+
+    loadLiveProviderData();
+  }, []);
 
   useEffect(() => {
     setDetectedType(detectIOCType(iocInput));
@@ -222,11 +225,9 @@ export function IOCEnrichment() {
             }
           }, 1000);
         } catch (e) {
-          console.warn("Auto enrichment failed, using offline simulation:", e);
-          setTimeout(() => {
-            setEnriching(false);
-            setEnriched(true);
-          }, 1800);
+          console.error("Auto enrichment failed.", e);
+          setEnriching(false);
+          setEnriched(false);
         }
       };
       autoTrigger();
@@ -256,13 +257,8 @@ export function IOCEnrichment() {
         payload
       });
 
-      if (!job || !job.id) {
-        // Fallback to mock behavior if backend is unavailable
-        setTimeout(() => {
-          setEnriching(false);
-          setEnriched(true);
-          setJobProgress(100);
-        }, 1800);
+          if (!job || !job.id) {
+        throw new Error('Backend did not return a queued enrichment job.');
         return;
       }
 
@@ -292,11 +288,10 @@ export function IOCEnrichment() {
       }, 1000);
 
     } catch (e) {
-      console.warn("Backend enrichment trigger failed, using offline simulation:", e);
-      setTimeout(() => {
-        setEnriching(false);
-        setEnriched(true);
-      }, 1800);
+      console.error("Backend enrichment trigger failed.", e);
+      setEnriching(false);
+      setEnriched(false);
+      alert('Failed to start a live enrichment job.');
     }
   };
 
@@ -309,13 +304,13 @@ export function IOCEnrichment() {
     inputRef.current?.focus();
   };
 
-  const filteredHistory = IOC_HISTORY.filter(h =>
+  const filteredHistory = historyRows.filter(h =>
     h.ioc.toLowerCase().includes(historyFilter.toLowerCase()) ||
     h.type.toLowerCase().includes(historyFilter.toLowerCase())
   );
 
-  const activeProviders = PROVIDERS.filter(p => p.status === 'active');
-  const inactiveProviders = PROVIDERS.filter(p => p.status === 'inactive');
+  const activeProviders = providers.filter(p => p.status === 'active');
+  const inactiveProviders = providers.filter(p => p.status !== 'active');
 
   return (
     <DashboardLayout>
@@ -366,16 +361,26 @@ export function IOCEnrichment() {
           {/* Provider Status Grid */}
           <div style={{ marginTop: 16 }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>Provider Status</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {PROVIDERS.map(p => (
-                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 5, border: `1px solid ${p.status === 'active' ? 'rgba(16,185,129,0.2)' : 'var(--border-color)'}`, backgroundColor: p.status === 'active' ? 'rgba(16,185,129,0.05)' : 'rgba(0,0,0,0.15)' }}>
-                  <span style={{ fontSize: 13 }}>{p.icon}</span>
-                  <span style={{ fontSize: 11, fontWeight: 500, color: p.status === 'active' ? 'var(--text-primary)' : 'var(--text-muted)' }}>{p.name}</span>
-                  <span style={{ fontSize: 11, color: p.status === 'active' ? '#10b981' : '#f97316' }}>{p.status === 'active' ? '✅' : '⚠️'}</span>
-                  <span style={{ fontSize: 9, color: p.status === 'active' ? '#10b981' : '#6b7280', fontWeight: 600, textTransform: 'uppercase' }}>{p.status === 'active' ? 'Active' : 'Not Configured'}</span>
-                </div>
-              ))}
-            </div>
+            {providerLoading ? (
+              <LoadingState message="Loading live enrichment connectors..." />
+            ) : providers.length > 0 ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {providers.map(p => (
+                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 5, border: `1px solid ${p.status === 'active' ? 'rgba(16,185,129,0.2)' : 'var(--border-color)'}`, backgroundColor: p.status === 'active' ? 'rgba(16,185,129,0.05)' : 'rgba(0,0,0,0.15)' }}>
+                    <span style={{ fontSize: 13 }}>{p.icon}</span>
+                    <span style={{ fontSize: 11, fontWeight: 500, color: p.status === 'active' ? 'var(--text-primary)' : 'var(--text-muted)' }}>{p.name}</span>
+                    <span style={{ fontSize: 11, color: p.status === 'active' ? '#10b981' : '#f97316' }}>{p.status === 'active' ? '✅' : '⚠️'}</span>
+                    <span style={{ fontSize: 9, color: p.status === 'active' ? '#10b981' : '#6b7280', fontWeight: 600, textTransform: 'uppercase' }}>{p.status === 'active' ? 'Active' : 'Not Configured'}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                title="No live enrichment connectors"
+                description="Configure enrichment connectors in Operations to populate this view."
+                footer="This page now shows only live connector and job data."
+              />
+            )}
           </div>
         </div>
 
@@ -465,8 +470,8 @@ export function IOCEnrichment() {
                       )}
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                        {activeProviders.map(p => {
-                          let res = PROVIDER_RESULTS_MOCK[p.id];
+                        {providers.map(p => {
+                          let res = null;
                           if (p.id === 'vt' && realResult) {
                             const details = [];
                             if (realResult.detection_ratio) details.push(`Detection Ratio: ${realResult.detection_ratio}`);
@@ -483,6 +488,13 @@ export function IOCEnrichment() {
                               verdict: realResult.verdict ? realResult.verdict.charAt(0).toUpperCase() + realResult.verdict.slice(1) : 'Clean',
                               confidence: realResult.confidence || 100,
                               findings: details.length > 0 ? details : ['Analyzed successfully, no threats identified.']
+                            };
+                          }
+                          if (!res) {
+                            res = {
+                              verdict: 'Unknown',
+                              confidence: 0,
+                              findings: ['No live enrichment payload has been returned for this provider yet.']
                             };
                           }
                           
@@ -525,27 +537,17 @@ export function IOCEnrichment() {
                       )}
                       <div>
                         <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>Related IOCs</div>
-                        {RELATED_IOCS.map((r, i) => (
-                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                            <TypeBadge type={r.type} />
-                            <span style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--text-primary)', flex: 1 }}>{r.value}</span>
-                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.rel}</span>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: '#eab308' }}>{r.confidence}%</span>
-                          </div>
-                        ))}
+                        <EmptyState
+                          title="No related IOC pivots"
+                          description="Live relationship pivots will appear here after the backend enrichment response includes them."
+                        />
                       </div>
                       <div>
                         <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>Threat Actors</div>
-                        {THREAT_ACTORS.map((a, i) => (
-                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', backgroundColor: 'rgba(239,68,68,0.05)', borderRadius: 5, border: '1px solid rgba(239,68,68,0.1)', marginBottom: 6 }}>
-                            <span style={{ fontSize: 16 }}>🎭</span>
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>{a.name}</div>
-                              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{a.type} · Origin: {a.origin}</div>
-                            </div>
-                            <span style={{ fontSize: 12, fontWeight: 700, color: '#ef4444' }}>{a.confidence}%</span>
-                          </div>
-                        ))}
+                        <EmptyState
+                          title="No attributed threat actors"
+                          description="Only live enrichment responses can populate the attribution list."
+                        />
                       </div>
                     </div>
                   )}
@@ -569,18 +571,10 @@ export function IOCEnrichment() {
                         </div>
                       ) : (
                         <>
-                          <div style={{ display: 'flex', gap: 0, alignItems: 'flex-end', height: 60, padding: '0 4px', borderBottom: '1px solid var(--border-color)' }}>
-                            {ENRICHMENT_TIMELINE.map((e, i) => (
-                              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                                <div style={{ width: '60%', backgroundColor: '#3b82f6', borderRadius: '2px 2px 0 0', height: Math.min(56, (e.ms / 2500) * 56) }} title={`${e.ms}ms`} />
-                              </div>
-                            ))}
-                          </div>
-                          <div style={{ display: 'flex', gap: 0 }}>
-                            {ENRICHMENT_TIMELINE.map((e, i) => (
-                              <div key={i} style={{ flex: 1, textAlign: 'center', fontSize: 9, color: 'var(--text-muted)' }}>{e.provider.split(' ')[0]}</div>
-                            ))}
-                          </div>
+                          <EmptyState
+                            title="No live execution timeline"
+                            description="Timeline bars appear after the backend returns provider latency data."
+                          />
                         </>
                       )}
                     </div>
@@ -601,9 +595,10 @@ export function IOCEnrichment() {
                           ))}
                         </div>
                       ) : (
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>
-                          No attribution data recorded for mock payload.
-                        </div>
+                        <EmptyState
+                          title="No attribution data"
+                          description="Attribution will appear here only after a live enrichment result contains source mapping."
+                        />
                       )}
                     </div>
                   )}
