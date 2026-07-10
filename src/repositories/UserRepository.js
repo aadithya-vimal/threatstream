@@ -3,8 +3,6 @@
  * User and Roles Repository Layer
  */
 import { supabase } from '../lib/supabase/client';
-import { withRepositoryFallback } from '../lib/dataMode';
-
 export class UserRepository {
   constructor() {
     this.mockUsers = [
@@ -28,13 +26,8 @@ export class UserRepository {
       if (error) throw error;
       return data;
     } catch (err) {
-      return withRepositoryFallback({
-        repository: 'UserRepository',
-        action: 'getUsers',
-        error: err,
-        mockValue: this.mockUsers,
-        emptyValue: [],
-      });
+      console.warn('UserRepository.getUsers failed:', err.message);
+      return [];
     }
   }
 }
