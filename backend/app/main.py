@@ -65,5 +65,3 @@ async def health_check():
         "timestamp": datetime.utcnow().isoformat(),
         "active_jobs": len(worker_manager.active_jobs)
     }
-
-from datetime import datetime
