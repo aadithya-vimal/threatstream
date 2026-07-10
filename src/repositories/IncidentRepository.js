@@ -4,7 +4,6 @@
  */
 import { supabase } from '../lib/supabase/client';
 import { Incident } from '../types';
-import { withRepositoryFallback } from '../lib/dataMode';
 
 export class IncidentRepository {
   constructor() {
@@ -161,13 +160,8 @@ export class IncidentRepository {
       if (error) throw error;
       return data.map(item => new Incident(item));
     } catch (err) {
-      return withRepositoryFallback({
-        repository: 'IncidentRepository',
-        action: 'getIncidents',
-        error: err,
-        mockValue: this.mockIncidents.map(item => new Incident(item)),
-        emptyValue: [],
-      });
+      console.warn('IncidentRepository.getIncidents failed:', err.message);
+      return [];
     }
   }
 
@@ -185,14 +179,8 @@ export class IncidentRepository {
       if (error) throw error;
       return new Incident(data);
     } catch (err) {
-      const found = this.mockIncidents.find(item => item.id === id);
-      return withRepositoryFallback({
-        repository: 'IncidentRepository',
-        action: 'getIncidentById',
-        error: err,
-        mockValue: found ? new Incident(found) : null,
-        emptyValue: null,
-      });
+      console.warn('IncidentRepository.getIncidentById failed:', err.message);
+      return null;
     }
   }
 
@@ -211,16 +199,8 @@ export class IncidentRepository {
       if (error) throw error;
       return new Incident(data);
     } catch (err) {
-      const idx = this.mockIncidents.findIndex(item => item.id === id);
-      return withRepositoryFallback({
-        repository: 'IncidentRepository',
-        action: 'updateIncident',
-        error: err,
-        mockValue: idx !== -1
-          ? new Incident({ ...this.mockIncidents[idx], ...fields, updated_at: new Date().toISOString() })
-          : null,
-        emptyValue: null,
-      });
+      console.warn('IncidentRepository.updateIncident failed:', err.message);
+      return null;
     }
   }
 
@@ -238,24 +218,8 @@ export class IncidentRepository {
       if (error) throw error;
       return data;
     } catch (err) {
-      const found = this.mockMalwareProfiles[filename];
-      return withRepositoryFallback({
-        repository: 'IncidentRepository',
-        action: 'getMalwareProfile',
-        error: err,
-        mockValue: found || {
-          filename: filename || 'suspicious_payload.exe',
-          hashes: { md5: 'd41d8cd98f00b204e9800998ecf8427e', sha1: 'da39a3ee5e6b4b0d3255bfef95601890afd80709', sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' },
-          entropy: { score: 4.12, verdict: 'Low (Normal, uncompressed)' },
-          fileMetadata: { fileType: 'PE32 executable (console) Intel 80386, for MS Windows', fileSize: '84 KB', compiled: '2026-07-01 10:00:00 UTC', subsystem: 'Windows Console' },
-          peMetadata: { sections: [{ name: '.text', size: '60 KB', entropy: 5.1 }, { name: '.data', size: '24 KB', entropy: 1.2 }], imports: [], exports: [] },
-          strings: ['exit'],
-          signatures: [],
-          virusTotal: { positives: 0, total: 72, communityScore: 0, verdict: 'Clean File' },
-          yaraVerdict: { ruleMatched: 'None', author: 'N/A', severity: 'low' }
-        },
-        emptyValue: null,
-      });
+      console.warn('IncidentRepository.getMalwareProfile failed:', err.message);
+      return null;
     }
   }
 
@@ -272,13 +236,8 @@ export class IncidentRepository {
       if (error) throw error;
       return data.path;
     } catch (err) {
-      return withRepositoryFallback({
-        repository: 'IncidentRepository',
-        action: 'uploadEvidence',
-        error: err,
-        mockValue: `mock-storage/evidence/${incidentId}/${filename}`,
-        emptyValue: null,
-      });
+      console.warn('IncidentRepository.uploadEvidence failed:', err.message);
+      return null;
     }
   }
 
@@ -295,13 +254,8 @@ export class IncidentRepository {
       if (error) throw error;
       return data;
     } catch (err) {
-      return withRepositoryFallback({
-        repository: 'IncidentRepository',
-        action: 'downloadEvidence',
-        error: err,
-        mockValue: new Blob(['Mock evidence packet data.'], { type: 'text/plain' }),
-        emptyValue: null,
-      });
+      console.warn('IncidentRepository.downloadEvidence failed:', err.message);
+      return null;
     }
   }
 
@@ -317,13 +271,8 @@ export class IncidentRepository {
       if (error) throw error;
       return data.path;
     } catch (err) {
-      return withRepositoryFallback({
-        repository: 'IncidentRepository',
-        action: 'uploadMalwareSample',
-        error: err,
-        mockValue: `mock-storage/malware/${filename}`,
-        emptyValue: null,
-      });
+      console.warn('IncidentRepository.uploadMalwareSample failed:', err.message);
+      return null;
     }
   }
 
@@ -339,13 +288,8 @@ export class IncidentRepository {
       if (error) throw error;
       return data;
     } catch (err) {
-      return withRepositoryFallback({
-        repository: 'IncidentRepository',
-        action: 'downloadMalwareSample',
-        error: err,
-        mockValue: new Blob(['Mock malware binary stream.'], { type: 'application/octet-stream' }),
-        emptyValue: null,
-      });
+      console.warn('IncidentRepository.downloadMalwareSample failed:', err.message);
+      return null;
     }
   }
 }
