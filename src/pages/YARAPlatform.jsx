@@ -165,27 +165,8 @@ export const YARAPlatform = () => {
         setScanResult({ matches_count: 0, matches: [], error: 'Scan failed on backend.' });
       }
     } catch (err) {
-      // Local fallback simulation
-      setTimeout(() => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const text = (reader.result || '').toLowerCase();
-          const matches = [];
-          if (text.includes('lockbit') || text.includes('.lockbit')) {
-            matches.push({ rule_name: 'Detect_LockBit_3', severity: 'critical', description: 'LockBit Ransomware signature match.' });
-          }
-          if (text.includes('lsass') || text.includes('taskmgr')) {
-            matches.push({ rule_name: 'LSASS_Dump_Detect', severity: 'critical', description: 'LSASS memory dump signature match.' });
-          }
-          setScanResult({
-            file_name: fileToScan.name,
-            file_size: fileToScan.size,
-            matches_count: matches.length,
-            matches: matches
-          });
-        };
-        reader.readAsText(fileToScan);
-      }, 1000);
+      console.error('YARA scan failed on backend.', err);
+      setScanResult({ matches_count: 0, matches: [], error: 'Scan failed on backend.' });
     } finally {
       setScanning(false);
     }

@@ -224,7 +224,7 @@ export class ThreatRepository {
 
   /**
    * Listen for real-time threat events.
-   * Connects to Supabase realtime channels or falls back to simulated feeds in mock mode.
+   * Connects to Supabase realtime channels only.
    */
   listenForThreats(callback) {
     // Attempt Supabase Realtime channel subscription
@@ -245,35 +245,9 @@ export class ThreatRepository {
         supabase.removeChannel(channel);
       };
     } catch (err) {
-      console.warn('ThreatRepository: Supabase realtime channel not active. Loading honeypots stream simulator...');
+      console.error('ThreatRepository: Supabase realtime channel unavailable.', err);
+      return () => {};
     }
-
-    // High-fidelity active honeypot attacks simulation fallback
-    const intervalId = setInterval(() => {
-      const attackTypes = ['ssh', 'ftp', 'apache', 'imap', 'sip', 'bots', 'strongips'];
-      const countries = ['DE', 'US', 'SG', 'RU', 'CN', 'NL', 'IN', 'JP', 'BR'];
-      const type = attackTypes[Math.floor(Math.random() * attackTypes.length)];
-      const country = countries[Math.floor(Math.random() * countries.length)];
-      
-      const lat = (Math.random() - 0.5) * 120;
-      const lon = (Math.random() - 0.5) * 240;
-
-      const mockThreat = new Threat({
-        id: `threat-live-${Math.floor(Math.random() * 100000)}`,
-        ip: `${Math.floor(Math.random() * 223) + 1}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-        lat,
-        lon,
-        country,
-        attack_type: type,
-        timestamp: Date.now()
-      });
-
-      callback(mockThreat);
-    }, 3000);
-
-    return () => {
-      clearInterval(intervalId);
-    };
   }
 
   /**
