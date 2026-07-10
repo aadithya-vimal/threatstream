@@ -15,93 +15,77 @@ class ScannerEngine {
   }
 
   async executeScan(target) {
-    throw new Error('Not implemented in base engine');
+    throw new Error('Live scanner execution is handled by the backend job orchestrator');
   }
 }
 
 class NmapEngine extends ScannerEngine {
   constructor() { super('nmap', 'Nmap', 'Deep TCP/UDP port mapping and service scanning'); }
   async executeScan(target) {
-    return {
-      ports: [
-        { port: 22, service: 'ssh', version: 'OpenSSH 8.2p1' },
-        { port: 80, service: 'http', version: 'Apache httpd 2.4.41' },
-        { port: 443, service: 'https', version: 'Apache httpd 2.4.41' }
-      ],
-      osGuess: 'Linux 5.x',
-      latency: '0.12ms'
-    };
+    return super.executeScan(target);
   }
 }
 
 class RustScanEngine extends ScannerEngine {
   constructor() { super('rustscan', 'RustScan', 'High-performance multi-threaded port scan'); }
   async executeScan(target) {
-    return { ports: [{ port: 22, service: 'ssh' }, { port: 80, service: 'http' }] };
+    return super.executeScan(target);
   }
 }
 
 class MasscanEngine extends ScannerEngine {
   constructor() { super('masscan', 'Masscan', 'Asynchronous internet-scale IP port scanner'); }
   async executeScan(target) {
-    return { status: 'completed', targetsReached: 1, openPorts: [80, 443] };
+    return super.executeScan(target);
   }
 }
 
 class NucleiEngine extends ScannerEngine {
   constructor() { super('nuclei', 'Nuclei', 'Template-driven vulnerability check engine'); }
   async executeScan(target) {
-    return {
-      vulnerabilities: [
-        { id: 'CVE-2021-44228', severity: 'critical', name: 'Apache Log4j RCE', matched: 'ldap://...' }
-      ]
-    };
+    return super.executeScan(target);
   }
 }
 
 class WhatWebEngine extends ScannerEngine {
   constructor() { super('whatweb', 'WhatWeb', 'Next-generation web scanner app profiling'); }
   async executeScan(target) {
-    return { platforms: ['Nginx/1.18.0', 'Ubuntu', 'React'] };
+    return super.executeScan(target);
   }
 }
 
 class SSLyzeEngine extends ScannerEngine {
   constructor() { super('sslyze', 'SSLyze', 'SSL/TLS configuration analyzer'); }
   async executeScan(target) {
-    return {
-      protocols: ['TLSv1.2', 'TLSv1.3'],
-      hasWeakCiphers: false,
-      certificateExpired: false
-    };
+    return super.executeScan(target);
   }
 }
 
 class TestSSLEngine extends ScannerEngine {
   constructor() { super('testssl', 'testssl.sh', 'Command-line tool to check TLS encryption strength'); }
   async executeScan(target) {
-    return { vulnerabilities: ['SWEET32-compliant'], grade: 'A+' };
+    return super.executeScan(target);
   }
 }
 
 class NiktoEngine extends ScannerEngine {
   constructor() { super('nikto', 'Nikto', 'Web server security scanner'); }
   async executeScan(target) {
-    return { items: ['Server leaks CGI scripts'], vulnerabilitiesCount: 1 };
+    return super.executeScan(target);
   }
 }
 
 class OpenVASEngine extends ScannerEngine {
   constructor() { super('openvas', 'OpenVAS', 'Full-featured vulnerability scanner and manager'); }
   async executeScan(target) {
-    return { status: 'completed', vulnerabilities: [{ id: 'CVE-2023-38606', severity: 'high' }] };
+    return super.executeScan(target);
   }
 }
 
 class GreenboneEngine extends ScannerEngine {
   constructor() { super('greenbone', 'Greenbone', 'Enterprise vulnerability feed manager'); }
   async executeScan(target) {
-    return { status: 'completed', feedVersion: '2026-07-05' };
+    return super.executeScan(target);
   }
 }
 
@@ -124,7 +108,7 @@ class ScannerCoordinator {
   async runScan(engineId, target) {
     const engine = this.engines[engineId];
     if (!engine) {
-      return { status: 'completed', info: `Executed mock scan using ${engineId}. No critical vulnerabilities discovered.` };
+      throw new Error(`Scanner engine ${engineId} is not available in the frontend runtime`);
     }
     return await engine.executeScan(target);
   }

@@ -286,18 +286,7 @@ export const Assets = () => {
       });
 
       if (!job || !job.id) {
-        // Mock fallback
-        setTimeout(async () => {
-          try {
-            const res = await assetService.runDiscovery(scannerId, scanTarget);
-            setScanOutput(res);
-          } catch (e) {
-            console.error(e);
-          } finally {
-            setIsScanning(false);
-          }
-        }, 2500);
-        return;
+        throw new Error('Live discovery job creation failed');
       }
 
       const pollInterval = setInterval(async () => {
