@@ -1,6 +1,5 @@
 import { supabase } from '../lib/supabase/client';
 
-// Helper to generate UUIDs for mock data
 const generateUUID = () => {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
     var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
@@ -8,7 +7,6 @@ const generateUUID = () => {
   });
 };
 
-// All 27 connectors listed as mock fallback
 const INITIAL_CONNECTORS = [
   // Scanners
   { id: generateUUID(), name: 'nmap', display_name: 'Nmap', category: 'scanner', plugin_type: 'nmap', status: 'active', version: '7.94', description: 'Network discovery and security auditing tool.', icon: 'globe', config: {}, capabilities: ['port_scan', 'service_detection', 'os_detection', 'script_scan'], health: { last_check: new Date().toISOString(), latency_ms: 45, error_count: 0 }, last_seen: new Date().toISOString(), install_date: new Date().toISOString(), is_licensed: true },
@@ -149,7 +147,7 @@ export class OperationsRepository {
         const res = await fetch(url, { headers });
         if (res.ok) return await res.json();
       } catch (e) {
-        console.warn('Backend fetch jobs failed, falling back:', e);
+        console.warn('Backend fetch jobs failed:', e);
       }
     }
 
@@ -160,13 +158,10 @@ export class OperationsRepository {
       const { data, error } = await query.order('created_at', { ascending: false });
       if (!error && data && data.length > 0) return data;
     } catch (e) {
-      console.warn('Supabase fetch jobs failed, using mock data:', e);
+      console.warn('Supabase fetch jobs failed:', e);
     }
-    
-    let filtered = [...this.jobs];
-    if (filters.status) filtered = filtered.filter(j => j.status === filters.status);
-    if (filters.type) filtered = filtered.filter(j => j.type === filters.type);
-    return filtered;
+
+    return [];
   }
 
   async createJob(jobData) {
@@ -191,41 +186,11 @@ export class OperationsRepository {
           return data;
         }
       } catch (e) {
-        console.warn('Backend create job failed, falling back:', e);
+        console.warn('Backend create job failed:', e);
       }
     }
 
-    const newJob = {
-      id: generateUUID(),
-      name: jobData.name || 'Job Process',
-      type: jobData.type || 'scan',
-      status: 'queued',
-      priority: jobData.priority || 5,
-      payload: jobData.payload || {},
-      result: null,
-      error: null,
-      progress: 0,
-      connector_id: jobData.connector_id || null,
-      scheduled_at: jobData.scheduled_at || null,
-      started_at: null,
-      completed_at: null,
-      created_by: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-
-    try {
-      const { data, error } = await supabase.from('jobs').insert(newJob).select();
-      if (!error && data && data[0]) {
-        this.jobs.unshift(data[0]);
-        return data[0];
-      }
-    } catch (e) {
-      console.warn('Supabase insert job failed, using mock data:', e);
-    }
-
-    this.jobs.unshift(newJob);
-    return newJob;
+    return null;
   }
 
   async updateJobStatus(id, status, progress, result, errorText = null) {
@@ -257,7 +222,7 @@ export class OperationsRepository {
           return data;
         }
       } catch (e) {
-        console.warn('Backend update job status failed, falling back:', e);
+        console.warn('Backend update job status failed:', e);
       }
     }
 
@@ -276,21 +241,9 @@ export class OperationsRepository {
         return data[0];
       }
     } catch (e) {
-      console.warn('Supabase update job failed, using mock data:', e);
+      console.warn('Supabase update job failed:', e);
     }
 
-    const idx = this.jobs.findIndex(j => j.id === id);
-    if (idx !== -1) {
-      const job = this.jobs[idx];
-      job.status = status;
-      if (progress !== null && progress !== undefined) job.progress = progress;
-      if (result) job.result = result;
-      if (errorText) job.error = errorText;
-      if (status === 'running') job.started_at = new Date().toISOString();
-      if (status === 'completed' || status === 'failed' || status === 'cancelled') job.completed_at = new Date().toISOString();
-      job.updated_at = new Date().toISOString();
-      return job;
-    }
     return null;
   }
 
@@ -308,7 +261,7 @@ export class OperationsRepository {
           return plugins;
         }
       } catch (e) {
-        console.warn('Backend fetch plugins failed, falling back:', e);
+        console.warn('Backend fetch plugins failed:', e);
       }
     }
 
@@ -318,13 +271,10 @@ export class OperationsRepository {
       const { data, error } = await query;
       if (!error && data && data.length > 0) return data;
     } catch (e) {
-      console.warn('Supabase fetch connectors failed, using mock data:', e);
+      console.warn('Supabase fetch connectors failed:', e);
     }
 
-    if (category && category !== 'all') {
-      return this.connectors.filter(c => c.category === category);
-    }
-    return this.connectors;
+    return [];
   }
 
   async getConnectorByName(name) {
@@ -332,9 +282,9 @@ export class OperationsRepository {
       const { data, error } = await supabase.from('connectors').select('*').eq('name', name).maybeSingle();
       if (!error && data) return data;
     } catch (e) {
-      console.warn('Supabase get connector failed, using mock data:', e);
+      console.warn('Supabase get connector failed:', e);
     }
-    return this.connectors.find(c => c.name === name) || null;
+    return null;
   }
 
   async updateConnectorConfig(name, config) {
@@ -354,7 +304,7 @@ export class OperationsRepository {
           return data;
         }
       } catch (e) {
-        console.warn('Backend update connector config failed, falling back:', e);
+        console.warn('Backend update connector config failed:', e);
       }
     }
 
@@ -367,22 +317,12 @@ export class OperationsRepository {
       };
       const { data, error } = await supabase.from('connectors').update(updates).eq('name', name).select();
       if (!error && data && data[0]) {
-        const idx = this.connectors.findIndex(c => c.name === name);
-        if (idx !== -1) this.connectors[idx] = data[0];
         return data[0];
       }
     } catch (e) {
-      console.warn('Supabase update connector failed, using mock data:', e);
+      console.warn('Supabase update connector failed:', e);
     }
 
-    const idx = this.connectors.findIndex(c => c.name === name);
-    if (idx !== -1) {
-      this.connectors[idx].config = config;
-      this.connectors[idx].status = 'active';
-      this.connectors[idx].last_seen = new Date().toISOString();
-      this.connectors[idx].install_date = this.connectors[idx].install_date || new Date().toISOString();
-      return this.connectors[idx];
-    }
     return null;
   }
 
@@ -406,20 +346,11 @@ export class OperationsRepository {
           };
         }
       } catch (e) {
-        console.warn('Backend test connector health failed, falling back:', e);
+        console.warn('Backend test connector health failed:', e);
       }
     }
 
-    const localConn = this.connectors.find(c => c.name === name);
-    if (!localConn) return { status: 'error', error: 'Connector not found' };
-    
-    // Simulate connectivity check
-    return {
-      status: localConn.status === 'not_configured' ? 'inactive' : 'active',
-      latency_ms: Math.floor(Math.random() * 50) + 15,
-      last_check: new Date().toISOString(),
-      error_count: 0
-    };
+    return { status: 'error', error: 'Live connector health is unavailable' };
   }
 
   // --- SCHEDULED TASKS ---
@@ -430,7 +361,7 @@ export class OperationsRepository {
         const res = await fetch(`${BACKEND_URL}/scheduler`, { headers });
         if (res.ok) return await res.json();
       } catch (e) {
-        console.warn('Backend fetch scheduler tasks failed, falling back:', e);
+        console.warn('Backend fetch scheduler tasks failed:', e);
       }
     }
 
@@ -438,9 +369,9 @@ export class OperationsRepository {
       const { data, error } = await supabase.from('scheduled_tasks').select('*');
       if (!error && data && data.length > 0) return data;
     } catch (e) {
-      console.warn('Supabase scheduled tasks failed, using mock data:', e);
+      console.warn('Supabase scheduled tasks failed:', e);
     }
-    return this.scheduledTasks;
+    return [];
   }
 
   async createScheduledTask(task) {
@@ -465,7 +396,7 @@ export class OperationsRepository {
           return data;
         }
       } catch (e) {
-        console.warn('Backend create scheduled task failed, falling back:', e);
+        console.warn('Backend create scheduled task failed:', e);
       }
     }
 
@@ -492,11 +423,10 @@ export class OperationsRepository {
         return data[0];
       }
     } catch (e) {
-      console.warn('Supabase insert scheduled task failed, using mock data:', e);
+      console.warn('Supabase insert scheduled task failed:', e);
     }
 
-    this.scheduledTasks.push(newTask);
-    return newTask;
+    return null;
   }
 
   async toggleTask(id) {
@@ -514,26 +444,11 @@ export class OperationsRepository {
           return data;
         }
       } catch (e) {
-        console.warn('Backend toggle task failed, falling back:', e);
+        console.warn('Backend toggle task failed:', e);
       }
     }
 
-    const idx = this.scheduledTasks.findIndex(t => t.id === id);
-    if (idx === -1) return null;
-    const nextVal = !this.scheduledTasks[idx].enabled;
-
-    try {
-      const { data, error } = await supabase.from('scheduled_tasks').update({ enabled: nextVal }).eq('id', id).select();
-      if (!error && data && data[0]) {
-        this.scheduledTasks[idx] = data[0];
-        return data[0];
-      }
-    } catch (e) {
-      console.warn('Supabase toggle task failed, using mock data:', e);
-    }
-
-    this.scheduledTasks[idx].enabled = nextVal;
-    return this.scheduledTasks[idx];
+    return null;
   }
 
   // --- AUDIT LOGS ---
@@ -546,14 +461,10 @@ export class OperationsRepository {
       const { data, error } = await query.order('timestamp', { ascending: false });
       if (!error && data && data.length > 0) return data;
     } catch (e) {
-      console.warn('Supabase audit logs failed, using mock data:', e);
+      console.warn('Supabase audit logs failed:', e);
     }
 
-    let filtered = [...this.auditLogs];
-    if (filters.action && filters.action !== 'all') filtered = filtered.filter(l => l.action === filters.action);
-    if (filters.severity && filters.severity !== 'all') filtered = filtered.filter(l => l.severity === filters.severity);
-    if (filters.user_email) filtered = filtered.filter(l => l.user_email.toLowerCase().includes(filters.user_email.toLowerCase()));
-    return filtered;
+    return [];
   }
 
   async createAuditLog(entry) {
@@ -578,7 +489,6 @@ export class OperationsRepository {
       console.warn('Supabase insert audit log failed:', e);
     }
 
-    this.auditLogs.unshift(newLog);
     return newLog;
   }
 
@@ -588,9 +498,9 @@ export class OperationsRepository {
       const { data, error } = await supabase.from('backups').select('*').order('created_at', { ascending: false });
       if (!error && data && data.length > 0) return data;
     } catch (e) {
-      console.warn('Supabase backups failed, using mock data:', e);
+      console.warn('Supabase backups failed:', e);
     }
-    return this.backups;
+    return [];
   }
 
   async createBackup(type = 'full') {
@@ -619,10 +529,9 @@ export class OperationsRepository {
         return data[0];
       }
     } catch (e) {
-      console.warn('Supabase insert backup failed, using mock data:', e);
+      console.warn('Supabase insert backup failed:', e);
     }
 
-    this.backups.unshift(newBackup);
     return newBackup;
   }
 
@@ -642,28 +551,10 @@ export class OperationsRepository {
       const { data, error } = await supabase.from('system_metrics').select('*').order('timestamp', { ascending: false }).limit(24);
       if (!error && data && data.length > 0) return data;
     } catch (e) {
-      console.warn('Supabase system metrics failed, returning live telemetry mock:', e);
+      console.warn('Supabase system metrics failed:', e);
     }
 
-    // Generate last 24 hours of logs
-    const snapshots = [];
-    for (let i = 24; i >= 0; i--) {
-      const time = new Date(Date.now() - i * 3600000);
-      snapshots.push({
-        id: generateUUID(),
-        timestamp: time.toISOString(),
-        cpu_percent: Math.min(95, Math.max(10, 30 + Math.sin(i / 2) * 15 + Math.random() * 5)),
-        memory_percent: Math.min(95, Math.max(40, 65 + Math.sin(i / 4) * 5 + Math.random() * 2)),
-        disk_percent: 42.1,
-        active_connections: Math.floor(180 + Math.sin(i / 3) * 40 + Math.random() * 10),
-        active_jobs: Math.floor(Math.random() * 5),
-        events_per_second: Math.floor(2500 + Math.sin(i / 2) * 500 + Math.random() * 200),
-        alerts_per_hour: Math.floor(10 + Math.random() * 8),
-        api_latency_ms: Math.floor(10 + Math.random() * 6),
-        db_query_ms: Math.floor(5 + Math.random() * 4)
-      });
-    }
-    return snapshots;
+    return [];
   }
 
   // --- API KEYS ---
@@ -672,9 +563,9 @@ export class OperationsRepository {
       const { data, error } = await supabase.from('api_keys').select('*');
       if (!error && data && data.length > 0) return data;
     } catch (e) {
-      console.warn('Supabase fetch api keys failed, using mock data:', e);
+      console.warn('Supabase fetch api keys failed:', e);
     }
-    return this.apiKeys;
+    return [];
   }
 
   async createApiKey(name, scopes = ['read']) {
@@ -699,10 +590,9 @@ export class OperationsRepository {
         return { key: rawKey, data: data[0] };
       }
     } catch (e) {
-      console.warn('Supabase insert API key failed, returning key + mock:', e);
+      console.warn('Supabase insert API key failed:', e);
     }
 
-    this.apiKeys.unshift(newKey);
     return { key: rawKey, data: newKey };
   }
 
@@ -715,14 +605,9 @@ export class OperationsRepository {
         return data[0];
       }
     } catch (e) {
-      console.warn('Supabase revoke API key failed, using mock:', e);
+      console.warn('Supabase revoke API key failed:', e);
     }
 
-    const idx = this.apiKeys.findIndex(k => k.id === id);
-    if (idx !== -1) {
-      this.apiKeys[idx].is_active = false;
-      return this.apiKeys[idx];
-    }
     return null;
   }
 }
