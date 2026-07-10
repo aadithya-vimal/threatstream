@@ -4,6 +4,7 @@
  */
 import { supabase } from '../lib/supabase/client';
 import { Threat, IOC } from '../types';
+import { withRepositoryFallback } from '../lib/dataMode';
 
 export class ThreatRepository {
   constructor() {
@@ -204,8 +205,13 @@ export class ThreatRepository {
       if (error) throw error;
       return data.map(item => new Threat(item));
     } catch (err) {
-      console.warn('ThreatRepository: falling back to mock adapter. Reason:', err.message);
-      return this.mockThreats.slice(0, limit).map(item => new Threat(item));
+      return withRepositoryFallback({
+        repository: 'ThreatRepository',
+        action: 'getRecentThreats',
+        error: err,
+        mockValue: this.mockThreats.slice(0, limit).map(item => new Threat(item)),
+        emptyValue: [],
+      });
     }
   }
 
@@ -283,8 +289,13 @@ export class ThreatRepository {
       if (error) throw error;
       return data.map(item => new IOC(item));
     } catch (err) {
-      console.warn('ThreatRepository: falling back to mock IOCs.', err.message);
-      return this.mockIOCs.map(item => new IOC(item));
+      return withRepositoryFallback({
+        repository: 'ThreatRepository',
+        action: 'getIOCs',
+        error: err,
+        mockValue: this.mockIOCs.map(item => new IOC(item)),
+        emptyValue: [],
+      });
     }
   }
 
@@ -302,9 +313,14 @@ export class ThreatRepository {
       if (error) throw error;
       return new IOC(data);
     } catch (err) {
-      console.warn('ThreatRepository: fetching IOC from mock catalog.', err.message);
       const found = this.mockIOCs.find(item => item.id === id);
-      return found ? new IOC(found) : null;
+      return withRepositoryFallback({
+        repository: 'ThreatRepository',
+        action: 'getIOCById',
+        error: err,
+        mockValue: found ? new IOC(found) : null,
+        emptyValue: null,
+      });
     }
   }
 
@@ -321,8 +337,13 @@ export class ThreatRepository {
       if (error) throw error;
       return data;
     } catch (err) {
-      console.warn('ThreatRepository: falling back to mock threat actors.', err.message);
-      return this.mockActors;
+      return withRepositoryFallback({
+        repository: 'ThreatRepository',
+        action: 'getThreatActors',
+        error: err,
+        mockValue: this.mockActors,
+        emptyValue: [],
+      });
     }
   }
 
@@ -339,8 +360,13 @@ export class ThreatRepository {
       if (error) throw error;
       return data;
     } catch (err) {
-      console.warn('ThreatRepository: falling back to mock campaigns.', err.message);
-      return this.mockCampaigns;
+      return withRepositoryFallback({
+        repository: 'ThreatRepository',
+        action: 'getCampaigns',
+        error: err,
+        mockValue: this.mockCampaigns,
+        emptyValue: [],
+      });
     }
   }
 
@@ -356,8 +382,13 @@ export class ThreatRepository {
       if (error) throw error;
       return data;
     } catch (err) {
-      console.warn('ThreatRepository: falling back to mock malware families.', err.message);
-      return this.mockMalware;
+      return withRepositoryFallback({
+        repository: 'ThreatRepository',
+        action: 'getMalwareFamilies',
+        error: err,
+        mockValue: this.mockMalware,
+        emptyValue: [],
+      });
     }
   }
 
@@ -374,8 +405,13 @@ export class ThreatRepository {
       if (error) throw error;
       return data;
     } catch (err) {
-      console.warn('ThreatRepository: falling back to mock correlations.', err.message);
-      return this.mockCorrelations.filter(c => c.ioc_id === iocId);
+      return withRepositoryFallback({
+        repository: 'ThreatRepository',
+        action: 'getIOCCorrelations',
+        error: err,
+        mockValue: this.mockCorrelations.filter(c => c.ioc_id === iocId),
+        emptyValue: [],
+      });
     }
   }
 }

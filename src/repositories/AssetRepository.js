@@ -4,6 +4,7 @@
  */
 import { supabase } from '../lib/supabase/client';
 import { Asset } from '../types';
+import { withRepositoryFallback } from '../lib/dataMode';
 
 export class AssetRepository {
   constructor() {
@@ -244,8 +245,13 @@ export class AssetRepository {
       if (error) throw error;
       return data.map(item => new Asset(item));
     } catch (err) {
-      console.warn('AssetRepository: falling back to mock assets.', err.message);
-      return this.mockAssets.map(item => new Asset(item));
+      return withRepositoryFallback({
+        repository: 'AssetRepository',
+        action: 'getAssets',
+        error: err,
+        mockValue: this.mockAssets.map(item => new Asset(item)),
+        emptyValue: [],
+      });
     }
   }
 
@@ -263,9 +269,14 @@ export class AssetRepository {
       if (error) throw error;
       return new Asset(data);
     } catch (err) {
-      console.warn('AssetRepository: fetching asset from mock catalog.', err.message);
       const found = this.mockAssets.find(item => item.id === id);
-      return found ? found : null;
+      return withRepositoryFallback({
+        repository: 'AssetRepository',
+        action: 'getAssetById',
+        error: err,
+        mockValue: found ? new Asset(found) : null,
+        emptyValue: null,
+      });
     }
   }
 
@@ -279,8 +290,13 @@ export class AssetRepository {
       if (nodeErr || linkErr) throw new Error('Topology DB tables not found');
       return { nodes, links };
     } catch (err) {
-      console.warn('AssetRepository: falling back to mock topology.', err.message);
-      return this.mockTopology;
+      return withRepositoryFallback({
+        repository: 'AssetRepository',
+        action: 'getNetworkTopology',
+        error: err,
+        mockValue: this.mockTopology,
+        emptyValue: { nodes: [], links: [] },
+      });
     }
   }
 }

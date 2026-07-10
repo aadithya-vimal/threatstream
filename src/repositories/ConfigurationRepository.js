@@ -3,6 +3,7 @@
  * System Settings Configuration Repository
  */
 import { supabase } from '../lib/supabase/client';
+import { withRepositoryFallback } from '../lib/dataMode';
 
 export class ConfigurationRepository {
   constructor() {
@@ -29,8 +30,13 @@ export class ConfigurationRepository {
       });
       return settingsMap;
     } catch (err) {
-      console.warn('ConfigurationRepository: falling back to mock configurations.', err.message);
-      return this.mockSettings;
+      return withRepositoryFallback({
+        repository: 'ConfigurationRepository',
+        action: 'getSettings',
+        error: err,
+        mockValue: this.mockSettings,
+        emptyValue: {},
+      });
     }
   }
 
@@ -46,9 +52,16 @@ export class ConfigurationRepository {
       if (error) throw error;
       return true;
     } catch (err) {
-      console.warn(`ConfigurationRepository: updating local config for key: ${key}.`, err.message);
-      this.mockSettings[key] = value;
-      return true;
+      return withRepositoryFallback({
+        repository: 'ConfigurationRepository',
+        action: 'updateSetting',
+        error: err,
+        mockValue: () => {
+          this.mockSettings[key] = value;
+          return true;
+        },
+        emptyValue: false,
+      });
     }
   }
 }

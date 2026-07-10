@@ -3,6 +3,7 @@
  * User and Roles Repository Layer
  */
 import { supabase } from '../lib/supabase/client';
+import { withRepositoryFallback } from '../lib/dataMode';
 
 export class UserRepository {
   constructor() {
@@ -27,8 +28,13 @@ export class UserRepository {
       if (error) throw error;
       return data;
     } catch (err) {
-      console.warn('UserRepository: falling back to mock operators.', err.message);
-      return this.mockUsers;
+      return withRepositoryFallback({
+        repository: 'UserRepository',
+        action: 'getUsers',
+        error: err,
+        mockValue: this.mockUsers,
+        emptyValue: [],
+      });
     }
   }
 }

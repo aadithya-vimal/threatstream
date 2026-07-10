@@ -4,6 +4,7 @@
  */
 import { supabase } from '../lib/supabase/client';
 import { Incident } from '../types';
+import { withRepositoryFallback } from '../lib/dataMode';
 
 export class IncidentRepository {
   constructor() {
@@ -160,8 +161,13 @@ export class IncidentRepository {
       if (error) throw error;
       return data.map(item => new Incident(item));
     } catch (err) {
-      console.warn('IncidentRepository: falling back to mock incidents.', err.message);
-      return this.mockIncidents.map(item => new Incident(item));
+      return withRepositoryFallback({
+        repository: 'IncidentRepository',
+        action: 'getIncidents',
+        error: err,
+        mockValue: this.mockIncidents.map(item => new Incident(item)),
+        emptyValue: [],
+      });
     }
   }
 
@@ -179,9 +185,14 @@ export class IncidentRepository {
       if (error) throw error;
       return new Incident(data);
     } catch (err) {
-      console.warn('IncidentRepository: fetching case details from mock database.', err.message);
       const found = this.mockIncidents.find(item => item.id === id);
-      return found ? new Incident(found) : null;
+      return withRepositoryFallback({
+        repository: 'IncidentRepository',
+        action: 'getIncidentById',
+        error: err,
+        mockValue: found ? new Incident(found) : null,
+        emptyValue: null,
+      });
     }
   }
 
@@ -200,13 +211,16 @@ export class IncidentRepository {
       if (error) throw error;
       return new Incident(data);
     } catch (err) {
-      console.warn('IncidentRepository: local mock update executed.', err.message);
       const idx = this.mockIncidents.findIndex(item => item.id === id);
-      if (idx !== -1) {
-        this.mockIncidents[idx] = { ...this.mockIncidents[idx], ...fields, updated_at: new Date().toISOString() };
-        return new Incident(this.mockIncidents[idx]);
-      }
-      return null;
+      return withRepositoryFallback({
+        repository: 'IncidentRepository',
+        action: 'updateIncident',
+        error: err,
+        mockValue: idx !== -1
+          ? new Incident({ ...this.mockIncidents[idx], ...fields, updated_at: new Date().toISOString() })
+          : null,
+        emptyValue: null,
+      });
     }
   }
 
@@ -224,22 +238,24 @@ export class IncidentRepository {
       if (error) throw error;
       return data;
     } catch (err) {
-      console.warn('IncidentRepository: fetching malware profile from mock catalog.', err.message);
-      
       const found = this.mockMalwareProfiles[filename];
-      if (found) return found;
-
-      return {
-        filename: filename || 'suspicious_payload.exe',
-        hashes: { md5: 'd41d8cd98f00b204e9800998ecf8427e', sha1: 'da39a3ee5e6b4b0d3255bfef95601890afd80709', sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' },
-        entropy: { score: 4.12, verdict: 'Low (Normal, uncompressed)' },
-        fileMetadata: { fileType: 'PE32 executable (console) Intel 80386, for MS Windows', fileSize: '84 KB', compiled: '2026-07-01 10:00:00 UTC', subsystem: 'Windows Console' },
-        peMetadata: { sections: [{ name: '.text', size: '60 KB', entropy: 5.1 }, { name: '.data', size: '24 KB', entropy: 1.2 }], imports: [], exports: [] },
-        strings: ['exit'],
-        signatures: [],
-        virusTotal: { positives: 0, total: 72, communityScore: 0, verdict: 'Clean File' },
-        yaraVerdict: { ruleMatched: 'None', author: 'N/A', severity: 'low' }
-      };
+      return withRepositoryFallback({
+        repository: 'IncidentRepository',
+        action: 'getMalwareProfile',
+        error: err,
+        mockValue: found || {
+          filename: filename || 'suspicious_payload.exe',
+          hashes: { md5: 'd41d8cd98f00b204e9800998ecf8427e', sha1: 'da39a3ee5e6b4b0d3255bfef95601890afd80709', sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' },
+          entropy: { score: 4.12, verdict: 'Low (Normal, uncompressed)' },
+          fileMetadata: { fileType: 'PE32 executable (console) Intel 80386, for MS Windows', fileSize: '84 KB', compiled: '2026-07-01 10:00:00 UTC', subsystem: 'Windows Console' },
+          peMetadata: { sections: [{ name: '.text', size: '60 KB', entropy: 5.1 }, { name: '.data', size: '24 KB', entropy: 1.2 }], imports: [], exports: [] },
+          strings: ['exit'],
+          signatures: [],
+          virusTotal: { positives: 0, total: 72, communityScore: 0, verdict: 'Clean File' },
+          yaraVerdict: { ruleMatched: 'None', author: 'N/A', severity: 'low' }
+        },
+        emptyValue: null,
+      });
     }
   }
 
@@ -256,8 +272,13 @@ export class IncidentRepository {
       if (error) throw error;
       return data.path;
     } catch (err) {
-      console.warn('IncidentRepository: mock upload evidence triggered due to:', err.message);
-      return `mock-storage/evidence/${incidentId}/${filename}`;
+      return withRepositoryFallback({
+        repository: 'IncidentRepository',
+        action: 'uploadEvidence',
+        error: err,
+        mockValue: `mock-storage/evidence/${incidentId}/${filename}`,
+        emptyValue: null,
+      });
     }
   }
 
@@ -274,8 +295,13 @@ export class IncidentRepository {
       if (error) throw error;
       return data;
     } catch (err) {
-      console.warn('IncidentRepository: mock download evidence triggered due to:', err.message);
-      return new Blob(['Mock evidence packet data.'], { type: 'text/plain' });
+      return withRepositoryFallback({
+        repository: 'IncidentRepository',
+        action: 'downloadEvidence',
+        error: err,
+        mockValue: new Blob(['Mock evidence packet data.'], { type: 'text/plain' }),
+        emptyValue: null,
+      });
     }
   }
 
@@ -291,8 +317,13 @@ export class IncidentRepository {
       if (error) throw error;
       return data.path;
     } catch (err) {
-      console.warn('IncidentRepository: mock upload malware triggered due to:', err.message);
-      return `mock-storage/malware/${filename}`;
+      return withRepositoryFallback({
+        repository: 'IncidentRepository',
+        action: 'uploadMalwareSample',
+        error: err,
+        mockValue: `mock-storage/malware/${filename}`,
+        emptyValue: null,
+      });
     }
   }
 
@@ -308,8 +339,13 @@ export class IncidentRepository {
       if (error) throw error;
       return data;
     } catch (err) {
-      console.warn('IncidentRepository: mock download malware triggered due to:', err.message);
-      return new Blob(['Mock malware binary stream.'], { type: 'application/octet-stream' });
+      return withRepositoryFallback({
+        repository: 'IncidentRepository',
+        action: 'downloadMalwareSample',
+        error: err,
+        mockValue: new Blob(['Mock malware binary stream.'], { type: 'application/octet-stream' }),
+        emptyValue: null,
+      });
     }
   }
 }

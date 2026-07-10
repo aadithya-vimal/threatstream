@@ -4,7 +4,8 @@ import { Icon } from './Icons';
 export const EmptyState = ({ 
   title = 'No Results Found', 
   description = 'There is currently no data or activity matching the criteria.', 
-  icon 
+  icon,
+  footer
 }) => {
   return (
     <div 
@@ -30,6 +31,11 @@ export const EmptyState = ({
       <p style={{ fontSize: '13px', color: 'var(--text-secondary)', maxWidth: '320px', margin: 0 }}>
         {description}
       </p>
+      {footer ? (
+        <div style={{ marginTop: 'var(--spacing-md)', color: 'var(--text-muted)', fontSize: '12px' }}>
+          {footer}
+        </div>
+      ) : null}
     </div>
   );
 };

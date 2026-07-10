@@ -1,8 +1,10 @@
 import React from 'react';
 
-export const LoadingState = ({ message = 'Loading resources...' }) => {
+export const LoadingState = ({ message = 'Loading resources...', subtext = '' }) => {
   return (
     <div 
+      role="status"
+      aria-live="polite"
       style={{ 
         display: 'flex', 
         flexDirection: 'column', 
@@ -28,6 +30,9 @@ export const LoadingState = ({ message = 'Loading resources...' }) => {
         }}
       />
       <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{message}</span>
+      {subtext ? (
+        <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>{subtext}</span>
+      ) : null}
     </div>
   );
 };

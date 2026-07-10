@@ -1,6 +1,18 @@
 # ThreatStream
 
-Real-time cyber threat visualization platform with interactive 3D globe and live threat feed.
+Hybrid cyber security operations platform with a live backend core, demo-friendly frontend fallbacks, and a broad SOC-oriented module layout.
+
+## Current Reality
+
+| Area | Status |
+|---|---|
+| Frontend routes and shell | Implemented |
+| Backend job / plugin / scheduler APIs | Implemented |
+| Supabase integration | Implemented with demo fallbacks |
+| Live threat/asset/incident data | Partial |
+| Full product claims in this README | Aspirational in places |
+
+The repository is useful today as a working platform scaffold, but several screens still rely on mock data when the live database is unavailable.
 
 ---
 

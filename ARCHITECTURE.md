@@ -1,5 +1,7 @@
 # ThreatStream Security Operations Platform Architecture
 
+> This document describes the intended platform shape and the code that is currently present in the repository. Some sections are aspirational and should be treated as roadmap language rather than fully verified runtime behavior.
+
 This document describes the design patterns, layer organization, and modular code architecture implemented in the ThreatStream Security Operations Center (SOC) platform.
 
 ---
@@ -512,23 +514,23 @@ Vulnerability scans, database backups, and intelligence feed pulls are scheduled
 | Module | Status | Pages | Repository | Service |
 |---|---|---|---|---|
 | Authentication | ✅ Live | Login, Reset | — | AuthContext |
-| Threat Intelligence | ✅ Live | ThreatIntelligence | IOCRepository | ThreatIntelService |
-| Asset Intelligence | ✅ Live | Assets, Network, Vulnerabilities | AssetRepository | AssetService |
-| Endpoint Telemetry | ✅ Live | Endpoints | TelemetryRepository | TelemetryService |
-| Detection Engineering | ✅ Live | — | DetectionRepository | DetectionService |
-| Incident Triage & IR | ✅ Live | Incidents, Reports | IncidentRepository | IncidentService |
-| Malware Analysis | ✅ Live | MalwareAnalysis, YARAPlatform | MalwareRepository | MalwareService |
-| Threat Hunting | ✅ Live | ThreatHunting | MalwareRepository | MalwareService |
-| IOC Enrichment | ✅ Live | IOCEnrichment | — | MalwareService |
-| Graph Investigation | ✅ Live | GraphInvestigation | — | MalwareService |
-| System Operations | ✅ Live | Operations, Connectors | OperationsRepository | OperationsService |
-| Backups & Restore | ✅ Live | BackupManager | OperationsRepository | OperationsService |
-| Audit Trail | ✅ Live | AuditLog | OperationsRepository | OperationsService |
-| Settings Hub | ✅ Live | SystemSettings | OperationsRepository | OperationsService |
-| Admin Panel | ✅ Live | Administration | UserRepository | UserService |
-| Backend Job Engine | ✅ Live | — | — | FastAPI / Workers |
-| VT Production Connector| ✅ Live | — | — | FastAPI / Plugins |
-| Discovery Orchestrator | ✅ Live | Assets | — | FastAPI / Plugins |
+| Threat Intelligence | Partial | ThreatIntelligence | ThreatRepository | ThreatService |
+| Asset Intelligence | Partial | Assets, Network, Vulnerabilities | AssetRepository | AssetService |
+| Endpoint Telemetry | Partial | Endpoints | TelemetryRepository | TelemetryService |
+| Detection Engineering | Partial | — | TelemetryRepository | TelemetryService |
+| Incident Triage & IR | Partial | Incidents, Reports | IncidentRepository | IncidentService |
+| Malware Analysis | Partial | MalwareAnalysis, YARAPlatform | MalwareRepository | MalwareService |
+| Threat Hunting | Partial | ThreatHunting | MalwareRepository | MalwareService |
+| IOC Enrichment | Partial | IOCEnrichment | — | MalwareService |
+| Graph Investigation | Partial | GraphInvestigation | — | MalwareService |
+| System Operations | Partial | Operations, Connectors | OperationsRepository | OperationsService |
+| Backups & Restore | Partial | BackupManager | OperationsRepository | OperationsService |
+| Audit Trail | Partial | AuditLog | OperationsRepository | OperationsService |
+| Settings Hub | Partial | SystemSettings | OperationsRepository | OperationsService |
+| Admin Panel | Partial | Administration | UserRepository | UserService |
+| Backend Job Engine | Implemented | — | — | FastAPI / Workers |
+| VT Production Connector | Partial | — | — | FastAPI / Plugins |
+| Discovery Orchestrator | Partial | Assets | — | FastAPI / Plugins |
 
 ---
 
@@ -579,7 +581,6 @@ The Discovery Orchestrator coordinates sequential execution chains (e.g., RustSc
 1. **Target Forwarding**: Subsequent stages resolve target parameter scopes by extracting unique IPs/hostnames parsed from preceding scans.
 2. **Attribution Merging**: The Merge Engine unions discovered services, technology tags, and TLS configurations while maintaining contributor keys in the metadata logs.
 3. **Audit Trail**: Real-time console logs are grouped by stage and stored on the job record for operator review.
-
 
 
 
