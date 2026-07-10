@@ -4,6 +4,18 @@ import importlib
 from typing import Dict, Any, Type
 from app.plugins.base import BasePlugin
 from app.plugins.virustotal import VirusTotalPlugin
+from app.plugins.ioc_providers import (
+    AnyRunPlugin,
+    AbuseIPDBPlugin,
+    CensysPlugin,
+    GreyNoisePlugin,
+    HybridAnalysisPlugin,
+    MISPPlugin,
+    OTXPlugin,
+    OpenCTIPlugin,
+    ShodanPlugin,
+    URLHausPlugin,
+)
 # Orchestrators will be lazily imported
 from app.plugins.nmap import NmapDiscoveryPlugin
 from app.plugins.nuclei import NucleiDiscoveryPlugin
@@ -152,6 +164,16 @@ class PluginManager:
     _registry: Dict[str, Type[BasePlugin]] = {
         "nmap": NmapDiscoveryPlugin,
         "virustotal": VirusTotalPlugin,
+        "abuseipdb": AbuseIPDBPlugin,
+        "greynoise": GreyNoisePlugin,
+        "shodan": ShodanPlugin,
+        "censys": CensysPlugin,
+        "urlhaus": URLHausPlugin,
+        "otx": OTXPlugin,
+        "hybridanalysis": HybridAnalysisPlugin,
+        "anyrun": AnyRunPlugin,
+        "misp": MISPPlugin,
+        "opencti": OpenCTIPlugin,
         "nuclei": NucleiDiscoveryPlugin,
         "whatweb": WhatWebDiscoveryPlugin,
         "sslyze": SSLyzeDiscoveryPlugin,
