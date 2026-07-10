@@ -138,7 +138,7 @@ export class TelemetryService {
   }
 
   getTelemetryEventsSync(queryStr = '') {
-    return this.telemetryRepository.filterLocalEvents(this.telemetryRepository.mockEvents, queryStr);
+    return [];
   }
 
   async getRules() {
