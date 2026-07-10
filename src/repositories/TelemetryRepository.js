@@ -3,7 +3,6 @@
  * Telemetry and Detections Rules Repository
  */
 import { supabase } from '../lib/supabase/client';
-import { withRepositoryFallback } from '../lib/dataMode';
 
 export class TelemetryRepository {
   constructor() {
@@ -248,7 +247,6 @@ detection:
    */
   async getTelemetryEvents(queryStr = '') {
     try {
-      // Simulating Supabase lookup
       const { data, error } = await supabase
         .from('telemetry')
         .select('*')
@@ -257,13 +255,8 @@ detection:
       if (error) throw error;
       return this.filterLocalEvents(data, queryStr);
     } catch (err) {
-      return withRepositoryFallback({
-        repository: 'TelemetryRepository',
-        action: 'getTelemetryEvents',
-        error: err,
-        mockValue: this.filterLocalEvents(this.mockEvents, queryStr),
-        emptyValue: [],
-      });
+      console.warn('TelemetryRepository.getTelemetryEvents failed:', err.message);
+      return [];
     }
   }
 
@@ -280,13 +273,8 @@ detection:
       if (error) throw error;
       return data;
     } catch (err) {
-      return withRepositoryFallback({
-        repository: 'TelemetryRepository',
-        action: 'getRules',
-        error: err,
-        mockValue: this.mockRules,
-        emptyValue: [],
-      });
+      console.warn('TelemetryRepository.getRules failed:', err.message);
+      return [];
     }
   }
 
@@ -387,13 +375,8 @@ detection:
       if (error) throw error;
       return data;
     } catch (err) {
-      return withRepositoryFallback({
-        repository: 'TelemetryRepository',
-        action: 'getAlerts',
-        error: err,
-        mockValue: this.mockAlerts,
-        emptyValue: [],
-      });
+      console.warn('TelemetryRepository.getAlerts failed:', err.message);
+      return [];
     }
   }
 
@@ -412,16 +395,8 @@ detection:
       return data;
     } catch (err) {
       const newAlert = { ...alert, id: `alert-${Math.floor(Math.random() * 100000)}`, created_at: new Date().toISOString() };
-      return withRepositoryFallback({
-        repository: 'TelemetryRepository',
-        action: 'saveAlert',
-        error: err,
-        mockValue: () => {
-          this.mockAlerts.unshift(newAlert);
-          return newAlert;
-        },
-        emptyValue: null,
-      });
+      console.warn('TelemetryRepository.saveAlert failed:', err.message);
+      return newAlert;
     }
   }
 }

@@ -4,7 +4,6 @@
  */
 import { supabase } from '../lib/supabase/client';
 import { Threat, IOC } from '../types';
-import { withRepositoryFallback } from '../lib/dataMode';
 
 export class ThreatRepository {
   constructor() {
@@ -23,7 +22,6 @@ export class ThreatRepository {
       { id: 'corr-2', ioc_id: 'intel-001', target_type: 'incident', target_id: 'inc-001', relationship_score: 90 }
     ];
 
-    // High-fidelity fallback mock dataset
     this.mockThreats = [];
     this.mockIOCs = [
       {
@@ -205,13 +203,8 @@ export class ThreatRepository {
       if (error) throw error;
       return data.map(item => new Threat(item));
     } catch (err) {
-      return withRepositoryFallback({
-        repository: 'ThreatRepository',
-        action: 'getRecentThreats',
-        error: err,
-        mockValue: this.mockThreats.slice(0, limit).map(item => new Threat(item)),
-        emptyValue: [],
-      });
+      console.warn('ThreatRepository.getRecentThreats failed:', err.message);
+      return [];
     }
   }
 
@@ -263,13 +256,8 @@ export class ThreatRepository {
       if (error) throw error;
       return data.map(item => new IOC(item));
     } catch (err) {
-      return withRepositoryFallback({
-        repository: 'ThreatRepository',
-        action: 'getIOCs',
-        error: err,
-        mockValue: this.mockIOCs.map(item => new IOC(item)),
-        emptyValue: [],
-      });
+      console.warn('ThreatRepository.getIOCs failed:', err.message);
+      return [];
     }
   }
 
@@ -287,14 +275,8 @@ export class ThreatRepository {
       if (error) throw error;
       return new IOC(data);
     } catch (err) {
-      const found = this.mockIOCs.find(item => item.id === id);
-      return withRepositoryFallback({
-        repository: 'ThreatRepository',
-        action: 'getIOCById',
-        error: err,
-        mockValue: found ? new IOC(found) : null,
-        emptyValue: null,
-      });
+      console.warn('ThreatRepository.getIOCById failed:', err.message);
+      return null;
     }
   }
 
@@ -311,13 +293,8 @@ export class ThreatRepository {
       if (error) throw error;
       return data;
     } catch (err) {
-      return withRepositoryFallback({
-        repository: 'ThreatRepository',
-        action: 'getThreatActors',
-        error: err,
-        mockValue: this.mockActors,
-        emptyValue: [],
-      });
+      console.warn('ThreatRepository.getThreatActors failed:', err.message);
+      return [];
     }
   }
 
@@ -334,13 +311,8 @@ export class ThreatRepository {
       if (error) throw error;
       return data;
     } catch (err) {
-      return withRepositoryFallback({
-        repository: 'ThreatRepository',
-        action: 'getCampaigns',
-        error: err,
-        mockValue: this.mockCampaigns,
-        emptyValue: [],
-      });
+      console.warn('ThreatRepository.getCampaigns failed:', err.message);
+      return [];
     }
   }
 
@@ -356,13 +328,8 @@ export class ThreatRepository {
       if (error) throw error;
       return data;
     } catch (err) {
-      return withRepositoryFallback({
-        repository: 'ThreatRepository',
-        action: 'getMalwareFamilies',
-        error: err,
-        mockValue: this.mockMalware,
-        emptyValue: [],
-      });
+      console.warn('ThreatRepository.getMalwareFamilies failed:', err.message);
+      return [];
     }
   }
 
@@ -379,13 +346,8 @@ export class ThreatRepository {
       if (error) throw error;
       return data;
     } catch (err) {
-      return withRepositoryFallback({
-        repository: 'ThreatRepository',
-        action: 'getIOCCorrelations',
-        error: err,
-        mockValue: this.mockCorrelations.filter(c => c.ioc_id === iocId),
-        emptyValue: [],
-      });
+      console.warn('ThreatRepository.getIOCCorrelations failed:', err.message);
+      return [];
     }
   }
 }
