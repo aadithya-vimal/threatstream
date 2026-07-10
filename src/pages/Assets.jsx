@@ -333,17 +333,9 @@ export const Assets = () => {
       }, 1000);
 
     } catch (e) {
-      console.warn("Backend scan trigger failed, using offline simulation:", e);
-      setTimeout(async () => {
-        try {
-          const res = await assetService.runDiscovery(scannerId, scanTarget);
-          setScanOutput(res);
-        } catch (err) {
-          console.error(err);
-        } finally {
-          setIsScanning(false);
-        }
-      }, 2500);
+      console.error("Backend scan trigger failed.", e);
+      setIsScanning(false);
+      alert('Failed to start a live discovery scan.');
     }
   };
 

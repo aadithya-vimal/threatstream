@@ -83,19 +83,8 @@ export const Endpoints = () => {
         alert(`Failed to trigger collector job run on backend.`);
       }
     } catch (err) {
-      console.warn('Backend unavailable, simulating local telemetry ingestion...');
-      // Local fallback simulation
-      const mockIngest = await telemetryService.processIncomingTelemetry(collectorName, {
-        hostname: 'WIN10-DESK-294',
-        user: 'dev_user',
-        type: 'Process',
-        details: `Collector manual trigger: ${collectorName} payload trace ingested.`,
-        severity: 'high',
-        mitre_id: 'T1059',
-        mitre_name: 'Command and Scripting Interpreter'
-      });
-      setEvents(prev => [mockIngest, ...prev]);
-      alert(`Simulated telemetry event ingested locally.`);
+      console.error('Backend unavailable, collector job was not triggered.', err);
+      alert(`Failed to trigger collector job on backend.`);
     } finally {
       setTriggeringCollector(null);
     }
@@ -136,8 +125,8 @@ export const Endpoints = () => {
         alert('Failed to escalate alert on backend.');
       }
     } catch (err) {
-      alert('Alert Escalated to Incident! (Simulated locally)');
-      setAlerts(prev => prev.map(a => a.id === alert.id ? { ...a, status: 'Resolved' } : a));
+      console.error('Failed to escalate alert to incident.', err);
+      alert('Failed to escalate alert on backend.');
     }
   };
 
