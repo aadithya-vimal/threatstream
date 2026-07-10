@@ -34,7 +34,7 @@ threatstream/
 │   ├── layouts/
 │   │   └── DashboardLayout.jsx <-- Reusable page template frame
 │   ├── components/           <-- Reusable component library (DataTable, MetricCard...)
-│   ├── repositories/         <-- Repository Layer: Directly queries Supabase/fallback
+│   ├── repositories/         <-- Repository Layer: Directly queries Supabase
 │   │   ├── ThreatRepository.js
 │   │   ├── AssetRepository.js
 │   │   ├── TelemetryRepository.js
@@ -72,7 +72,7 @@ To prevent duplicate code and ensure a clean path to full database integration, 
         │   (Manages business logic, coordinates scanners, logs reports)
         ▼
 [ Repository Layer ]  <-- e.g. ThreatRepository.js, AssetRepository.js
-        │   (Direct database access wrappers, maps rows to types, mock fallback)
+        │   (Direct database access wrappers, maps rows to types)
         ▼
 [ Supabase Client ]   <-- lib/supabase/client.js
         │   (Pre-configured with fail-fast env variables)
@@ -86,8 +86,8 @@ All records retrieved from repositories are mapped to models defined in `src/typ
 ### B. Fail-Fast Environment Validation
 The configuration file `src/config/env.js` executes immediately on app load. If the required keys (`VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`) are missing, it throws a critical runtime error, preventing half-configured setups from starting.
 
-### C. Graceful Mock Adapter Fallback
-Each repository contains a local query wrapper. If the Supabase client encounters a missing table or fails to connect, it falls back to the in-memory mock datasets. This preserves frontend functionality out-of-the-box for demonstration and offline development.
+### C. Live-Only Failure Mode
+Each repository contains a local query wrapper. If Supabase access fails or a required table is unavailable, the app surfaces an empty state or visible failure instead of substituting mock datasets.
 
 ---
 
@@ -96,7 +96,7 @@ Each repository contains a local query wrapper. If the Supabase client encounter
 1. **Integrating Live DB Data**:
    - Enable the schema tables inside Supabase (using `MIGRATION_GUIDE.md`).
    - Populate the database.
-   - Set `VITE_USE_MOCK=false` inside the local `.env.local`.
+   - Ensure `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are present in `.env.local`.
 2. **Plugging in Scanning Integrations**:
    - Add scan runners inside `src/services/AssetService.js` (e.g. mapping `executeScan` to a remote FastAPI endpoint running Nmap).
 3. **Plugging in Threat Feeds**:
@@ -581,7 +581,6 @@ The Discovery Orchestrator coordinates sequential execution chains (e.g., RustSc
 1. **Target Forwarding**: Subsequent stages resolve target parameter scopes by extracting unique IPs/hostnames parsed from preceding scans.
 2. **Attribution Merging**: The Merge Engine unions discovered services, technology tags, and TLS configurations while maintaining contributor keys in the metadata logs.
 3. **Audit Trail**: Real-time console logs are grouped by stage and stored on the job record for operator review.
-
 
 
 

@@ -1,6 +1,6 @@
 # ThreatStream
 
-Hybrid cyber security operations platform with a live backend core, demo-friendly frontend fallbacks, and a broad SOC-oriented module layout.
+Hybrid cyber security operations platform with a live backend core and a broad SOC-oriented module layout.
 
 ## Current Reality
 
@@ -8,11 +8,11 @@ Hybrid cyber security operations platform with a live backend core, demo-friendl
 |---|---|
 | Frontend routes and shell | Implemented |
 | Backend job / plugin / scheduler APIs | Implemented |
-| Supabase integration | Implemented with demo fallbacks |
+| Supabase integration | Live-only |
 | Live threat/asset/incident data | Partial |
 | Full product claims in this README | Aspirational in places |
 
-The repository is useful today as a working platform scaffold, but several screens still rely on mock data when the live database is unavailable.
+The repository is now being shaped as a live-only platform scaffold. Screens should fail visibly when the backend or database is unavailable.
 
 ---
 
