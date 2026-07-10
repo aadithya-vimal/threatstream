@@ -86,7 +86,6 @@ ${recsList.map((rec, idx) => `${idx + 1}. ${rec}`).join('\n')}
  */
 export class MalwareAnalyzer {
   static getMalwareProfile(filename) {
-    // Dynamic static profiling mock structure
     return {
       filename: filename || 'update_agent.exe',
       hashes: {
