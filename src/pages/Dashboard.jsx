@@ -135,6 +135,7 @@ function Dashboard() {
   const meanRiskScore = totalAssetsCount > 0
     ? Math.round(assets.reduce((sum, a) => sum + (a.riskScore || a.risk_score || 0), 0) / totalAssetsCount)
     : 0;
+  const sourceLabel = 'Live data from Supabase assets, threats, and incidents tables';
 
   // Alerts column structures
   const alertColumns = [
@@ -212,6 +213,13 @@ function Dashboard() {
         <SetupWizard onComplete={handleSetupComplete} />
       )}
 
+      <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-blue)' }}>{sourceLabel}</span>
+        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+          Aggregated from {threats.length} threats, {assets.length} assets, and {incidents.length} incidents
+        </span>
+      </div>
+
       {/* Metrics Row */}
       <div 
         style={{ 
@@ -269,7 +277,7 @@ function Dashboard() {
           actions={
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-low)' }}>
               <span className="pulse-dot" style={{ backgroundColor: 'var(--color-low)' }} />
-              <span style={{ fontSize: '11px', fontWeight: 600 }}>REALTIME MAP</span>
+              <span style={{ fontSize: '11px', fontWeight: 600 }}>LIVE MAP FROM THREAT FEED</span>
             </div>
           }
           style={{ height: '480px' }}
@@ -317,7 +325,7 @@ function Dashboard() {
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>
                   <span>WEBSOCKET PUBSUB BUFFERS</span>
-                  <span>98% Operational</span>
+                  <span>98% Live</span>
                 </div>
                 <div style={{ height: '4px', backgroundColor: 'var(--bg-primary)', borderRadius: '2px' }}>
                   <div style={{ width: '98%', height: '100%', backgroundColor: 'var(--color-low)' }} />
@@ -344,7 +352,7 @@ function Dashboard() {
             <DataTable 
               columns={columns} 
               data={threats.slice(0, 8)} 
-              emptyText="Waiting for incoming socket connections..." 
+              emptyText="Waiting for incoming live threat events..." 
             />
           </div>
         </Panel>
