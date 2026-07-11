@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
-from .api.endpoints import jobs, plugins, scheduler, telemetry
+from .api.endpoints import jobs, malware, plugins, scheduler, telemetry
 from .workers.job_worker import worker_manager
 from .scheduler.task_scheduler import task_scheduler
 
@@ -30,6 +30,7 @@ app.add_middleware(
 
 # Include API endpoints
 app.include_router(jobs.router, prefix=f"{settings.API_V1_STR}/jobs", tags=["Jobs Queue"])
+app.include_router(malware.router, prefix=f"{settings.API_V1_STR}/malware", tags=["Malware Analysis"])
 app.include_router(plugins.router, prefix=f"{settings.API_V1_STR}/plugins", tags=["Plugins Marketplace"])
 app.include_router(scheduler.router, prefix=f"{settings.API_V1_STR}/scheduler", tags=["Scheduler Task List"])
 app.include_router(telemetry.router, prefix=f"{settings.API_V1_STR}/telemetry", tags=["Endpoint Telemetry"])
