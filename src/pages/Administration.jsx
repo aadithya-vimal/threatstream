@@ -31,7 +31,7 @@ export const Administration = () => {
     feeds_list: '["AbuseIPDB", "CISA Feed"]',
     license_key: 'TS-ENTERPRISE-PRO-9981-2026',
     language: 'English (US)',
-    company_logo_url: 'https://placeholder.threatstream.io/logo.png',
+    company_logo_url: '',
     support_link: 'https://support.threatstream.io'
   });
   
@@ -43,6 +43,7 @@ export const Administration = () => {
   const [inviteForm, setInviteForm] = useState({ name: '', email: '', role: 'SOC Analyst' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const sourceLabel = 'Live data from Supabase system_settings and users tables';
 
   useEffect(() => {
     const loadSystemData = async () => {
@@ -149,6 +150,13 @@ export const Administration = () => {
         title="SOC Portal Administration" 
         description="Provision organization profiles, manage operator directories, configure global retention/storage policies, and review Docker specifications."
       />
+
+      <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-blue)' }}>{sourceLabel}</span>
+        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+          Organization settings and user records are loaded from live backend state
+        </span>
+      </div>
 
       {/* Navigation tabs */}
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', gap: '4px', marginBottom: '20px', overflowX: 'auto' }}>
