@@ -98,14 +98,17 @@ class _FakePlugin:
         return True
 
 
-def test_mock_jwt_allows_local_dev():
+def test_invalid_jwt_is_rejected():
     original_secret = security.settings.SUPABASE_JWT_SECRET
-    security.settings.SUPABASE_JWT_SECRET = "mock-jwt-secret"
+    security.settings.SUPABASE_JWT_SECRET = "real-secret"
     try:
-        user = security.get_current_user(
-            HTTPAuthorizationCredentials(scheme="Bearer", credentials="bad-token")
-        )
-        assert user["id"] == "00000000-0000-0000-0000-000000000000"
+        try:
+            security.get_current_user(
+                HTTPAuthorizationCredentials(scheme="Bearer", credentials="bad-token")
+            )
+            raise AssertionError("Expected invalid token to be rejected")
+        except Exception as exc:
+            assert getattr(exc, "status_code", None) == 401
     finally:
         security.settings.SUPABASE_JWT_SECRET = original_secret
 

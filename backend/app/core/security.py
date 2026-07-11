@@ -31,14 +31,6 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
             "role": payload.get("role", "authenticated")
         }
     except JWTError as e:
-        # Fallback for development/offline testing if mock secret is active
-        if settings.SUPABASE_JWT_SECRET == "mock-jwt-secret":
-            # Allow mock credentials
-            return {
-                "id": "00000000-0000-0000-0000-000000000000",
-                "email": "dev-analyst@acme.com",
-                "role": "authenticated"
-            }
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Could not validate credentials: {str(e)}"

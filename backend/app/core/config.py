@@ -7,9 +7,9 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "ThreatStream Operations Backend"
     
     # Supabase configurations
-    SUPABASE_URL: str = Field(default="http://localhost:54321", env="SUPABASE_URL")
-    SUPABASE_SERVICE_ROLE_KEY: str = Field(default="mock-service-role-key", env="SUPABASE_SERVICE_ROLE_KEY")
-    SUPABASE_JWT_SECRET: str = Field(default="mock-jwt-secret", env="SUPABASE_JWT_SECRET")
+    SUPABASE_URL: str = Field(default="", env="SUPABASE_URL")
+    SUPABASE_SERVICE_ROLE_KEY: str = Field(default="", env="SUPABASE_SERVICE_ROLE_KEY")
+    SUPABASE_JWT_SECRET: str = Field(default="", env="SUPABASE_JWT_SECRET")
 
     # IOC enrichment provider keys
     VIRUSTOTAL_API_KEY: str = Field(default="", env="VIRUSTOTAL_API_KEY")
