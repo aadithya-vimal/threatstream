@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import Globe from 'react-globe.gl';
 
 // --- Constants (remain the same) ---
@@ -38,28 +38,27 @@ const GlobeComponent = ({ threats = [] }) => {
   const [arcs, setArcs] = useState([]);
   const [pulses, setPulses] = useState([]);
 
-  // *** NEW: State for random background arcs ***
-  const [randomArcs, setRandomArcs] = useState([]);
-
   // State for globe dimensions
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const globeRef = useRef();
   const containerRef = useRef();
 
-  // Static victim markers (remain the same)
-  const victimMarkers = [
-    { ...VICTIM_LOCATIONS.berlin, radius: 0.4 },
-    { ...VICTIM_LOCATIONS.sanfrancisco, radius: 0.4 },
-    { ...VICTIM_LOCATIONS.singapore, radius: 0.4 }
-  ];
+  const sourceLabel = 'Live threat arcs only';
 
-  // Update globe dimensions when container resizes (remains the same)
+  const victimMarkers = useMemo(() => ([
+    { ...VICTIM_LOCATIONS.berlin, radius: 0.45 },
+    { ...VICTIM_LOCATIONS.sanfrancisco, radius: 0.45 },
+    { ...VICTIM_LOCATIONS.singapore, radius: 0.45 }
+  ]), []);
+
   useEffect(() => {
     const updateDimensions = () => {
       if (containerRef.current) {
-        const width = containerRef.current.offsetWidth;
-        const height = containerRef.current.offsetHeight;
-        setDimensions({ width, height });
+        const { width, height } = containerRef.current.getBoundingClientRect();
+        setDimensions({
+          width: Math.max(320, Math.floor(width)),
+          height: Math.max(320, Math.floor(height))
+        });
       }
     };
     updateDimensions();
@@ -67,48 +66,23 @@ const GlobeComponent = ({ threats = [] }) => {
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  // *** NEW: Generate random background arcs on component mount ***
-  useEffect(() => {
-    const N_ARCS = 20; // Number of random arcs
-    const gData = [...Array(N_ARCS).keys()].map(() => ({
-      startLat: (Math.random() - 0.5) * 180,
-      startLng: (Math.random() - 0.5) * 360,
-      endLat: (Math.random() - 0.5) * 180,
-      endLng: (Math.random() - 0.5) * 360,
-      color: 'rgba(255, 255, 255, 0.3)', // Faint white color
-      id: `random-${Math.random()}` // Unique ID to differentiate
-    }));
-    setRandomArcs(gData);
-    console.log("Generated random background arcs.");
-  }, []); // Empty dependency array runs only once
-
-  // Get victim location based on attack type (remains the same)
   const getVictimLocation = (attackType) => {
     const type = attackType?.toLowerCase() || 'unknown';
     return ATTACK_TYPE_TO_VICTIM[type] || VICTIM_LOCATIONS.sanfrancisco;
   };
 
-  // Get arc color based on attack type (remains the same)
   const getArcColor = (attackType) => {
-    // ----> OPTIONAL: Uncomment the line below to make ALL attack arcs RED <----
-    // return '#FF0000';
-
-    // Default: Use color mapping
     const type = attackType?.toLowerCase() || 'unknown';
     return ATTACK_TYPE_COLORS[type] || ATTACK_TYPE_COLORS.unknown;
   };
 
-  // Process new threats from props and create arcs/pulses (updated)
   useEffect(() => {
-    // Only process if there are threats and the newest one is different from the last processed one
-    // (This check prevents reprocessing if the parent component re-renders without new data)
     if (threats.length === 0 || (arcs.length > 0 && threats[0].timestamp === arcs[0].originalTimestamp)) {
         return;
     }
 
-    const latestThreat = threats[0]; // Assuming newest threat is always at index 0
+    const latestThreat = threats[0];
 
-    // Validate coordinates (remains the same)
     if (
       typeof latestThreat.lat !== 'number' || typeof latestThreat.lon !== 'number' ||
       latestThreat.lat < -90 || latestThreat.lat > 90 ||
@@ -119,12 +93,10 @@ const GlobeComponent = ({ threats = [] }) => {
     }
 
     const victim = getVictimLocation(latestThreat.attack_type);
-    // *** Use the getArcColor function to determine the color for BOTH arc and pulse ***
     const color = getArcColor(latestThreat.attack_type);
     const startTime = Date.now();
     const id = `${latestThreat.timestamp}-${latestThreat.ip}-${Math.random()}`;
 
-    // Create new arc object - *** ADDED color property directly ***
     const newArc = {
       id,
       startLat: latestThreat.lat,
@@ -133,10 +105,9 @@ const GlobeComponent = ({ threats = [] }) => {
       endLng: victim.lon,
       color: color, // Set color directly
       startTime,
-      originalTimestamp: latestThreat.timestamp // Store original timestamp for comparison
+      originalTimestamp: latestThreat.timestamp
     };
 
-    // Create new pulse object - *** Use the SAME color as the arc ***
     const newPulse = {
       id,
       lat: latestThreat.lat,
@@ -146,62 +117,73 @@ const GlobeComponent = ({ threats = [] }) => {
       radius: 0.6
     };
 
-    // Add new arc (limit to 50)
     setArcs(prevArcs => [newArc, ...prevArcs].slice(0, 50));
-
-    // Add new pulse (limit to 50)
     setPulses(prevPulses => [newPulse, ...prevPulses].slice(0, 50));
 
-    // Set timeout to remove arc and pulse after 15 seconds (remains the same)
     setTimeout(() => {
       setArcs(prevArcs => prevArcs.filter(arc => arc.id !== id));
       setPulses(prevPulses => prevPulses.filter(pulse => pulse.id !== id));
     }, 15000);
 
-  // IMPORTANT: Depend only on the threats array object itself, not its length
   }, [threats]);
 
-  // Combine static victims with active pulses for points data (remains the same)
   const allPoints = [...victimMarkers, ...pulses];
 
   return (
-    <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div
+      ref={containerRef}
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+        overflow: 'hidden'
+      }}
+    >
+      <div style={{ position: 'absolute', top: '12px', left: '12px', zIndex: 2, fontSize: '11px', fontWeight: 700, color: '#9be7ff', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+        {sourceLabel}
+      </div>
       <Globe
         ref={globeRef}
         width={dimensions.width}
         height={dimensions.height}
-        globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
+        globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
         backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
-
-        // *** UPDATED Arcs configuration to handle both types ***
-        arcsData={[...arcs, ...randomArcs]} // Combine real and random arcs
+        bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+        rendererConfig={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
+        showGraticules={true}
+        graticuleColor="rgba(155, 231, 255, 0.12)"
+        onGlobeReady={() => {
+          if (globeRef.current) {
+            globeRef.current.pointOfView({ lat: 18, lng: 15, altitude: 2.15 }, 0);
+          }
+        }}
+        animateIn={true}
+        autoRotate={true}
+        autoRotateSpeed={0.22}
+        arcsData={arcs}
         arcStartLat={d => d.startLat}
         arcStartLng={d => d.startLng}
         arcEndLat={d => d.endLat}
         arcEndLng={d => d.endLng}
-        arcColor={d => d.color} // Use the color property directly
-        // Apply different styles based on ID prefix
-        arcDashLength={d => d.id.startsWith('random-') ? 0.6 : 0.4}
-        arcDashGap={d => d.id.startsWith('random-') ? 0.6 : 0.2}
-        arcDashAnimateTime={d => d.id.startsWith('random-') ? 8000 : 2000} // Slower animation for random
-        arcStroke={d => d.id.startsWith('random-') ? 0.2 : 0.6} // Thinner stroke for random
-        arcAltitude={d => d.id.startsWith('random-') ? 0.15 : 0.3} // Lower altitude for random
-
-        // Points configuration (victims + pulses - remains the same)
+        arcColor={d => d.color}
+        arcDashLength={0.5}
+        arcDashGap={0.25}
+        arcDashAnimateTime={1800}
+        arcStroke={0.65}
+        arcAltitude={0.32}
         pointsData={allPoints}
         pointLat={d => d.lat}
-        pointLng={d => d.lng || d.lon} // Handles both 'lon' and 'lng' keys
+        pointLng={d => d.lng || d.lon}
         pointColor={d => d.color}
         pointAltitude={0}
         pointRadius={d => d.radius}
         pointLabel={d => d.label || ''}
-
-        // Globe appearance (remains the same)
         showAtmosphere={true}
         atmosphereColor="#00a3ff"
-        atmosphereAltitude={0.15}
-
-        // Controls (remains the same)
+        atmosphereAltitude={0.23}
         enablePointerInteraction={true}
       />
     </div>
