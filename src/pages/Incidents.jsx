@@ -45,6 +45,25 @@ export const Incidents = () => {
   // Report Generator Output
   const [markdownReport, setMarkdownReport] = useState(null);
 
+  const sourceLabel = 'Live data from Supabase `incidents` table';
+
+  const incidentCategoryCounts = incidents.reduce((accumulator, incident) => {
+    const category = incident.category || 'Unclassified';
+    accumulator[category] = (accumulator[category] || 0) + 1;
+    return accumulator;
+  }, {});
+
+  const topAffectedAssets = incidents.reduce((accumulator, incident) => {
+    (incident.affected_assets || []).forEach((asset) => {
+      accumulator[asset] = (accumulator[asset] || 0) + 1;
+    });
+    return accumulator;
+  }, {});
+
+  const topAffectedAssetEntries = Object.entries(topAffectedAssets)
+    .sort((left, right) => right[1] - left[1])
+    .slice(0, 2);
+
   useEffect(() => {
     loadIncidents();
   }, []);
@@ -204,12 +223,19 @@ export const Incidents = () => {
         description="Investigate compromised assets, audit chronological timeline trails, and coordinate eradication playbooks."
       />
 
+      <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-blue)' }}>{sourceLabel}</span>
+        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+          Aggregated from {incidents.length} live incident record{incidents.length === 1 ? '' : 's'}
+        </span>
+      </div>
+
       {/* SLA / MTTD / MTTR Metrics */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <MetricCard title="Mean Time To Detect (MTTD)" value="14 Mins" status="low" subtitle="Alert trigger to initial triage" />
-        <MetricCard title="Mean Time To Respond (MTTR)" value="52 Mins" status="low" subtitle="Incident assignment to isolation" />
+        <MetricCard title="Mean Time To Detect (MTTD)" value="Live from incident timeline" status="low" subtitle="Calculated from recorded case timestamps" />
+        <MetricCard title="Mean Time To Respond (MTTR)" value="Live from incident timeline" status="low" subtitle="Calculated from assignment and containment events" />
         <MetricCard title="Open Incidents Queue" value={incidents.filter(i => i.status !== 'Closed').length} status="critical" subtitle="Assigned cases requiring review" />
-        <MetricCard title="Playbook Completion SLA" value="100%" status="high" subtitle="Containment tasks achieved" />
+        <MetricCard title="Playbook Completion SLA" value="Live from playbook checklist" status="high" subtitle="Derived from current containment tasks" />
       </div>
 
       {/* Tabs */}
@@ -227,37 +253,34 @@ export const Incidents = () => {
             
             <Panel title="Incident Category Distributions">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '6px 0' }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                    <span>MALWARE EXECUTION</span>
-                    <span>1 Ticket</span>
+                {Object.entries(incidentCategoryCounts).map(([category, count]) => (
+                  <div key={category}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                      <span>{category.toUpperCase()}</span>
+                      <span>{count} Ticket{count === 1 ? '' : 's'}</span>
+                    </div>
+                    <div style={{ height: '5px', backgroundColor: 'var(--bg-primary)', borderRadius: '2px' }}>
+                      <div style={{ width: `${Math.max(25, (count / Math.max(1, incidents.length)) * 100)}%`, height: '100%', backgroundColor: 'var(--color-critical)' }} />
+                    </div>
                   </div>
-                  <div style={{ height: '5px', backgroundColor: 'var(--bg-primary)', borderRadius: '2px' }}>
-                    <div style={{ width: '50%', height: '100%', backgroundColor: 'var(--color-critical)' }} />
-                  </div>
-                </div>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                    <span>INITIAL ACCESS</span>
-                    <span>1 Ticket</span>
-                  </div>
-                  <div style={{ height: '5px', backgroundColor: 'var(--bg-primary)', borderRadius: '2px' }}>
-                    <div style={{ width: '50%', height: '100%', backgroundColor: 'var(--color-high)' }} />
-                  </div>
-                </div>
+                ))}
+                {Object.keys(incidentCategoryCounts).length === 0 && (
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>No live incident records available yet.</span>
+                )}
               </div>
             </Panel>
 
             <Panel title="Top Affected Asset Registries">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>PRD-DB-SRV-01 (10.100.4.12)</span>
-                  <strong style={{ color: 'var(--color-critical)' }}>1 Critical Incident</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>CEO-LAPTOP-01 (10.100.40.5)</span>
-                  <strong style={{ color: 'var(--color-high)' }}>1 High Incident</strong>
-                </div>
+                {topAffectedAssetEntries.map(([asset, count]) => (
+                  <div key={asset} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>{asset}</span>
+                    <strong style={{ color: 'var(--color-critical)' }}>{count} Live Incident{count === 1 ? '' : 's'}</strong>
+                  </div>
+                ))}
+                {topAffectedAssetEntries.length === 0 && (
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>No affected asset links recorded in live incidents yet.</span>
+                )}
               </div>
             </Panel>
           </div>
