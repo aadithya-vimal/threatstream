@@ -68,6 +68,12 @@ export const api = {
   },
   getTelemetryDetections: () => apiFetch('/telemetry/detections'),
 
+  // Malware
+  getMalwareSamples: () => apiFetch('/malware/samples'),
+  getMalwareYaraRules: () => apiFetch('/malware/yara-rules'),
+  getMalwareHuntSessions: () => apiFetch('/malware/hunt-sessions'),
+  getMalwareStats: () => apiFetch('/malware/stats'),
+
   // Scheduler
   getScheduledTasks: () => apiFetch('/scheduler/tasks'),
 
