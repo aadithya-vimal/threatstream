@@ -141,7 +141,7 @@ export const Topbar = ({ onSearchTrigger }) => {
             }}
           />
           <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--color-low)', textTransform: 'uppercase' }}>
-            Operational
+            Live backend
           </span>
         </div>
 
