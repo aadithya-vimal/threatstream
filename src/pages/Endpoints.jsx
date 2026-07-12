@@ -11,6 +11,7 @@ import { Icon } from '../components/Icons';
 import { AssetService } from '../services/AssetService';
 import { TelemetryService } from '../services/TelemetryService';
 import { supabase } from '../lib/supabase/client';
+import { apiRequest } from '../lib/api';
 
 const assetService = new AssetService();
 const telemetryService = new TelemetryService();
@@ -64,9 +65,8 @@ export const Endpoints = () => {
     setTriggeringCollector(collectorName);
     try {
       // Post a collector job through the jobs queue API
-      const res = await fetch('http://127.0.0.1:8000/api/v1/jobs', {
+      const res = await apiRequest('/jobs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: `EDR Collector Sync: ${collectorName.toUpperCase()}`,
           type: 'scan',
@@ -111,16 +111,15 @@ export const Endpoints = () => {
   };
 
   // Escalate Alert to Incident
-  const handleEscalateAlert = async (alert) => {
+  const handleEscalateAlert = async (incidentAlert) => {
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/telemetry/alerts/${alert.id}/escalate`, {
+      const res = await apiRequest(`/telemetry/alerts/${incidentAlert.id}/escalate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ owner: 'SOC Analyst' })
       });
       if (res.ok) {
         alert('Alert successfully escalated to incident ticket. Associated process tree and correlation evidence attached.');
-        setAlerts(prev => prev.map(a => a.id === alert.id ? { ...a, status: 'Resolved' } : a));
+        setAlerts(prev => prev.map(a => a.id === incidentAlert.id ? { ...a, status: 'Resolved' } : a));
       } else {
         alert('Failed to escalate alert on backend.');
       }

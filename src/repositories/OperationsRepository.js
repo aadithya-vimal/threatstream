@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase/client';
+import { API_BASE, getAuthHeaders as buildAuthHeaders } from '../lib/api';
 
 const generateUUID = () => {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -92,14 +93,12 @@ const INITIAL_API_KEYS = [
   { id: generateUUID(), name: 'Deprecated Key', key_prefix: 'ts_live_gh78', scopes: ['read'], created_by: null, last_used: new Date(Date.now() - 200 * 86400000).toISOString(), expires_at: null, is_active: false, created_at: new Date(Date.now() - 201 * 86400000).toISOString() }
 ];
 
-const BACKEND_URL = 'http://localhost:8000/api/v1';
-
 async function checkBackend() {
   try {
     // Try to reach health check with a short timeout to prevent UI lag
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 600);
-    const res = await fetch('http://localhost:8000/health', { 
+    const res = await fetch(`${API_BASE}/health`, { 
       method: 'GET', 
       signal: controller.signal 
     });
@@ -107,22 +106,6 @@ async function checkBackend() {
     return res.ok;
   } catch (e) {
     return false;
-  }
-}
-
-async function getAuthHeaders() {
-  try {
-    const { data } = await supabase.auth.getSession();
-    const token = data?.session?.access_token;
-    return {
-      'Content-Type': 'application/json',
-      ...(token ? { 'Authorization': `Bearer ${token}` } : { 'Authorization': 'Bearer dev-token' })
-    };
-  } catch (e) {
-    return { 
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer dev-token'
-    };
   }
 }
 
@@ -140,8 +123,8 @@ export class OperationsRepository {
   async getJobs(filters = {}) {
     if (await checkBackend()) {
       try {
-        const headers = await getAuthHeaders();
-        const url = new URL(`${BACKEND_URL}/jobs`);
+        const headers = await buildAuthHeaders();
+        const url = new URL(`${API_BASE}/api/v1/jobs`);
         if (filters.status) url.searchParams.append('status_filter', filters.status);
         if (filters.type) url.searchParams.append('type_filter', filters.type);
         const res = await fetch(url, { headers });
@@ -167,8 +150,8 @@ export class OperationsRepository {
   async createJob(jobData) {
     if (await checkBackend()) {
       try {
-        const headers = await getAuthHeaders();
-        const res = await fetch(`${BACKEND_URL}/jobs`, {
+        const headers = await buildAuthHeaders();
+        const res = await fetch(`${API_BASE}/api/v1/jobs`, {
           method: 'POST',
           headers,
           body: JSON.stringify({
@@ -196,15 +179,15 @@ export class OperationsRepository {
   async updateJobStatus(id, status, progress, result, errorText = null) {
     if (await checkBackend()) {
       try {
-        const headers = await getAuthHeaders();
-        let endpoint = `${BACKEND_URL}/jobs/${id}`;
+        const headers = await buildAuthHeaders();
+        let endpoint = `${API_BASE}/api/v1/jobs/${id}`;
         
         if (status === 'cancelled') {
-          endpoint = `${BACKEND_URL}/jobs/${id}/cancel`;
+          endpoint = `${API_BASE}/api/v1/jobs/${id}/cancel`;
         } else if (status === 'paused') {
-          endpoint = `${BACKEND_URL}/jobs/${id}/pause`;
+          endpoint = `${API_BASE}/api/v1/jobs/${id}/pause`;
         } else if (status === 'running') {
-          endpoint = `${BACKEND_URL}/jobs/${id}/resume`;
+          endpoint = `${API_BASE}/api/v1/jobs/${id}/resume`;
         }
 
         const method = (status === 'cancelled' || status === 'paused' || status === 'running') ? 'POST' : 'PATCH';
@@ -251,8 +234,8 @@ export class OperationsRepository {
   async getConnectors(category = null) {
     if (await checkBackend()) {
       try {
-        const headers = await getAuthHeaders();
-        const res = await fetch(`${BACKEND_URL}/plugins`, { headers });
+        const headers = await buildAuthHeaders();
+        const res = await fetch(`${API_BASE}/api/v1/plugins`, { headers });
         if (res.ok) {
           const plugins = await res.json();
           if (category && category !== 'all') {
@@ -291,8 +274,8 @@ export class OperationsRepository {
     const conn = await this.getConnectorByName(name);
     if (conn && conn.id && await checkBackend()) {
       try {
-        const headers = await getAuthHeaders();
-        const res = await fetch(`${BACKEND_URL}/plugins/${conn.id}/config`, {
+        const headers = await buildAuthHeaders();
+        const res = await fetch(`${API_BASE}/api/v1/plugins/${conn.id}/config`, {
           method: 'POST',
           headers,
           body: JSON.stringify(config)
@@ -330,8 +313,8 @@ export class OperationsRepository {
     const conn = await this.getConnectorByName(name);
     if (conn && conn.id && await checkBackend()) {
       try {
-        const headers = await getAuthHeaders();
-        const res = await fetch(`${BACKEND_URL}/plugins/${conn.id}/test`, {
+        const headers = await buildAuthHeaders();
+        const res = await fetch(`${API_BASE}/api/v1/plugins/${conn.id}/test`, {
           method: 'POST',
           headers
         });
@@ -357,8 +340,8 @@ export class OperationsRepository {
   async getScheduledTasks() {
     if (await checkBackend()) {
       try {
-        const headers = await getAuthHeaders();
-        const res = await fetch(`${BACKEND_URL}/scheduler`, { headers });
+        const headers = await buildAuthHeaders();
+        const res = await fetch(`${API_BASE}/api/v1/scheduler`, { headers });
         if (res.ok) return await res.json();
       } catch (e) {
         console.warn('Backend fetch scheduler tasks failed:', e);
@@ -377,8 +360,8 @@ export class OperationsRepository {
   async createScheduledTask(task) {
     if (await checkBackend()) {
       try {
-        const headers = await getAuthHeaders();
-        const res = await fetch(`${BACKEND_URL}/scheduler/jobs`, {
+        const headers = await buildAuthHeaders();
+        const res = await fetch(`${API_BASE}/api/v1/scheduler/jobs`, {
           method: 'POST',
           headers,
           body: JSON.stringify({
@@ -432,8 +415,8 @@ export class OperationsRepository {
   async toggleTask(id) {
     if (await checkBackend()) {
       try {
-        const headers = await getAuthHeaders();
-        const res = await fetch(`${BACKEND_URL}/scheduler/${id}/toggle`, {
+        const headers = await buildAuthHeaders();
+        const res = await fetch(`${API_BASE}/api/v1/scheduler/${id}/toggle`, {
           method: 'POST',
           headers
         });

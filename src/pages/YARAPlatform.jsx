@@ -6,6 +6,7 @@ import Panel from '../components/Panel';
 import DataTable from '../components/DataTable';
 import StatusBadge from '../components/StatusBadge';
 import { Icon } from '../components/Icons';
+import { apiRequest } from '../lib/api';
 
 const INITIAL_YARA_RULES = [
   {
@@ -154,7 +155,7 @@ export const YARAPlatform = () => {
     }
     
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/telemetry/yara/scan', {
+      const res = await apiRequest('/telemetry/yara/scan', {
         method: 'POST',
         body: formData
       });

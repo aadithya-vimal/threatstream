@@ -1,26 +1,46 @@
 /**
  * src/lib/api.js
- * Typed fetch wrapper for the FastAPI backend at http://localhost:8000
+ * Typed fetch wrapper for the FastAPI backend.
  * Automatically attaches Supabase session token as Bearer.
  */
 import { supabase } from './supabase/client';
 
-const BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+export const API_BASE = import.meta.env.VITE_API_URL || window.location.origin;
+const BASE = API_BASE;
 const V1 = `${BASE}/api/v1`;
 
-async function getToken() {
+export async function getToken() {
   const { data } = await supabase.auth.getSession();
   return data?.session?.access_token || null;
 }
 
-async function apiFetch(path, options = {}) {
+export async function getAuthHeaders(extraHeaders = {}) {
   const token = await getToken();
-  const headers = {
-    'Content-Type': 'application/json',
+  const hasContentType = Object.keys(extraHeaders || {}).some(
+    (key) => key.toLowerCase() === 'content-type'
+  );
+  return {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(options.headers || {}),
+    ...(!hasContentType ? { 'Content-Type': 'application/json' } : {}),
+    ...extraHeaders,
   };
+}
+
+export async function apiRequest(path, options = {}) {
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+  const headers = await getAuthHeaders({
+    ...(options.headers || {}),
+    ...(isFormData ? { 'Content-Type': undefined } : {}),
+  });
+  if (isFormData) {
+    delete headers['Content-Type'];
+  }
   const res = await fetch(`${V1}${path}`, { ...options, headers });
+  return res;
+}
+
+export async function apiFetch(path, options = {}) {
+  const res = await apiRequest(path, options);
   if (!res.ok) {
     let detail = `API ${res.status}`;
     try { const j = await res.json(); detail = j.detail || detail; } catch {}
