@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Form, Depends
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 import uuid
 import yaml
+from app.core.security import get_current_user
 from app.database.supabase_client import supabase_client
 from app.services.telemetry import TelemetryIngestService, SigmaEngine, YaraEngine, CorrelationEngine
 
@@ -10,9 +11,11 @@ router = APIRouter()
 
 @router.get("/events")
 async def get_telemetry_events(
+    current_user: dict = Depends(get_current_user),
     hostname: Optional[str] = None,
     source: Optional[str] = None,
     event_type: Optional[str] = None,
+    severity: Optional[str] = None,
     limit: int = Query(50, ge=1, le=500),
     page: int = Query(1, ge=1)
 ):
@@ -29,21 +32,25 @@ async def get_telemetry_events(
             query = query.eq("source", source)
         if event_type:
             query = query.eq("event_type", event_type)
+        if severity:
+            query = query.eq("severity", severity)
             
         res = query.range(offset, offset + limit - 1).execute()
         return {
             "status": "success",
             "events": res.data or [],
+            "data": res.data or [],
             "count": res.count or 0,
             "page": page,
-            "limit": limit
+            "limit": limit,
+            "offset": offset
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch telemetry events: {str(e)}")
 
 
 @router.post("/ingest")
-async def ingest_telemetry_events(payload: Dict[str, Any]):
+async def ingest_telemetry_events(payload: Dict[str, Any], current_user: dict = Depends(get_current_user)):
     """
     Streaming and batch ingestion endpoint.
     Normalizes logs, runs Sigma rules engine, correlates items, and triggers alerts.
@@ -68,7 +75,7 @@ async def ingest_telemetry_events(payload: Dict[str, Any]):
 
 
 @router.post("/rules")
-async def import_sigma_rule(payload: Dict[str, Any]):
+async def import_sigma_rule(payload: Dict[str, Any], current_user: dict = Depends(get_current_user)):
     """
     Import and validate a Sigma / YARA rule.
     """
@@ -105,7 +112,8 @@ async def import_sigma_rule(payload: Dict[str, Any]):
 @router.post("/yara/scan")
 async def yara_file_scan(
     file: UploadFile = File(...),
-    rule_id: Optional[str] = Form(None)
+    rule_id: Optional[str] = Form(None),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Scans an uploaded file against active YARA rules.
@@ -145,7 +153,7 @@ async def yara_file_scan(
 
 
 @router.get("/alerts")
-async def get_security_alerts():
+async def get_security_alerts(current_user: dict = Depends(get_current_user)):
     """
     Lists triggered alerts.
     """
@@ -162,7 +170,8 @@ async def get_security_alerts():
 @router.post("/alerts/{alert_id}/escalate")
 async def escalate_alert_to_incident(
     alert_id: str,
-    payload: Dict[str, Any] = None
+    payload: Dict[str, Any] = None,
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Escalates an alert to an Incident, attaching evidence, assets, and correlation timeline.
