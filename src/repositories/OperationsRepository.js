@@ -111,12 +111,12 @@ async function checkBackend() {
 
 export class OperationsRepository {
   constructor() {
-    this.connectors = [...INITIAL_CONNECTORS];
-    this.jobs = [...INITIAL_JOBS];
-    this.scheduledTasks = [...INITIAL_SCHEDULED_TASKS];
-    this.auditLogs = [...INITIAL_AUDIT_LOGS];
-    this.backups = [...INITIAL_BACKUPS];
-    this.apiKeys = [...INITIAL_API_KEYS];
+    this.connectors = [];
+    this.jobs = [];
+    this.scheduledTasks = [];
+    this.auditLogs = [];
+    this.backups = [];
+    this.apiKeys = [];
   }
 
   // --- JOB QUEUE ---

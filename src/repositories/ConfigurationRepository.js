@@ -4,13 +4,7 @@
  */
 import { supabase } from '../lib/supabase/client';
 export class ConfigurationRepository {
-  constructor() {
-    this.mockSettings = {
-      maxCacheSize: 100,
-      ingressLimit: 500,
-      sessionExpiry: 8
-    };
-  }
+  constructor() {}
 
   /**
    * Fetch all configurations.
