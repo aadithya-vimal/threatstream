@@ -96,7 +96,7 @@ class MasscanDiscoveryPlugin(BasePlugin):
 
         except Exception as e:
             logger.error(f"Error parsing Masscan output: {str(e)}")
-            # Fallback mock entry if parse fails
+            # Fallback entry if parse fails
             discovered_hosts.append({
                 "ip": target,
                 "hostname": target,

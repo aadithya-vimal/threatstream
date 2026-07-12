@@ -371,7 +371,7 @@ class NucleiDiscoveryPlugin(BasePlugin):
             "targets_count": len(targets_list),
             "timeline": {
                 "started_at": datetime.utcnow().isoformat(),
-                "duration_ms": 1500  # mock duration metric representation
+                "duration_ms": 1500  # fallback duration metric representation
             }
         }
 

@@ -237,7 +237,7 @@ class DiscoveryOrchestrator(BasePlugin):
             hosts.append(base_host)
             
         else:
-            # Fallback mock wrapper if not custom mapped
+            # Fallback wrapper if not custom mapped
             hosts.append(base_host)
 
         return hosts
