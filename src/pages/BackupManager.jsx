@@ -1,18 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import SectionHeader from '../components/SectionHeader';
 import MetricCard from '../components/MetricCard';
 import Panel from '../components/Panel';
 import DataTable from '../components/DataTable';
 import StatusBadge from '../components/StatusBadge';
-
-const INITIAL_BACKUPS = [
-  { id: 'bak-1', name: 'ts_backup_20260705_0200', type: 'full', status: 'completed', size: '847 MB', tables: '44 tables', created: '2026-07-05 02:00:00', expires: '2026-08-04' },
-  { id: 'bak-2', name: 'ts_backup_20260704_0200', type: 'full', status: 'completed', size: '831 MB', tables: '44 tables', created: '2026-07-04 02:00:00', expires: '2026-08-03' },
-  { id: 'bak-3', name: 'ts_backup_20260705_1300', type: 'incremental', status: 'running', size: '-', tables: '-', created: '2026-07-05 13:00:00', expires: '2026-07-12' },
-  { id: 'bak-4', name: 'ts_backup_20260703_0200', type: 'full', status: 'completed', size: '812 MB', tables: '44 tables', created: '2026-07-03 02:00:00', expires: '2026-08-02' },
-  { id: 'bak-5', name: 'ts_config_20260705', type: 'config', status: 'completed', size: '24 KB', tables: 'connectors, config', created: '2026-07-05 09:00:00', expires: '2026-10-03' }
-];
+import { OperationsService } from '../services/OperationsService';
 
 const VERSION_HISTORY = [
   { version: 'v2.0.0 (Current)', date: '2026-07-05', channel: 'Production', features: 'Threat Analysis Platform, YARA Platform, IOC Enrichment, Graph Investigation' },
@@ -24,7 +17,7 @@ const VERSION_HISTORY = [
 ];
 
 export const BackupManager = () => {
-  const [backups, setBackups] = useState(INITIAL_BACKUPS);
+  const [backups, setBackups] = useState([]);
   const [activeTab, setActiveTab] = useState('backups');
   
   // Restore flow states
@@ -35,24 +28,30 @@ export const BackupManager = () => {
   // Schedule settings
   const [scheduleType, setScheduleType] = useState('daily');
   const [retentionDays, setRetentionDays] = useState(30);
+  const opsService = new OperationsService();
+
+  useEffect(() => {
+    const loadBackups = async () => {
+      try {
+        const data = await opsService.getBackups();
+        setBackups(data || []);
+      } catch (err) {
+        console.warn('Failed to load live backups:', err);
+      }
+    };
+    loadBackups();
+  }, []);
 
   const handleCreateBackup = (type) => {
-    const timeStr = new Date().toISOString().slice(0, 10).replace(/-/g, '') + '_' + new Date().toTimeString().slice(0, 5).replace(/:/g, '');
-    const newBak = {
-      id: `bak-${Date.now()}`,
-      name: `ts_${type}_${timeStr}_manual`,
-      type,
-      status: 'completed',
-      size: type === 'config' ? '12 KB' : '848 MB',
-      tables: type === 'config' ? 'connectors, config' : '44 tables',
-      created: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      expires: new Date(Date.now() + retentionDays * 86400000).toISOString().slice(0, 10)
-    };
-    setBackups([newBak, ...backups]);
+    opsService.createBackup(type).then((created) => {
+      if (created) setBackups(prev => [created, ...prev]);
+    });
   };
 
   const handleDeleteBackup = (id) => {
-    setBackups(prev => prev.filter(b => b.id !== id));
+    opsService.deleteBackup(id).then(() => {
+      setBackups(prev => prev.filter(b => b.id !== id));
+    });
   };
 
   const handleTriggerRestore = () => {
@@ -71,10 +70,10 @@ export const BackupManager = () => {
       />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '24px' }}>
-        <MetricCard title="Last Backup Done" value="2 hours ago" change="Auto-backup daily" icon="check" />
-        <MetricCard title="Next Scheduled Backup" value="In 22 hours" change="At 02:00 AM UTC" icon="clock" />
-        <MetricCard title="Total Backups Count" value="47" change="2.4 GB storage used" icon="database" />
-        <MetricCard title="Retention Limit" value="30 Days" change="Auto-cleanup configured" icon="filter" />
+        <MetricCard title="Last Backup Done" value={backups[0]?.created_at ? new Date(backups[0].created_at).toLocaleString() : 'No backups yet'} change="Live from backups table" icon="check" />
+        <MetricCard title="Next Scheduled Backup" value={backups.find(b => b.status === 'running') ? 'Running now' : 'Not scheduled'} change="Live from backups table" icon="clock" />
+        <MetricCard title="Total Backups Count" value={backups.length} change="Live Supabase count" icon="database" />
+        <MetricCard title="Retention Limit" value={`${retentionDays} Days`} change="User configured" icon="filter" />
       </div>
 
       {/* Tabs */}

@@ -6,77 +6,39 @@ import Panel from '../components/Panel';
 import DataTable from '../components/DataTable';
 import StatusBadge from '../components/StatusBadge';
 import { Icon } from '../components/Icons';
-
-const INITIAL_JOBS = [
-  { id: 'job-001', name: 'Nmap Full Network Scan', type: 'scan', status: 'running', progress: 67, connector: 'nmap', priority: 2, created: '13:01:05', duration: '4m 23s' },
-  { id: 'job-002', name: 'Nuclei CVE Template Scan', type: 'scan', status: 'running', progress: 34, connector: 'nuclei', priority: 2, created: '13:03:10', duration: '2m 01s' },
-  { id: 'job-003', name: 'IOC Enrichment Batch', type: 'enrich', status: 'queued', progress: 0, connector: 'virustotal', priority: 3, created: '13:04:30', duration: '-' },
-  { id: 'job-004', name: 'Full Platform Backup', type: 'backup', status: 'completed', progress: 100, connector: 'system', priority: 1, created: '12:00:00', duration: '8m 14s' },
-  { id: 'job-005', name: 'Threat Feed Update', type: 'collect', status: 'completed', progress: 100, connector: 'otx', priority: 3, created: '12:30:00', duration: '1m 44s' },
-  { id: 'job-006', name: 'Weekly Executive Report', type: 'report', status: 'queued', progress: 0, connector: 'system', priority: 5, created: '13:05:00', duration: '-' },
-  { id: 'job-007', name: 'Old Log Cleanup', type: 'cleanup', status: 'failed', progress: 0, connector: 'system', priority: 8, created: '11:00:00', duration: '0m 02s', error: 'Permission denied: /var/log/archive' },
-  { id: 'job-008', name: 'OSQuery Fleet Collect', type: 'collect', status: 'running', progress: 89, connector: 'osquery', priority: 2, created: '12:55:00', duration: '5m 12s' }
-];
-
-const INITIAL_SCHEDULED_TASKS = [
-  { id: 'task-1', name: 'Daily Full Backup', cron: '0 2 * * *', lastRun: '2026-07-05 02:00:00', nextRun: '2026-07-06 02:00:00', status: 'Enabled', connector: 'system', runCount: 365 },
-  { id: 'task-2', name: 'Nuclei Scan Every 6h', cron: '0 */6 * * *', lastRun: '2026-07-05 12:00:00', nextRun: '2026-07-05 18:00:00', status: 'Enabled', connector: 'nuclei', runCount: 1247 },
-  { id: 'task-3', name: 'Hourly Feed Update', cron: '0 * * * *', lastRun: '2026-07-05 13:00:00', nextRun: '2026-07-05 14:00:00', status: 'Enabled', connector: 'otx', runCount: 8760 },
-  { id: 'task-4', name: 'Weekly Executive Report', cron: '0 9 * * 1', lastRun: '2026-06-29 09:00:00', nextRun: '2026-07-06 09:00:00', status: 'Enabled', connector: 'system', runCount: 52 },
-  { id: 'task-5', name: 'Zeek PCAP Collect', cron: '*/5 * * * *', lastRun: '2026-07-05 13:05:00', nextRun: '2026-07-05 13:10:00', status: 'Enabled', connector: 'zeek', runCount: 52848 },
-  { id: 'task-6', name: 'OSQuery Fleet Poll', cron: '*/15 * * * *', lastRun: '2026-07-05 13:00:00', nextRun: '2026-07-05 13:15:00', status: 'Enabled', connector: 'osquery', runCount: 17616 }
-];
-
-const STREAMING_LOGS = [
-  "WIN-SRV01 process_create cmd.exe spawned by Office process",
-  "LINUX-WEB01 network_conn Outbound connection to 185.220.101.44:4444",
-  "DC-01 auth_success Admin login from 10.0.5.44",
-  "WIN-HR-04 file_write update_agent.exe written to C:\\Windows\\Temp",
-  "NIDS suricata_alert Potential SQL injection on database gateway",
-  "LINUX-DB01 process_create mysqldump initiated by db_admin",
-  "WIN-DEV09 registry_mod RunOnce startup key hijacked",
-  "NIDS zeek_flow Large exfiltration flow detected to dropzone.net",
-  "DC-02 service_create Malicious service scheduler.exe registered",
-  "WIN-SRV01 system_audit Privileged access token generated for user: backup_srv"
-];
+import { OperationsService } from '../services/OperationsService';
 
 export const Operations = () => {
-  const [jobs, setJobs] = useState(INITIAL_JOBS);
-  const [scheduledTasks, setScheduledTasks] = useState(INITIAL_SCHEDULED_TASKS);
+  const [jobs, setJobs] = useState([]);
+  const [scheduledTasks, setScheduledTasks] = useState([]);
   const [logs, setLogs] = useState([]);
   const [activeTab, setActiveTab] = useState('all');
-
   const logRef = useRef([]);
+  const opsService = new OperationsService();
 
   useEffect(() => {
-    // Populate logs initial state
-    const initialLogs = Array.from({ length: 6 }).map((_, idx) => {
-      const time = new Date(Date.now() - (6 - idx) * 5000).toLocaleTimeString();
-      return `[${time}] ${STREAMING_LOGS[idx]}`;
-    });
-    setLogs(initialLogs);
-    logRef.current = initialLogs;
-
-    // Set up logs stream simulation
-    const interval = setInterval(() => {
-      const time = new Date().toLocaleTimeString();
-      const randomLog = STREAMING_LOGS[Math.floor(Math.random() * STREAMING_LOGS.length)];
-      const newEntry = `[${time}] ${randomLog}`;
-      
-      const updatedLogs = [...logRef.current.slice(1), newEntry];
-      logRef.current = updatedLogs;
-      setLogs(updatedLogs);
-    }, 3000);
-
-    return () => clearInterval(interval);
+    const load = async () => {
+      const [jobRows, taskRows, auditRows] = await Promise.all([
+        opsService.getJobs(),
+        opsService.getScheduledTasks(),
+        opsService.getAuditLogs()
+      ]);
+      setJobs(jobRows || []);
+      setScheduledTasks(taskRows || []);
+      setLogs((auditRows || []).slice(0, 6).map((row) => `[${row.timestamp}] ${row.action} ${row.resource_name || ''}`.trim()));
+      logRef.current = (auditRows || []).slice(0, 6);
+    };
+    load();
   }, []);
 
   const handleCancelJob = (id) => {
-    setJobs(prev => prev.map(j => j.id === id ? { ...j, status: 'failed', error: 'Cancelled by analyst' } : j));
+    opsService.cancelJob(id).then(() => setJobs(prev => prev.map(j => j.id === id ? { ...j, status: 'failed', error: 'Cancelled by analyst' } : j)));
   };
 
   const handleToggleTask = (id) => {
-    setScheduledTasks(prev => prev.map(t => t.id === id ? { ...t, status: t.status === 'Enabled' ? 'Disabled' : 'Enabled' } : t));
+    opsService.toggleTask(id).then((updated) => {
+      if (updated) setScheduledTasks(prev => prev.map(t => t.id === id ? updated : t));
+    });
   };
 
   const filteredJobs = jobs.filter(job => {
@@ -93,10 +55,10 @@ export const Operations = () => {
 
       {/* Top Stats Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '24px' }}>
-        <MetricCard title="Active Background Jobs" value="3" change="Running on 3 collectors" icon="play" />
-        <MetricCard title="Completed (Today)" value="47" change="100% success rate" icon="check" />
-        <MetricCard title="Network Events Log Stream" value="2,847 eps" change="Aggregated stream rate" icon="activity" />
-        <MetricCard title="Database Latency" value="12ms" change="99.9% uptime" icon="database" />
+        <MetricCard title="Active Background Jobs" value={jobs.filter(j => j.status === 'running').length} change="Live jobs table" icon="play" />
+        <MetricCard title="Completed (Today)" value={jobs.filter(j => j.status === 'completed').length} change="Live jobs table" icon="check" />
+        <MetricCard title="Network Events Log Stream" value={logs.length} change="Live audit/event stream" icon="activity" />
+        <MetricCard title="Database Latency" value="Live via Supabase" change="Backend health is external" icon="database" />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: '20px', marginBottom: '24px' }}>

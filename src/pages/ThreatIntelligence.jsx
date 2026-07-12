@@ -15,8 +15,10 @@ import LoadingState from '../components/LoadingState';
 import EmptyState from '../components/EmptyState';
 import { Icon } from '../components/Icons';
 import { ThreatService } from '../services/ThreatService';
+import { OperationsService } from '../services/OperationsService';
 
 const threatService = new ThreatService();
+const operationsService = new OperationsService();
 
 export const ThreatIntelligence = () => {
   const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, explorer, actors, campaigns, malware, connectors
@@ -39,14 +41,7 @@ export const ThreatIntelligence = () => {
   const [correlations, setCorrelations] = useState([]);
 
   // Connectors Status State (Plugin Interface Stubs)
-  const [connectors, setConnectors] = useState([
-    { id: 'abuseipdb', name: 'AbuseIPDB IP Feed', status: 'Connected', lastPoll: '10 mins ago', records: 412, active: true },
-    { id: 'otx', name: 'AlienVault OTX PulseSync', status: 'Connected', lastPoll: '1 hour ago', records: 1240, active: true },
-    { id: 'urlhaus', name: 'URLhaus Malware URLs', status: 'Connected', lastPoll: '30 mins ago', records: 85, active: true },
-    { id: 'greynoise', name: 'GreyNoise Noise Filtering', status: 'Standby', lastPoll: '3 hours ago', records: 210, active: false },
-    { id: 'cisa', name: 'CISA Known Exploited Vulnerabilities (KEV)', status: 'Connected', lastPoll: '24 hours ago', records: 914, active: true },
-    { id: 'spamhaus', name: 'Spamhaus Threat List', status: 'Unconfigured', lastPoll: 'Never', records: 0, active: false }
-  ]);
+  const [connectors, setConnectors] = useState([]);
 
   useEffect(() => {
     const loadPlatformIntel = async () => {
@@ -65,6 +60,7 @@ export const ThreatIntelligence = () => {
         setCampaigns(fetchedCampaigns);
         setMalware(fetchedMalware);
         setStats(intelStats);
+        setConnectors(await operationsService.getConnectors());
       } catch (err) {
         console.error('Failed to resolve threat intelligence catalog:', err);
       } finally {
@@ -162,7 +158,7 @@ export const ThreatIntelligence = () => {
   };
 
   const toggleConnectorActive = (id) => {
-    setConnectors(prev => prev.map(c => 
+    setConnectors(prev => prev.map(c =>
       c.id === id ? { ...c, active: !c.active, status: !c.active ? 'Connected' : 'Standby' } : c
     ));
   };

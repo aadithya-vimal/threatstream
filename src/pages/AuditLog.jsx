@@ -1,28 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import SectionHeader from '../components/SectionHeader';
 import Panel from '../components/Panel';
 import DataTable from '../components/DataTable';
 import StatusBadge from '../components/StatusBadge';
 import { Icon } from '../components/Icons';
-
-const INITIAL_AUDIT_LOGS = [
-  { id: 'aud-001', timestamp: '2026-07-05 13:04:12', user_email: 'admin@acme.com', action: 'config_change', resource_type: 'connector', resource_id: 'nmap', resource_name: 'Nmap Scanner', ip_address: '10.0.12.42', user_agent: 'Mozilla/5.0 (Windows NT 10.0)', severity: 'warning', details: { modified_fields: ['target_range', 'scan_speed'], reason: 'Network expansion' } },
-  { id: 'aud-002', timestamp: '2026-07-05 13:02:44', user_email: 'analyst@acme.com', action: 'update', resource_type: 'incident', resource_id: 'inc-984', resource_name: 'LockBit 3.0 Ransomware Activity', ip_address: '10.0.12.98', user_agent: 'Mozilla/5.0 (Macintosh)', severity: 'info', details: { status: 'Mitigated', comments_added: 'Containment completed on target server.' } },
-  { id: 'aud-003', timestamp: '2026-07-05 12:44:12', user_email: 'admin@acme.com', action: 'api_key_created', resource_type: 'user', resource_id: 'usr-1', resource_name: 'SOC Automation Key', ip_address: '10.0.12.42', user_agent: 'Mozilla/5.0 (Windows NT 10.0)', severity: 'warning', details: { scope: ['read:intel', 'write:intel', 'read:incidents'], key_prefix: 'ts_live_ab12' } },
-  { id: 'aud-004', timestamp: '2026-07-05 12:00:00', user_email: 'system', action: 'backup_complete', resource_type: 'backup', resource_id: 'ts_backup_20260705_0200', resource_name: 'Daily Auto-Backup', ip_address: '127.0.0.1', user_agent: 'ThreatStream System Daemon', severity: 'info', details: { size_bytes: 888127393, checksum: 'sha256:e3b0c442...' } },
-  { id: 'aud-005', timestamp: '2026-07-05 11:30:15', user_email: 'hunter@acme.com', action: 'export', resource_type: 'ioc', resource_id: null, resource_name: 'Active C2 Domains', ip_address: '10.0.12.63', user_agent: 'Mozilla/5.0 (X11; Linux x86_64)', severity: 'info', details: { format: 'csv', count: 124 } },
-  { id: 'aud-006', timestamp: '2026-07-05 10:45:00', user_email: 'hacker_attempts@xyz.com', action: 'login_failed', resource_type: 'user', resource_id: null, resource_name: 'admin', ip_address: '185.220.101.44', user_agent: 'Python-urllib/3.10', severity: 'warning', details: { failure_reason: 'Invalid password credential', attempt_count: 3 } },
-  { id: 'aud-007', timestamp: '2026-07-05 09:15:30', user_email: 'admin@acme.com', action: 'admin_escalation', resource_type: 'user', resource_id: 'usr-4', resource_name: 'analyst@acme.com', ip_address: '10.0.12.42', user_agent: 'Mozilla/5.0', severity: 'critical', details: { granted_roles: ['Global Administrator'], approved_by: 'admin@acme.com' } },
-  { id: 'aud-008', timestamp: '2026-07-05 08:30:00', user_email: 'admin@acme.com', action: 'delete', resource_type: 'rule', resource_id: 'rule-7a1b', resource_name: 'Temporary_Mimikatz_Hunt', ip_address: '10.0.12.42', user_agent: 'Mozilla/5.0', severity: 'warning', details: { deleted_rule_hash: '2fa9e8b7c' } }
-];
+import { OperationsService } from '../services/OperationsService';
 
 export const AuditLog = () => {
-  const [logs, setLogs] = useState(INITIAL_AUDIT_LOGS);
-  const [selectedLog, setSelectedLog] = useState(INITIAL_AUDIT_LOGS[0]);
+  const [logs, setLogs] = useState([]);
+  const [selectedLog, setSelectedLog] = useState(null);
   const [severityFilter, setSeverityFilter] = useState('all');
   const [actionFilter, setActionFilter] = useState('all');
   const [userSearch, setUserSearch] = useState('');
+  const opsService = new OperationsService();
+
+  useEffect(() => {
+    const loadLogs = async () => {
+      const rows = await opsService.getAuditLogs();
+      setLogs(rows || []);
+      setSelectedLog((rows || [])[0] || null);
+    };
+    loadLogs();
+  }, []);
 
   const filteredLogs = logs.filter(log => {
     const matchesSeverity = severityFilter === 'all' || log.severity === severityFilter;
@@ -40,17 +40,17 @@ export const AuditLog = () => {
 
       {/* Stats bar */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '24px' }}>
-        <Panel title="Logs (Today)">
-          <strong style={{ fontSize: '24px', color: 'var(--accent)' }}>1,247</strong>
+        <Panel title="Logs">
+          <strong style={{ fontSize: '24px', color: 'var(--accent)' }}>{logs.length}</strong>
         </Panel>
         <Panel title="Warnings">
-          <strong style={{ fontSize: '24px', color: 'var(--color-orange)' }}>14</strong>
+          <strong style={{ fontSize: '24px', color: 'var(--color-orange)' }}>{logs.filter(l => l.severity === 'warning').length}</strong>
         </Panel>
         <Panel title="Critical Events">
-          <strong style={{ fontSize: '24px', color: 'var(--color-red)' }}>2</strong>
+          <strong style={{ fontSize: '24px', color: 'var(--color-red)' }}>{logs.filter(l => l.severity === 'critical').length}</strong>
         </Panel>
         <Panel title="Unique Operators">
-          <strong style={{ fontSize: '24px', color: 'var(--color-blue)' }}>8 users</strong>
+          <strong style={{ fontSize: '24px', color: 'var(--color-blue)' }}>{new Set(logs.map(l => l.user_email)).size} users</strong>
         </Panel>
       </div>
 

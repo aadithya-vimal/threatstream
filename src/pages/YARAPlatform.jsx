@@ -7,141 +7,42 @@ import DataTable from '../components/DataTable';
 import StatusBadge from '../components/StatusBadge';
 import { Icon } from '../components/Icons';
 import { apiRequest } from '../lib/api';
-
-const INITIAL_YARA_RULES = [
-  {
-    id: 'yara-001',
-    name: 'Detect_LockBit_3',
-    description: 'Detects LockBit 3.0 (LockBit Black) ransomware binaries based on specific cryptographic constants and string builders.',
-    author: 'SOC Threat Team',
-    version: '1.2',
-    category: 'Ransomware',
-    severity: 'critical',
-    status: 'Active',
-    execution_count: 342,
-    last_triggered: '2026-07-05 12:44:12',
-    mitre_id: 'T1486',
-    definition: `rule Detect_LockBit_3 {\n    meta:\n        author = "SOC Threat Team"\n        description = "Detects LockBit 3.0 Ransomware"\n        severity = "Critical"\n        mitre_tactic = "Impact"\n        mitre_technique = "T1486"\n    strings:\n        $g1 = "LockBit 3.0" ascii wide\n        $g2 = ".lockbit" ascii wide\n        $s1 = { 8B 45 FC 83 C0 01 89 45 FC 8B 4D FC 3B 4D 08 7D 2F }\n        $s2 = { 8A 04 0B 32 04 0A 88 04 0B }\n    condition:\n        uint16(0) == 0x5A4D and ($g1 or $g2) and all of ($s*)\n}`
-  },
-  {
-    id: 'yara-002',
-    name: 'Emotet_Dropper_Office',
-    description: 'Identifies MS Office documents containing Emotet downloader VBA macros.',
-    author: 'VBA Analyst Group',
-    version: '2.0',
-    category: 'Malware Families',
-    severity: 'high',
-    status: 'Active',
-    execution_count: 89,
-    last_triggered: '2026-07-04 18:21:05',
-    mitre_id: 'T1204.002',
-    definition: `rule Emotet_Dropper_Office {\n    meta:\n        author = "VBA Analyst Group"\n        description = "Detects Emotet Dropper Macros in Office Docs"\n        mitre_technique = "T1204.002"\n    strings:\n        $magic_doc = { D0 CF 11 E0 A1 B1 1A E1 }\n        $vba1 = "Document_Open" ascii\n        $vba2 = "AutoOpen" ascii\n        $payload1 = "powershell.exe -w hidden -c" ascii wide\n        $payload2 = "WScript.Shell" ascii wide\n    condition:\n        $magic_doc at 0 and ($vba1 or $vba2) and 1 of ($payload*)\n}`
-  },
-  {
-    id: 'yara-003',
-    name: 'LSASS_Dump_Detect',
-    description: 'Flags credential harvesting via dumping of local security authority subsystem (lsass.exe).',
-    author: 'IR Specialist',
-    version: '1.0',
-    category: 'Credential Dumping',
-    severity: 'critical',
-    status: 'Active',
-    execution_count: 1204,
-    last_triggered: '2026-07-05 13:02:44',
-    mitre_id: 'T1003.001',
-    definition: `rule LSASS_Dump_Detect {\n    meta:\n        author = "IR Specialist"\n        description = "Detects Minidump files of LSASS process"\n        mitre_technique = "T1003.001"\n    strings:\n        $magic_dmp = { 4D 44 4D 50 93 A7 }\n        $lsass_str1 = "lsass.exe" wide\n        $lsass_str2 = "lsass.dmp" ascii wide\n    condition:\n        $magic_dmp at 0 and 1 of ($lsass_str*)\n}`
-  },
-  {
-    id: 'yara-004',
-    name: 'Cobalt_Strike_Beacon',
-    description: 'Detects Cobalt Strike beacon payloads in memory or files based on shellcode signature configurations.',
-    author: 'Red Team Tracker',
-    version: '3.4',
-    category: 'C2 Detection',
-    severity: 'critical',
-    status: 'Active',
-    execution_count: 148,
-    last_triggered: '2026-07-03 09:12:00',
-    mitre_id: 'T2071',
-    definition: `rule Cobalt_Strike_Beacon {\n    meta:\n        author = "Red Team Tracker"\n        description = "Detects Cobalt Strike Beacon shellcode"\n    strings:\n        $s1 = { FC E8 89 00 00 00 60 89 E5 31 D2 64 8B 52 30 8B 52 0C }\n        $s2 = "ReflectiveLoader" ascii wide\n        $beacon_cfg = "beacon.x64.dll" ascii\n    condition:\n        uint16(0) == 0x5A4D and 2 of them\n}`
-  },
-  {
-    id: 'yara-005',
-    name: 'Mimikatz_Strings',
-    description: 'Detects Mimikatz credentials stealing tool strings.',
-    author: 'SOC Analyst',
-    version: '1.5',
-    category: 'Credential Dumping',
-    severity: 'high',
-    status: 'Active',
-    execution_count: 412,
-    last_triggered: '2026-07-05 11:30:15',
-    mitre_id: 'T1003.001',
-    definition: `rule Mimikatz_Strings {\n    meta:\n        author = "SOC Analyst"\n        description = "Detects Mimikatz Strings"\n    strings:\n        $m1 = "mimikatz" ascii wide case-insensitive\n        $m2 = "sekurlsa::logonpasswords" ascii wide\n        $m3 = "wdigest.dll" ascii wide\n        $m4 = "lsadump" ascii wide\n    condition:\n        2 of them\n}`
-  },
-  {
-    id: 'yara-006',
-    name: 'PowerShell_Obfuscation_Stage2',
-    description: 'Detects heavily obfuscated PowerShell command line strings.',
-    author: 'Threat Hunter Alpha',
-    version: '1.1',
-    category: 'Lateral Movement',
-    severity: 'medium',
-    status: 'Active',
-    execution_count: 228,
-    last_triggered: '2026-07-05 13:04:19',
-    mitre_id: 'T1027',
-    definition: `rule PowerShell_Obfuscation_Stage2 {\n    meta:\n        author = "Threat Hunter Alpha"\n        description = "PowerShell Obfuscation Stage 2"\n    strings:\n        $obf1 = "-join" ascii wide case-insensitive\n        $obf2 = "[char[]]" ascii wide case-insensitive\n        $obf3 = "[Convert]::ToBase64String" ascii wide\n        $obf4 = "IO.MemoryStream" ascii wide\n    condition:\n        3 of them\n}`
-  },
-  {
-    id: 'yara-007',
-    name: 'BankBot_APK',
-    description: 'Detects BankBot android banking trojan based on package name, permissions, and service attributes.',
-    author: 'Mobile Team',
-    version: '1.0',
-    category: 'Malware Families',
-    severity: 'high',
-    status: 'Active',
-    execution_count: 51,
-    last_triggered: '2026-07-02 14:15:36',
-    mitre_id: 'T1437',
-    definition: `rule BankBot_APK {\n    meta:\n        author = "Mobile Team"\n        description = "Detects BankBot APK"\n    strings:\n        $apk1 = "Android.app.admin" ascii wide\n        $apk2 = "smspayment" ascii wide\n        $apk3 = "banking_trojan" ascii wide\n    condition:\n        2 of them\n}`
-  },
-  {
-    id: 'yara-008',
-    name: 'Ryuk_Ransomware',
-    description: 'Detects Ryuk ransomware indicators and file encryption markers.',
-    author: 'SOC Threat Team',
-    version: '1.3',
-    category: 'Ransomware',
-    severity: 'critical',
-    status: 'Active',
-    execution_count: 83,
-    last_triggered: '2026-07-01 02:44:00',
-    mitre_id: 'T1486',
-    definition: `rule Ryuk_Ransomware {\n    meta:\n        author = "SOC Threat Team"\n        description = "Ryuk Ransomware"\n    strings:\n        $r1 = "RyukReadMe" ascii wide\n        $r2 = "HERMES" ascii wide\n        $r3 = "ryuk" ascii wide case-insensitive\n    condition:\n        2 of them\n}`
-  }
-];
-
-const CATEGORIES = [
-  { name: 'All Rules', count: 91 },
-  { name: 'Ransomware', count: 12 },
-  { name: 'Credential Dumping', count: 8 },
-  { name: 'Lateral Movement', count: 6 },
-  { name: 'Persistence', count: 15 },
-  { name: 'C2 Detection', count: 11 },
-  { name: 'Exfiltration', count: 5 },
-  { name: 'Malware Families', count: 34 }
-];
+import { TelemetryService } from '../services/TelemetryService';
 
 export const YARAPlatform = () => {
-  const [rules, setRules] = useState(INITIAL_YARA_RULES);
-  const [selectedRule, setSelectedRule] = useState(INITIAL_YARA_RULES[0]);
+  const [rules, setRules] = useState([]);
+  const [selectedRule, setSelectedRule] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Rules');
   const [fileToScan, setFileToScan] = useState(null);
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState(null);
+  const telemetryService = new TelemetryService();
+  const categories = [
+    'All Rules',
+    ...new Set(rules.map(rule => rule.category).filter(Boolean))
+  ].map((name) => ({
+    name,
+    count: name === 'All Rules' ? rules.length : rules.filter(rule => rule.category === name).length
+  }));
+  const topTriggeredRules = [...rules]
+    .sort((a, b) => (b.execution_count || 0) - (a.execution_count || 0))
+    .slice(0, 4);
+  const recentMatches = [...rules]
+    .filter(rule => rule.last_triggered)
+    .sort((a, b) => new Date(b.last_triggered) - new Date(a.last_triggered))
+    .slice(0, 3);
+  const liveTriggeredTotal = rules.reduce((sum, rule) => sum + (rule.execution_count || 0), 0);
+  const activeDeployments = rules.filter(rule => rule.status === 'Active').length;
+
+  React.useEffect(() => {
+    const loadRules = async () => {
+      const fetched = await telemetryService.getRules();
+      setRules(fetched || []);
+      setSelectedRule((fetched || [])[0] || null);
+    };
+    loadRules();
+  }, []);
 
   const handleScanFile = async () => {
     if (!fileToScan) return;
@@ -178,8 +79,8 @@ export const YARAPlatform = () => {
   };
 
   const filteredRules = rules.filter(rule => {
-    const matchesSearch = rule.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          rule.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (rule.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          (rule.description || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'All Rules' || rule.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
@@ -192,10 +93,10 @@ export const YARAPlatform = () => {
       />
 
       <div style={{ display: 'flex', gap: '20px', marginBottom: '24px' }}>
-        <MetricCard title="Total YARA Rules" value="91" change="+4 rules this week" icon="yara" />
-        <MetricCard title="Executions (Today)" value="847" change="+12% vs yesterday" icon="play" />
-        <MetricCard title="Total Triggered Rules" value="14,293" change="Across 240+ hosts" icon="activity" />
-        <MetricCard title="Active Rules Deployments" value="91" change="100% active state" icon="check" />
+        <MetricCard title="Total YARA Rules" value={rules.length} change="Live from detections table" icon="yara" />
+        <MetricCard title="Executions (Today)" value={liveTriggeredTotal} change="Live rule executions" icon="play" />
+        <MetricCard title="Total Triggered Rules" value={rules.filter(rule => (rule.execution_count || 0) > 0).length} change="Live active rules" icon="activity" />
+        <MetricCard title="Active Rules Deployments" value={activeDeployments} change="Live active state" icon="check" />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr 320px', gap: '20px', height: 'calc(100vh - 280px)', minHeight: '600px' }}>
@@ -240,7 +141,7 @@ export const YARAPlatform = () => {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '16px' }}>
-              {CATEGORIES.map(category => (
+              {categories.map(category => (
                 <button
                   key={category.name}
                   onClick={() => setSelectedCategory(category.name)}
@@ -345,72 +246,40 @@ export const YARAPlatform = () => {
           <Panel title="Rule Analytics">
             <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Top Triggered Rules</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                  <span>LSASS_Dump_Detect</span>
-                  <span>1,204 hits</span>
-                </div>
-                <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'var(--bg-tertiary)', overflow: 'hidden' }}>
-                  <div style={{ width: '90%', height: '100%', backgroundColor: 'var(--color-red)' }}></div>
-                </div>
-              </div>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                  <span>Mimikatz_Strings</span>
-                  <span>412 hits</span>
-                </div>
-                <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'var(--bg-tertiary)', overflow: 'hidden' }}>
-                  <div style={{ width: '55%', height: '100%', backgroundColor: 'var(--color-orange)' }}></div>
-                </div>
-              </div>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                  <span>Detect_LockBit_3</span>
-                  <span>342 hits</span>
-                </div>
-                <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'var(--bg-tertiary)', overflow: 'hidden' }}>
-                  <div style={{ width: '45%', height: '100%', backgroundColor: 'var(--color-orange)' }}></div>
-                </div>
-              </div>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                  <span>PowerShell_Obfuscation_Stage2</span>
-                  <span>228 hits</span>
-                </div>
-                <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'var(--bg-tertiary)', overflow: 'hidden' }}>
-                  <div style={{ width: '30%', height: '100%', backgroundColor: 'var(--color-blue)' }}></div>
-                </div>
-              </div>
+              {topTriggeredRules.length > 0 ? topTriggeredRules.map((rule, idx) => {
+                const maxHits = Math.max(...topTriggeredRules.map(r => r.execution_count || 0), 1);
+                const width = `${Math.max(12, ((rule.execution_count || 0) / maxHits) * 100)}%`;
+                const barColor = idx === 0 ? 'var(--color-red)' : idx === 1 ? 'var(--color-orange)' : idx === 2 ? 'var(--color-blue)' : 'var(--color-green)';
+                return (
+                  <div key={rule.id}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
+                      <span>{rule.name}</span>
+                      <span>{(rule.execution_count || 0).toLocaleString()} hits</span>
+                    </div>
+                    <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'var(--bg-tertiary)', overflow: 'hidden' }}>
+                      <div style={{ width, height: '100%', backgroundColor: barColor }}></div>
+                    </div>
+                  </div>
+                );
+              }) : (
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>No live rule executions recorded yet.</span>
+              )}
             </div>
 
             <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Recent Matches</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ padding: '10px', borderRadius: '6px', backgroundColor: 'var(--bg-tertiary)', borderLeft: '3px solid var(--color-red)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                  <span>WIN-HR-04 (10.0.5.42)</span>
-                  <span>12:44:12</span>
+              {recentMatches.length > 0 ? recentMatches.map((rule) => (
+                <div key={rule.id} style={{ padding: '10px', borderRadius: '6px', backgroundColor: 'var(--bg-tertiary)', borderLeft: '3px solid var(--color-red)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                    <span>Live detections feed</span>
+                    <span>{new Date(rule.last_triggered).toLocaleTimeString()}</span>
+                  </div>
+                  <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{rule.name}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--color-red)', marginTop: '2px' }}>Category: {rule.category}</div>
                 </div>
-                <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>Detect_LockBit_3</div>
-                <div style={{ fontSize: '11px', color: 'var(--color-red)', marginTop: '2px' }}>File: update_agent.exe</div>
-              </div>
-
-              <div style={{ padding: '10px', borderRadius: '6px', backgroundColor: 'var(--bg-tertiary)', borderLeft: '3px solid var(--color-red)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                  <span>DC-01 (10.0.5.10)</span>
-                  <span>13:02:44</span>
-                </div>
-                <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>LSASS_Dump_Detect</div>
-                <div style={{ fontSize: '11px', color: 'var(--color-red)', marginTop: '2px' }}>File: lsass.dmp</div>
-              </div>
-
-              <div style={{ padding: '10px', borderRadius: '6px', backgroundColor: 'var(--bg-tertiary)', borderLeft: '3px solid var(--color-orange)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                  <span>WIN-SRV02 (10.0.5.15)</span>
-                  <span>13:04:19</span>
-                </div>
-                <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>PowerShell_Obfuscation_Stage2</div>
-                <div style={{ fontSize: '11px', color: 'var(--color-orange)', marginTop: '2px' }}>Process: powershell.exe</div>
-              </div>
+              )) : (
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>No recent live rule matches available.</span>
+              )}
             </div>
           </Panel>
 
