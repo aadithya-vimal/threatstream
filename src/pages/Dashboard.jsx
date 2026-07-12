@@ -273,14 +273,15 @@ function Dashboard() {
       >
         {/* Globe Panel */}
         <Panel 
-          title="Global Honeypot Ingress Visualization" 
+          title="Live Threat Globe" 
+          hint="3D globe showing only live threat locations and response arcs."
           actions={
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-low)' }}>
               <span className="pulse-dot" style={{ backgroundColor: 'var(--color-low)' }} />
-              <span style={{ fontSize: '11px', fontWeight: 600 }}>LIVE MAP FROM THREAT FEED</span>
+              <span style={{ fontSize: '11px', fontWeight: 600 }}>LIVE THREAT FEED</span>
             </div>
           }
-          style={{ height: '480px' }}
+          style={{ height: '72vh', minHeight: '640px' }}
         >
           <div style={{ width: '100%', height: '100%', borderRadius: '4px', overflow: 'hidden', backgroundColor: '#000' }}>
             <Globe threats={threats} />
@@ -291,7 +292,7 @@ function Dashboard() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
           {/* Active Incidents Alerts */}
-          <Panel title="Active Critical Incident Cases" style={{ flex: 1, minHeight: '228px' }}>
+          <Panel title="Open Incidents" hint="Live incident queue showing currently open cases." style={{ flex: 1, minHeight: '228px' }}>
             <div style={{ height: '100%', overflowY: 'auto' }}>
               <DataTable 
                 columns={alertColumns} 
@@ -302,7 +303,7 @@ function Dashboard() {
           </Panel>
 
           {/* SOC System Health */}
-          <Panel title="SOC Engine Status & Resources" style={{ minHeight: '228px' }}>
+          <Panel title="Backend Health" hint="Live platform health indicators from the console runtime." style={{ minHeight: '228px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '4px 0' }}>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>
@@ -347,7 +348,7 @@ function Dashboard() {
         className="dashboard-grid-layout"
       >
         {/* Realtime Stream Grid */}
-        <Panel title="Real-time Detection Log Stream" style={{ height: '420px' }}>
+        <Panel title="Live Threat Log" hint="Streaming threat events received from the backend." style={{ height: '420px' }}>
           <div style={{ height: '100%', overflowY: 'auto' }}>
             <DataTable 
               columns={columns} 
@@ -358,7 +359,7 @@ function Dashboard() {
         </Panel>
 
         {/* MITRE ATT&CK Mapping coverage progress */}
-        <Panel title="MITRE ATT&CK Matrix Core Coverage" style={{ height: '420px' }}>
+        <Panel title="MITRE Coverage" hint="Coverage estimates for the ATT&CK techniques represented in current detections." style={{ height: '420px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', overflowY: 'auto', height: '100%' }}>
             <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Calculated detection signatures coverage against threat vectors:</span>
             
