@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const MetricCard = ({ title, value, status = 'info', trend, subtitle, icon }) => {
+export const MetricCard = ({ title, value, status = 'info', trend, subtitle, icon, hint }) => {
   const statusClasses = {
     critical: 'border-l-4 border-l-red-500 text-red-500',
     high: 'border-l-4 border-l-orange-500 text-orange-500',
@@ -20,6 +20,7 @@ export const MetricCard = ({ title, value, status = 'info', trend, subtitle, ico
   return (
     <div 
       className="metric-card"
+      title={hint || `${title}: ${subtitle || 'Live metric'}`}
       style={{
         backgroundColor: 'var(--panel-bg)',
         border: '1px solid var(--border-color)',

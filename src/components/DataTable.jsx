@@ -7,7 +7,8 @@ export const DataTable = ({
   data = [], 
   loading = false, 
   emptyText = 'No data available',
-  onRowClick
+  onRowClick,
+  tableHint
 }) => {
   if (loading) {
     return <LoadingState />;
@@ -18,13 +19,14 @@ export const DataTable = ({
   }
 
   return (
-    <div style={{ width: '100%', overflowX: 'auto', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--panel-bg)' }}>
+    <div title={tableHint || emptyText} style={{ width: '100%', overflowX: 'auto', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--panel-bg)' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
         <thead>
           <tr style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)' }}>
             {columns.map((col, idx) => (
               <th 
                 key={idx} 
+                title={col.hint || col.header}
                 style={{ 
                   padding: '12px 16px', 
                   fontWeight: 600, 
@@ -45,6 +47,7 @@ export const DataTable = ({
             <tr 
               key={rowIdx} 
               onClick={() => onRowClick && onRowClick(row)}
+              title={row.rowHint || row.summary || row.title || row.id || ''}
               style={{ 
                 borderBottom: rowIdx === data.length - 1 ? 'none' : '1px solid var(--border-color)',
                 cursor: onRowClick ? 'pointer' : 'default',

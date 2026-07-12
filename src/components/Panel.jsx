@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const Panel = ({ title, children, className = '', actions, style = {} }) => {
+export const Panel = ({ title, children, className = '', actions, style = {}, hint }) => {
   return (
     <div 
       className={`panel-container ${className}`}
@@ -17,6 +17,7 @@ export const Panel = ({ title, children, className = '', actions, style = {} }) 
     >
       {title && (
         <div 
+          title={hint || title}
           style={{ 
             display: 'flex', 
             justifyContent: 'space-between', 

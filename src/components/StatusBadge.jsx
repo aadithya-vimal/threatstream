@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const StatusBadge = ({ status = 'info', text }) => {
+export const StatusBadge = ({ status = 'info', text, hint }) => {
   const styles = {
     critical: {
       backgroundColor: 'var(--color-critical-bg)',
@@ -44,6 +44,7 @@ export const StatusBadge = ({ status = 'info', text }) => {
   return (
     <span
       className={`status-badge badge-${status}`}
+      title={hint || `${text || status} status`}
       style={{
         display: 'inline-flex',
         alignItems: 'center',

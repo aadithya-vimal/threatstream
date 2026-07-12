@@ -5,7 +5,8 @@ export const SearchBar = ({
   value = '', 
   onChange, 
   placeholder = 'Search records...',
-  style = {} 
+  style = {},
+  hint
 }) => {
   return (
     <div 
@@ -35,6 +36,7 @@ export const SearchBar = ({
         value={value}
         onChange={e => onChange && onChange(e.target.value)}
         placeholder={placeholder}
+        title={hint || placeholder}
         style={{
           width: '100%',
           backgroundColor: 'var(--panel-bg)',
