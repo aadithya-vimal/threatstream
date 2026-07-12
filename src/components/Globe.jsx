@@ -139,7 +139,8 @@ const GlobeComponent = ({ threats = [] }) => {
         alignItems: 'center',
         justifyContent: 'center',
         position: 'relative',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        background: 'radial-gradient(circle at center, rgba(4, 24, 37, 0.28) 0%, rgba(0, 0, 0, 0.96) 72%)'
       }}
     >
       <div style={{ position: 'absolute', top: '12px', left: '12px', zIndex: 2, fontSize: '11px', fontWeight: 700, color: '#9be7ff', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
@@ -149,15 +150,15 @@ const GlobeComponent = ({ threats = [] }) => {
         ref={globeRef}
         width={dimensions.width}
         height={dimensions.height}
-        globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+        globeImageUrl="//unpkg.com/three-globe/example/img/earth-day.jpg"
         backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
         bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
-        rendererConfig={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
+        rendererConfig={{ antialias: true, alpha: true, preserveDrawingBuffer: true, precision: 'highp', powerPreference: 'high-performance' }}
         showGraticules={true}
-        graticuleColor="rgba(155, 231, 255, 0.12)"
+        graticuleColor="rgba(155, 231, 255, 0.08)"
         onGlobeReady={() => {
           if (globeRef.current) {
-            globeRef.current.pointOfView({ lat: 18, lng: 15, altitude: 2.15 }, 0);
+            globeRef.current.pointOfView({ lat: 18, lng: 15, altitude: 2.35 }, 0);
           }
         }}
         animateIn={true}
@@ -171,7 +172,7 @@ const GlobeComponent = ({ threats = [] }) => {
         arcColor={d => d.color}
         arcDashLength={0.5}
         arcDashGap={0.25}
-        arcDashAnimateTime={1800}
+        arcDashAnimateTime={2200}
         arcStroke={0.65}
         arcAltitude={0.32}
         pointsData={allPoints}
@@ -183,7 +184,7 @@ const GlobeComponent = ({ threats = [] }) => {
         pointLabel={d => d.label || ''}
         showAtmosphere={true}
         atmosphereColor="#00a3ff"
-        atmosphereAltitude={0.23}
+        atmosphereAltitude={0.26}
         enablePointerInteraction={true}
       />
     </div>
