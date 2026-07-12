@@ -31,7 +31,7 @@ export class ThreatRepository {
    * Set dynamic list of threat events (useful for real-time live events cache)
    */
   updateLocalThreatCache(threatsArray) {
-    this.mockThreats = threatsArray;
+    this.threats = threatsArray;
   }
 
   /**
