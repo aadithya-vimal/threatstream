@@ -150,8 +150,9 @@ const GlobeComponent = ({ threats = [] }) => {
         ref={globeRef}
         width={dimensions.width}
         height={dimensions.height}
-        globeImageUrl="https://cdn.jsdelivr.net/gh/turban/webgl-earth@main/images/2_no_clouds_4k.jpg"
-        bumpImageUrl="https://cdn.jsdelivr.net/gh/turban/webgl-earth@main/images/elev_bump_4k.jpg"
+        globeImageUrl="/earth-day.jpg"
+        bumpImageUrl="/earth-topology.png"
+        backgroundImageUrl="/night-sky.png"
         specularColor="#9bdfff"
         specularSize={18}
         showGlobe={true}
@@ -160,12 +161,12 @@ const GlobeComponent = ({ threats = [] }) => {
         graticuleColor="rgba(155, 231, 255, 0.05)"
         onGlobeReady={() => {
           if (globeRef.current) {
-            globeRef.current.pointOfView({ lat: 18, lng: 15, altitude: 2.15 }, 0);
+            globeRef.current.pointOfView({ lat: 18, lng: 15, altitude: 2.45 }, 0);
           }
         }}
         animateIn={true}
         autoRotate={true}
-        autoRotateSpeed={0.14}
+        autoRotateSpeed={0.12}
         arcsData={arcs}
         arcStartLat={d => d.startLat}
         arcStartLng={d => d.startLng}
