@@ -212,12 +212,27 @@ const GlobeScene = ({ threats }) => {
 
 const Globe = ({ threats = [] }) => {
   const [globeKey, setGlobeKey] = useState(0);
+  const controlsRef = useRef();
+
+  const centerGlobe = () => {
+    if (!controlsRef.current) return;
+    controlsRef.current.target.set(0, 0.16, 0);
+    controlsRef.current.update();
+  };
+
+  const resetGlobe = () => {
+    if (!controlsRef.current) return;
+    controlsRef.current.reset();
+    controlsRef.current.target.set(0, 0.16, 0);
+    controlsRef.current.update();
+    setGlobeKey((value) => value + 1);
+  };
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative', minHeight: 0, overflow: 'hidden' }}>
       <div style={controlsStyle}>
-        <button type="button" onClick={() => setGlobeKey((value) => value + 1)} title="Reset globe" style={controlButtonStyle}>Reset</button>
-        <button type="button" onClick={() => setGlobeKey((value) => value + 1)} title="Re-center globe" style={controlButtonStyle}>Center</button>
+        <button type="button" onClick={resetGlobe} title="Reset globe rotation and zoom" style={controlButtonStyle}>Reset</button>
+        <button type="button" onClick={centerGlobe} title="Center the globe in view" style={controlButtonStyle}>Center</button>
       </div>
       <Canvas
         key={globeKey}
@@ -229,13 +244,14 @@ const Globe = ({ threats = [] }) => {
         <color attach="background" args={['#040a12']} />
         <fog attach="fog" args={['#040a12', 4, 8]} />
         <OrbitControls
+          ref={controlsRef}
           enablePan={false}
           enableZoom={true}
           minDistance={3.4}
           maxDistance={6.0}
           rotateSpeed={0.4}
           zoomSpeed={0.8}
-          target={[0, 0, 0]}
+          target={[0, 0.16, 0]}
         />
         <GlobeScene threats={threats} />
       </Canvas>
