@@ -54,8 +54,8 @@ const GlobeComponent = ({ threats = [] }) => {
   const globeSize = useMemo(() => {
     const devicePixelRatio = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1;
     return {
-      width: Math.max(320, Math.floor(dimensions.width * devicePixelRatio)),
-      height: Math.max(320, Math.floor(dimensions.height * devicePixelRatio))
+      width: Math.max(320, Math.floor(dimensions.width * 0.92 * devicePixelRatio)),
+      height: Math.max(320, Math.floor(dimensions.height * 0.84 * devicePixelRatio))
     };
   }, [dimensions.width, dimensions.height]);
 
@@ -170,12 +170,12 @@ const GlobeComponent = ({ threats = [] }) => {
         graticuleColor="rgba(155, 231, 255, 0.025)"
         onGlobeReady={() => {
           if (globeRef.current) {
-            globeRef.current.pointOfView({ lat: 22, lng: 15, altitude: 2.9 }, 0);
+            globeRef.current.pointOfView({ lat: 18, lng: 15, altitude: 3.45 }, 0);
           }
         }}
         animateIn={true}
         autoRotate={true}
-        autoRotateSpeed={0.09}
+        autoRotateSpeed={0.06}
         arcsData={arcs}
         arcStartLat={d => d.startLat}
         arcStartLng={d => d.startLng}
@@ -194,9 +194,7 @@ const GlobeComponent = ({ threats = [] }) => {
         pointAltitude={0}
         pointRadius={d => d.radius * 0.8}
         pointLabel={d => d.label || ''}
-        showAtmosphere={true}
-        atmosphereColor="rgba(59, 130, 246, 0.22)"
-        atmosphereAltitude={0.08}
+        showAtmosphere={false}
         enablePointerInteraction={true}
       />
     </div>
