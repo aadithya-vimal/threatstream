@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState, useRef } from 'react';
-import Globe from 'react-globe.gl';
+import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Canvas, useFrame, useLoader } from '@react-three/fiber';
+import { OrbitControls, Stars, Html } from '@react-three/drei';
+import * as THREE from 'three';
 
-// --- Constants (remain the same) ---
 const VICTIM_LOCATIONS = {
-  berlin: { lat: 52.5200, lon: 13.4050, label: 'SSH/IMAP Target', color: '#00FFFF' },
+  berlin: { lat: 52.52, lon: 13.405, label: 'SSH/IMAP Target', color: '#00FFFF' },
   sanfrancisco: { lat: 37.7749, lon: -122.4194, label: 'Web Target', color: '#FF0000' },
   singapore: { lat: 1.3521, lon: 103.8198, label: 'IoT Target', color: '#00FF00' }
 };
@@ -21,210 +22,246 @@ const ATTACK_TYPE_TO_VICTIM = {
 };
 
 const ATTACK_TYPE_COLORS = {
-  ssh: '#00FFFF',      // Cyan
-  ftp: '#00FF00',      // Green
-  apache: '#FF0000',    // Red
-  imap: '#8A2BE2',    // Purple
-  sip: '#FFA500',      // Orange
-  bots: '#FF1493',    // Pink
-  strongips: '#FFFFFF', // White
-  all: '#FFFF00',      // Yellow
-  unknown: '#FFFF00'   // Yellow
+  ssh: '#00FFFF',
+  ftp: '#00FF00',
+  apache: '#FF0000',
+  imap: '#8A2BE2',
+  sip: '#FFA500',
+  bots: '#FF1493',
+  strongips: '#FFFFFF',
+  all: '#FFFF00',
+  unknown: '#FFFF00'
 };
-// --- End Constants ---
 
-const GlobeComponent = ({ threats = [] }) => {
-  // State for attack arcs & pulses (from live telemetry stream)
+const textureLoaderUrls = [
+  '/earth-day.jpg',
+  '/earth-night.jpg',
+  '/earth-topology.png',
+  '/night-sky.png'
+];
+
+const toRadians = (degrees) => (degrees * Math.PI) / 180;
+
+const toVector3 = (lat, lon, radius = 1.01) => {
+  const phi = toRadians(90 - lat);
+  const theta = toRadians(lon + 180);
+  return new THREE.Vector3(
+    -radius * Math.sin(phi) * Math.cos(theta),
+    radius * Math.cos(phi),
+    radius * Math.sin(phi) * Math.sin(theta)
+  );
+};
+
+const GlobeSurface = ({ onReady }) => {
+  const [dayMap, nightMap, bumpMap] = useLoader(THREE.TextureLoader, textureLoaderUrls.slice(0, 3));
+  const globeRef = useRef();
+  const atmosphereRef = useRef();
+
+  useEffect(() => {
+    [dayMap, nightMap, bumpMap].forEach((texture) => {
+      if (!texture) return;
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.anisotropy = 16;
+      texture.minFilter = THREE.LinearMipmapLinearFilter;
+      texture.magFilter = THREE.LinearFilter;
+    });
+  }, [dayMap, nightMap, bumpMap]);
+
+  useFrame((state, delta) => {
+    if (globeRef.current) {
+      globeRef.current.rotation.y += delta * 0.03;
+    }
+    if (atmosphereRef.current) {
+      atmosphereRef.current.rotation.y += delta * 0.012;
+    }
+    if (onReady) onReady(state);
+  });
+
+  return (
+    <>
+      <ambientLight intensity={0.2} />
+      <directionalLight position={[5, 3, 5]} intensity={1.2} color="#ffffff" />
+      <directionalLight position={[-5, -2, -4]} intensity={0.2} color="#335577" />
+      <mesh ref={globeRef}>
+        <sphereGeometry args={[1, 128, 128]} />
+        <meshStandardMaterial
+          map={dayMap}
+          roughness={0.95}
+          metalness={0.02}
+          bumpMap={bumpMap}
+          bumpScale={0.02}
+          emissiveMap={nightMap}
+          emissive={new THREE.Color('#0d1b2a')}
+          emissiveIntensity={0.13}
+        />
+      </mesh>
+      <mesh ref={atmosphereRef}>
+        <sphereGeometry args={[1.03, 128, 128]} />
+        <meshBasicMaterial
+          color="#2aa8ff"
+          transparent
+          opacity={0.06}
+          blending={THREE.AdditiveBlending}
+          side={THREE.BackSide}
+        />
+      </mesh>
+    </>
+  );
+};
+
+const AttackArc = ({ start, end, color }) => {
+  const curve = useMemo(() => {
+    const mid = start.clone().add(end).multiplyScalar(0.5);
+    mid.normalize().multiplyScalar(1.22);
+    return new THREE.QuadraticBezierCurve3(start, mid, end);
+  }, [start, end]);
+
+  const points = useMemo(() => curve.getPoints(60), [curve]);
+  const geometry = useMemo(() => new THREE.BufferGeometry().setFromPoints(points), [points]);
+
+  useEffect(() => () => geometry.dispose(), [geometry]);
+
+  return (
+    <line geometry={geometry}>
+      <lineBasicMaterial color={color} transparent opacity={0.85} />
+    </line>
+  );
+};
+
+const LivePulse = ({ position, color }) => {
+  const pulseRef = useRef();
+
+  useFrame(({ clock }) => {
+    if (!pulseRef.current) return;
+    const scale = 0.03 + Math.sin(clock.elapsedTime * 5.5) * 0.01;
+    pulseRef.current.scale.setScalar(1 + scale);
+  });
+
+  return (
+    <mesh ref={pulseRef} position={position}>
+      <sphereGeometry args={[0.03, 24, 24]} />
+      <meshBasicMaterial color={color} transparent opacity={0.95} />
+    </mesh>
+  );
+};
+
+const GlobeScene = ({ threats, showLabels }) => {
   const [arcs, setArcs] = useState([]);
   const [pulses, setPulses] = useState([]);
+  const lastTimestampRef = useRef(null);
 
-  // State for globe dimensions
-  const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
-  const globeRef = useRef();
-  const containerRef = useRef();
-
-  const sourceLabel = 'Live threat arcs only';
-
-  const victimMarkers = useMemo(() => ([
-    { ...VICTIM_LOCATIONS.berlin, radius: 0.45 },
-    { ...VICTIM_LOCATIONS.sanfrancisco, radius: 0.45 },
-    { ...VICTIM_LOCATIONS.singapore, radius: 0.45 }
-  ]), []);
-
-  const globeSize = useMemo(() => {
-    const devicePixelRatio = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1;
-    return {
-      width: Math.max(320, Math.floor(dimensions.width * 0.88 * devicePixelRatio)),
-      height: Math.max(320, Math.floor(dimensions.height * 0.78 * devicePixelRatio))
-    };
-  }, [dimensions.width, dimensions.height]);
-
-  const setView = (view) => {
-    if (!globeRef.current) return;
-    globeRef.current.pointOfView(view, 450);
-  };
-
-  const zoomBy = (delta) => {
-    if (!globeRef.current) return;
-    const current = globeRef.current.pointOfView ? globeRef.current.pointOfView() : {};
-    const altitude = Math.max(1.8, Math.min(5, (current.altitude || 3.4) + delta));
-    globeRef.current.pointOfView({
-      lat: current.lat ?? 18,
-      lng: current.lng ?? 15,
-      altitude
-    }, 350);
-  };
+  const makeThreatPoint = (lat, lon) => toVector3(lat, lon, 1.02);
 
   useEffect(() => {
-    const updateDimensions = () => {
-      if (containerRef.current) {
-        const { width, height } = containerRef.current.getBoundingClientRect();
-        setDimensions({
-          width: Math.max(320, Math.floor(width)),
-          height: Math.max(320, Math.floor(height))
-        });
-      }
-    };
-    updateDimensions();
-    window.addEventListener('resize', updateDimensions);
-    return () => window.removeEventListener('resize', updateDimensions);
-  }, []);
-
-  const getVictimLocation = (attackType) => {
-    const type = attackType?.toLowerCase() || 'unknown';
-    return ATTACK_TYPE_TO_VICTIM[type] || VICTIM_LOCATIONS.sanfrancisco;
-  };
-
-  const getArcColor = (attackType) => {
-    const type = attackType?.toLowerCase() || 'unknown';
-    return ATTACK_TYPE_COLORS[type] || ATTACK_TYPE_COLORS.unknown;
-  };
-
-  useEffect(() => {
-    if (threats.length === 0 || (arcs.length > 0 && threats[0].timestamp === arcs[0].originalTimestamp)) {
-        return;
-    }
-
-    const latestThreat = threats[0];
+    if (!threats?.length) return;
+    const latest = threats[0];
+    if (latest.timestamp === lastTimestampRef.current) return;
+    lastTimestampRef.current = latest.timestamp;
 
     if (
-      typeof latestThreat.lat !== 'number' || typeof latestThreat.lon !== 'number' ||
-      latestThreat.lat < -90 || latestThreat.lat > 90 ||
-      latestThreat.lon < -180 || latestThreat.lon > 180
+      typeof latest.lat !== 'number' || typeof latest.lon !== 'number' ||
+      latest.lat < -90 || latest.lat > 90 ||
+      latest.lon < -180 || latest.lon > 180
     ) {
-      console.warn('Invalid coordinates for threat:', latestThreat);
       return;
     }
 
-    const victim = getVictimLocation(latestThreat.attack_type);
-    const color = getArcColor(latestThreat.attack_type);
-    const startTime = Date.now();
-    const id = `${latestThreat.timestamp}-${latestThreat.ip}-${Math.random()}`;
+    const victim = ATTACK_TYPE_TO_VICTIM[latest.attack_type?.toLowerCase() || 'unknown'] || VICTIM_LOCATIONS.sanfrancisco;
+    const color = ATTACK_TYPE_COLORS[latest.attack_type?.toLowerCase() || 'unknown'] || ATTACK_TYPE_COLORS.unknown;
+    const id = `${latest.timestamp}-${latest.ip}-${Math.random()}`;
 
     const newArc = {
       id,
-      startLat: latestThreat.lat,
-      startLng: latestThreat.lon,
-      endLat: victim.lat,
-      endLng: victim.lon,
-      color: color, // Set color directly
-      startTime,
-      originalTimestamp: latestThreat.timestamp
+      start: makeThreatPoint(latest.lat, latest.lon),
+      end: makeThreatPoint(victim.lat, victim.lon),
+      color
     };
 
     const newPulse = {
       id,
-      lat: latestThreat.lat,
-      lng: latestThreat.lon,
-      color: color, // Set color directly
-      startTime,
-      radius: 0.6
+      position: makeThreatPoint(latest.lat, latest.lon),
+      color
     };
 
-    setArcs(prevArcs => [newArc, ...prevArcs].slice(0, 50));
-    setPulses(prevPulses => [newPulse, ...prevPulses].slice(0, 50));
+    setArcs((prev) => [newArc, ...prev].slice(0, 24));
+    setPulses((prev) => [newPulse, ...prev].slice(0, 24));
 
-    setTimeout(() => {
-      setArcs(prevArcs => prevArcs.filter(arc => arc.id !== id));
-      setPulses(prevPulses => prevPulses.filter(pulse => pulse.id !== id));
-    }, 15000);
+    const timeout = setTimeout(() => {
+      setArcs((prev) => prev.filter((item) => item.id !== id));
+      setPulses((prev) => prev.filter((item) => item.id !== id));
+    }, 12000);
 
+    return () => clearTimeout(timeout);
   }, [threats]);
 
-  const allPoints = [...victimMarkers, ...pulses];
+  return (
+    <group position={[0, 0.08, 0]}>
+      <Suspense fallback={null}>
+        <GlobeSurface />
+      </Suspense>
+      <Stars radius={120} depth={60} count={7000} factor={3.5} saturation={0} fade speed={0.3} />
+      {arcs.map((arc) => (
+        <AttackArc key={arc.id} start={arc.start} end={arc.end} color={arc.color} />
+      ))}
+      {pulses.map((pulse) => (
+        <LivePulse key={pulse.id} position={pulse.position} color={pulse.color} />
+      ))}
+      {showLabels && (
+        <Html position={[0, 1.45, 0]} center>
+          <div style={labelStyle}>Live threat arcs only</div>
+        </Html>
+      )}
+    </group>
+  );
+};
+
+const Globe = ({ threats = [] }) => {
+  const [showLabels, setShowLabels] = useState(true);
+  const [globeKey, setGlobeKey] = useState(0);
 
   return (
-    <div
-      ref={containerRef}
-      style={{
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative',
-        overflow: 'hidden',
-        background: 'radial-gradient(circle at center, rgba(4, 24, 37, 0.35) 0%, rgba(0, 0, 0, 0.98) 72%)',
-        paddingBottom: '8px'
-      }}
-    >
-      <div style={{ position: 'absolute', top: '12px', left: '12px', zIndex: 2, fontSize: '11px', fontWeight: 700, color: '#9be7ff', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-        {sourceLabel}
+    <div style={{ width: '100%', height: '100%', position: 'relative', minHeight: 0, overflow: 'hidden' }}>
+      <div style={controlsStyle}>
+        <button type="button" onClick={() => setGlobeKey((value) => value + 1)} title="Reset globe" style={controlButtonStyle}>Reset</button>
+        <button type="button" onClick={() => setShowLabels((value) => !value)} title="Toggle label" style={controlButtonStyle}>{showLabels ? 'Hide Label' : 'Show Label'}</button>
       </div>
-      <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 3, display: 'flex', gap: '8px' }}>
-        <button type="button" onClick={() => zoomBy(-0.35)} title="Zoom in to inspect detail" style={controlButtonStyle}>+</button>
-        <button type="button" onClick={() => zoomBy(0.35)} title="Zoom out to fit the globe" style={controlButtonStyle}>−</button>
-        <button type="button" onClick={() => setView({ lat: 18, lng: 15, altitude: 3.4 })} title="Reset to centered view" style={controlButtonStyle}>Reset</button>
-      </div>
-      <Globe
-        ref={globeRef}
-        width={globeSize.width}
-        height={globeSize.height}
-        globeImageUrl="/earth-night.jpg"
-        bumpImageUrl="/earth-topology.png"
-        backgroundImageUrl="/night-sky.png"
-        resolution={5}
-        specularColor="rgba(120,160,190,0.12)"
-        specularSize={3}
-        showGlobe={true}
-        rendererConfig={{ antialias: true, alpha: true, preserveDrawingBuffer: true, precision: 'highp', powerPreference: 'high-performance' }}
-        showGraticules={false}
-        onGlobeReady={() => {
-          if (globeRef.current) {
-            globeRef.current.pointOfView({ lat: 18, lng: 15, altitude: 3.4 }, 0);
-          }
-        }}
-        animateIn={true}
-        autoRotate={true}
-        autoRotateSpeed={0.05}
-        arcsData={arcs}
-        arcStartLat={d => d.startLat}
-        arcStartLng={d => d.startLng}
-        arcEndLat={d => d.endLat}
-        arcEndLng={d => d.endLng}
-        arcColor={d => d.color}
-        arcDashLength={0.24}
-        arcDashGap={0.18}
-        arcDashAnimateTime={1800}
-        arcStroke={0.4}
-        arcAltitude={0.18}
-        pointsData={allPoints}
-        pointLat={d => d.lat}
-        pointLng={d => d.lng || d.lon}
-        pointColor={d => d.color}
-        pointAltitude={0}
-        pointRadius={d => d.radius * 0.65}
-        pointLabel={d => d.label || ''}
-        showAtmosphere={false}
-        enablePointerInteraction={true}
-      />
+      <Canvas
+        key={globeKey}
+        style={{ width: '100%', height: '100%' }}
+        dpr={[1, 2]}
+        camera={{ position: [0, 0, 3.6], fov: 35, near: 0.1, far: 200 }}
+        gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
+      >
+        <color attach="background" args={['#040a12']} />
+        <fog attach="fog" args={['#040a12', 4, 8]} />
+        <OrbitControls
+          enablePan={false}
+          enableZoom={true}
+          minDistance={2.4}
+          maxDistance={5.2}
+          rotateSpeed={0.4}
+          zoomSpeed={0.8}
+          target={[0, 0, 0]}
+        />
+        <GlobeScene threats={threats} showLabels={showLabels} />
+      </Canvas>
     </div>
   );
 };
 
+const controlsStyle = {
+  position: 'absolute',
+  top: '12px',
+  right: '12px',
+  zIndex: 5,
+  display: 'flex',
+  gap: '8px',
+  pointerEvents: 'auto'
+};
+
 const controlButtonStyle = {
   border: '1px solid rgba(155, 231, 255, 0.18)',
-  backgroundColor: 'rgba(3, 10, 16, 0.78)',
+  backgroundColor: 'rgba(3, 10, 16, 0.82)',
   color: '#d6f7ff',
   borderRadius: '999px',
   padding: '6px 12px',
@@ -236,4 +273,17 @@ const controlButtonStyle = {
   boxShadow: '0 6px 18px rgba(0, 0, 0, 0.28)'
 };
 
-export default GlobeComponent;
+const labelStyle = {
+  color: '#9be7ff',
+  fontSize: '11px',
+  fontWeight: 700,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  background: 'rgba(3, 10, 16, 0.45)',
+  border: '1px solid rgba(155, 231, 255, 0.12)',
+  padding: '6px 10px',
+  borderRadius: '999px',
+  backdropFilter: 'blur(8px)'
+};
+
+export default Globe;
