@@ -207,7 +207,7 @@ export const ProtectedRoute = ({ children, requiredPermission }) => {
         backgroundColor: '#0a0c10',
         color: '#f9fafb',
       }}>
-        <LoadingState message="Authenticating SOC security session…" />
+        <LoadingState message="Authenticating secure operator session…" />
       </div>
     );
   }
@@ -458,7 +458,7 @@ export const ProtectedRoute = ({ children, requiredPermission }) => {
                 <p style={{ fontSize: '12px', color: '#9ca3af', lineHeight: 1.6 }}>
                   Your role (<strong style={{ color: '#f9fafb' }}>{role}</strong>) does not have the
                   &nbsp;<code style={{ color: '#60a5fa', background: 'rgba(96,165,250,0.1)', padding: '1px 5px', borderRadius: '4px' }}>{requiredPermission}</code>
-                  &nbsp;permission. Contact your SOC Administrator.
+                &nbsp;permission. Contact your platform administrator.
                 </p>
               </div>
               <button

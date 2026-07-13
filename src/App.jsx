@@ -9,7 +9,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Landing from './pages/Landing';
 import Terms from './pages/Terms';
 
-// SOC Console Module Pages
+// Cyber operations module pages
 import Dashboard from './pages/Dashboard';
 import ThreatIntelligence from './pages/ThreatIntelligence';
 import Assets from './pages/Assets';
@@ -41,7 +41,7 @@ function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/terms" element={<Terms />} />
 
-            {/* Private SOC Console Module Views (Protected via RBAC Gates) */}
+            {/* Private module views (protected via RBAC gates) */}
             <Route path="/dashboard" element={
               <ProtectedRoute requiredPermission="read:intel">
                 <Dashboard />

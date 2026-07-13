@@ -11,7 +11,7 @@ export const SetupWizard = ({ onComplete }) => {
     orgName: 'Cyberdyne Systems Corp',
     socName: 'Global Threat Operations Center',
     adminName: '',
-    adminRole: 'SOC Director',
+    adminRole: 'Platform Director',
     timezone: 'UTC',
     defaultRegion: 'us-east-1',
     feedsEnabled: ['AbuseIPDB', 'CISA Feed'],
@@ -67,7 +67,7 @@ export const SetupWizard = ({ onComplete }) => {
             {step === 1 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Establish Organization Directory</h3>
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Identify your company and SOC nodes for incident tracking and PDF branding headers.</span>
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Identify your organization and primary operations node for incident tracking and report branding.</span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>Organization Name</label>
                   <input
@@ -78,7 +78,7 @@ export const SetupWizard = ({ onComplete }) => {
                   />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>Security Operations Center (SOC) Name</label>
+                  <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>Operations Center Name</label>
                   <input
                     type="text"
                     value={formData.socName}
@@ -247,7 +247,7 @@ export const SetupWizard = ({ onComplete }) => {
                   flexDirection: 'column',
                   gap: '4px'
                 }}>
-                  <div>SOC: {formData.socName}</div>
+                  <div>Operations Center: {formData.socName}</div>
                   <div>Operator: {formData.adminName} ({formData.adminRole})</div>
                   <div>Timezone: {formData.timezone} • Region: {formData.defaultRegion}</div>
                   <div>Feeds: {formData.feedsEnabled.join(', ')}</div>

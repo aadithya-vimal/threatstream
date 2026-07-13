@@ -78,7 +78,7 @@ export const Topbar = ({ onSearchTrigger }) => {
       {/* Page Breadcrumbs */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-muted)' }}>
-          SOC Portal
+          Operations Portal
         </span>
         <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>/</span>
         <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
@@ -204,7 +204,7 @@ export const Topbar = ({ onSearchTrigger }) => {
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderBottom: '1px solid var(--border-color)' }}>
-                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>SOC Warnings & Notifications</span>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>Operational Warnings & Notifications</span>
                 {unreadCount > 0 && (
                   <button 
                     onClick={markAllAsRead}

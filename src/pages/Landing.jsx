@@ -19,16 +19,16 @@ export const Landing = () => {
       {/* Hero Section */}
       <section className="hero">
         <div className="hero-content">
-          <div className="hero-badge">Enterprise SecOps platform</div>
+          <div className="hero-badge">Open-source cyber operations platform</div>
           <h1 className="hero-title">
-            Next-Generation <span>Security Operations Center</span> Console
+            Next-Generation <span>Cyber Operations</span> Console
           </h1>
           <p className="hero-subtitle">
-            Ingest, visualize, and remediate network intrusions in real-time. Built with interactive 3D telemetry visualization, global honeypots, and integrated endpoint response.
+            Ingest, correlate, and investigate live telemetry in real-time. Built for open-source threat intelligence, endpoint visibility, graph investigation, and incident response.
           </p>
           <div className="cta-group">
             <Link to="/dashboard" className="cta-primary">
-              Launch SOC Console
+              Launch Console
             </Link>
             <a href="https://github.com/aadithya-vimal/threatstream" target="_blank" rel="noreferrer" className="cta-secondary">
               View Repository
@@ -40,35 +40,35 @@ export const Landing = () => {
       {/* Features Grid */}
       <section className="features-section">
         <div className="features-header">
-          <h2>Enterprise Security Modules</h2>
-          <p>Explore modules designed to support security teams at global scale.</p>
+          <h2>Operational Modules</h2>
+          <p>Explore modules designed to support detection, investigation, and response workflows.</p>
         </div>
         
         <div className="features-grid">
           {/* Feature 1 */}
           <div className="feature-card">
             <div className="feature-icon">🌐</div>
-            <h3 className="feature-title">3D Threat Visualization</h3>
+            <h3 className="feature-title">Live Threat Visualization</h3>
             <p className="feature-description">
-              Observe incoming network attacks mapped geographically in real-time. Trace ingress source vectors directly to targets.
+              Observe live telemetry mapped geographically in real-time. Trace ingress sources and related entities directly to targets.
             </p>
           </div>
 
           {/* Feature 2 */}
           <div className="feature-card">
             <div className="feature-icon">⚡</div>
-            <h3 className="feature-title">Real-time Stream</h3>
+            <h3 className="feature-title">Live Event Stream</h3>
             <p className="feature-description">
-              Powered by database triggers for microsecond event notifications. Keep security operators updated with low-latency logs.
+              Powered by database triggers for low-latency event updates. Keep operators informed with live logs and alerts.
             </p>
           </div>
 
           {/* Feature 3 */}
           <div className="feature-card">
             <div className="feature-icon">🛡️</div>
-            <h3 className="feature-title">Strategic Targets</h3>
+            <h3 className="feature-title">Deployed Sensors</h3>
             <p className="feature-description">
-              Permanent distributed honeypot systems routing simulated SSH, Mail, and Web payloads for traffic profiling.
+              Distributed sensors collect live traffic for profiling and correlation across exposed services.
             </p>
             <div className="targets-grid">
               <div className="target-box">
@@ -89,9 +89,9 @@ export const Landing = () => {
           {/* Feature 4 */}
           <div className="feature-card">
             <div className="feature-icon">📊</div>
-            <h3 className="feature-title">Vulnerability Auditing</h3>
+            <h3 className="feature-title">Exposure Management</h3>
             <p className="feature-description">
-              Correlate Common Vulnerabilities and Exposures (CVEs) with asset catalogs. Prioritize security patches based on CVSS scoring.
+              Correlate vulnerabilities with asset inventory. Prioritize remediation based on current exposure and business context.
             </p>
             <div className="attack-types">
               <span className="attack-badge">CVE-2024-3094</span>
@@ -103,18 +103,18 @@ export const Landing = () => {
           {/* Feature 5 */}
           <div className="feature-card">
             <div className="feature-icon">🔍</div>
-            <h3 className="feature-title">Proactive Threat Hunting</h3>
+            <h3 className="feature-title">Threat Hunting</h3>
             <p className="feature-description">
-              Execute Kusto (KQL) and SQL syntax queries over high-fidelity container logs, process actions, and registry modifications.
+              Execute structured queries over endpoint, network, and alert telemetry to find suspicious behavior fast.
             </p>
           </div>
 
           {/* Feature 6 */}
           <div className="feature-card">
             <div className="feature-icon">🛠️</div>
-            <h3 className="feature-title">Sandboxing & Verdicts</h3>
+            <h3 className="feature-title">Analysis & Verdicts</h3>
             <p className="feature-description">
-              Execute suspicious executables inside multi-OS virtual sandboxes. Gather process runtimes and threat scores.
+              Execute suspicious artifacts inside controlled analysis workflows. Gather behavior, reputation, and verdict data.
             </p>
             <div className="tech-stats">
               <div className="stat">
@@ -136,7 +136,7 @@ export const Landing = () => {
 
       {/* Footer */}
       <footer className="landing-footer">
-        <p>ThreatStream Security Operations Platform - Enterprise Dashboard Console</p>
+        <p>ThreatStream Cyber Operations Platform - Open-Source Dashboard Console</p>
         <p>© 2025 Aadithya Vimal. All rights reserved. | <Link to="/terms" style={{ color: 'var(--color-blue)', textDecoration: 'none' }}>Terms & Conditions</Link></p>
       </footer>
     </div>
