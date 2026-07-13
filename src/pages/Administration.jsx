@@ -1,6 +1,6 @@
 /**
  * src/pages/Administration.jsx
- * Enterprise SOC Administration and Systems Configuration Panel - User Directory
+ * Cyber operations administration and systems configuration panel - user directory
  */
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
@@ -23,7 +23,7 @@ export const Administration = () => {
     organization_name: 'Cyberdyne Systems Corp',
     soc_name: 'Global Threat Operations Center',
     admin_profile_name: 'Sarah Connor',
-    admin_profile_role: 'SOC Director',
+    admin_profile_role: 'Platform Director',
     default_timezone: 'UTC',
     default_region: 'us-east-1',
     storage_retention_days: '90',
@@ -40,7 +40,7 @@ export const Administration = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [isInviteOpen, setIsInviteOpen] = useState(false);
-  const [inviteForm, setInviteForm] = useState({ name: '', email: '', role: 'SOC Analyst' });
+  const [inviteForm, setInviteForm] = useState({ name: '', email: '', role: 'Analyst' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const sourceLabel = 'Live data from Supabase system_settings and users tables';
@@ -86,7 +86,7 @@ export const Administration = () => {
     try {
       const newUser = await userService.inviteUser(inviteForm.name, inviteForm.email, inviteForm.role);
       setUsers(prev => [newUser, ...prev]);
-      setInviteForm({ name: '', email: '', role: 'SOC Analyst' });
+      setInviteForm({ name: '', email: '', role: 'Analyst' });
       setIsInviteOpen(false);
     } catch (err) {
       console.error('Failed to invite user:', err);
@@ -147,7 +147,7 @@ export const Administration = () => {
   return (
     <DashboardLayout>
       <SectionHeader 
-        title="SOC Portal Administration" 
+        title="Platform Administration" 
         description="Provision organization profiles, manage operator directories, configure global retention/storage policies, and review Docker specifications."
       />
 
@@ -197,7 +197,7 @@ export const Administration = () => {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>SOC Name</label>
+                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>Operations Center Name</label>
                 <input
                   type="text"
                   value={settings.soc_name}
@@ -290,7 +290,7 @@ export const Administration = () => {
                   cursor: 'pointer'
                 }}
               >
-                Invite SOC Operator
+                Invite Operator
               </button>
             }
           >
@@ -318,7 +318,7 @@ export const Administration = () => {
                   >
                     <option value="">All Roles</option>
                     <option value="Administrator">Administrator</option>
-                    <option value="SOC Analyst">SOC Analyst</option>
+                    <option value="Analyst">Analyst</option>
                     <option value="Incident Responder">Incident Responder</option>
                     <option value="Threat Hunter">Threat Hunter</option>
                     <option value="Read Only">Read Only</option>
@@ -425,7 +425,7 @@ export const Administration = () => {
                         style={configInputStyle}
                       >
                         <option value="Administrator">Administrator</option>
-                        <option value="SOC Analyst">SOC Analyst</option>
+                        <option value="Analyst">Analyst</option>
                         <option value="Incident Responder">Incident Responder</option>
                         <option value="Threat Hunter">Threat Hunter</option>
                         <option value="Read Only">Read Only</option>

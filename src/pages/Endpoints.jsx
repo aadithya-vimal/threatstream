@@ -115,7 +115,7 @@ export const Endpoints = () => {
     try {
       const res = await apiRequest(`/telemetry/alerts/${incidentAlert.id}/escalate`, {
         method: 'POST',
-        body: JSON.stringify({ owner: 'SOC Analyst' })
+        body: JSON.stringify({ owner: 'Analyst' })
       });
       if (res.ok) {
         alert('Alert successfully escalated to incident ticket. Associated process tree and correlation evidence attached.');

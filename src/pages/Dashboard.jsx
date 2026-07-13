@@ -306,7 +306,7 @@ function Dashboard() {
             </div>
           </Panel>
 
-          {/* SOC System Health */}
+          {/* Platform system health */}
           <Panel title="Backend Health" hint="Live platform health indicators from the console runtime." style={{ minHeight: '228px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '4px 0' }}>
               <div>

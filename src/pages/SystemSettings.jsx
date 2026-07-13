@@ -112,7 +112,7 @@ const SaveButton = ({ label = 'Save Changes', onClick }) => (
 ───────────────────────────────────────────── */
 const GeneralSection = () => {
   const [form, setForm] = useState({
-    orgName: 'Acme Corporation SOC',
+    orgName: 'Acme Corporation',
     timezone: 'UTC',
     dateFormat: 'YYYY-MM-DD',
     rateLimit: '1000',
@@ -280,7 +280,7 @@ const ALL_SCOPES = [
 
 const MOCK_KEYS = [
   {
-    id: 1, name: 'SOC Automation', prefix: 'ts_live_ab12',
+    id: 1, name: 'Automation', prefix: 'ts_live_ab12',
     scopes: ALL_SCOPES, created: '2026-06-01', lastUsed: '2026-07-05', expires: '2027-06-01', status: 'active',
   },
   {
@@ -903,7 +903,7 @@ const AboutSection = () => {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', maxWidth: '820px', marginBottom: '28px' }}>
         {[
-          { label: 'Platform', value: 'ThreatStream SOC v2.0.0' },
+          { label: 'Platform', value: 'ThreatStream v2.0.0' },
           { label: 'Build', value: '20260705-prod' },
           { label: 'Database', value: 'PostgreSQL 15.4 (Supabase)' },
           { label: 'Uptime', value: '47 days, 3h 12m' },

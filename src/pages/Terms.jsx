@@ -27,7 +27,7 @@ export const Terms = () => {
         <section className="terms-section">
           <h2>2. Description of Service</h2>
           <p>
-            ThreatStream is a Security Operations Center (SOC) management console and threat telemetry platform. Live threat data is routed and visualised on an interactive 3D globe.
+            ThreatStream is a cyber operations management console and threat telemetry platform. Live threat data is routed and visualised on an interactive 3D globe.
           </p>
         </section>
 
