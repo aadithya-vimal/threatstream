@@ -145,7 +145,7 @@ const LivePulse = ({ position, color }) => {
   );
 };
 
-const GlobeScene = ({ threats, showLabels }) => {
+const GlobeScene = ({ threats }) => {
   const [arcs, setArcs] = useState([]);
   const [pulses, setPulses] = useState([]);
   const lastTimestampRef = useRef(null);
@@ -195,7 +195,7 @@ const GlobeScene = ({ threats, showLabels }) => {
   }, [threats]);
 
   return (
-    <group position={[0, 0.08, 0]}>
+    <group position={[0, 0.16, 0]}>
       <Suspense fallback={null}>
         <GlobeSurface />
       </Suspense>
@@ -206,30 +206,24 @@ const GlobeScene = ({ threats, showLabels }) => {
       {pulses.map((pulse) => (
         <LivePulse key={pulse.id} position={pulse.position} color={pulse.color} />
       ))}
-      {showLabels && (
-        <Html position={[0, 1.45, 0]} center>
-          <div style={labelStyle}>Live threat arcs only</div>
-        </Html>
-      )}
     </group>
   );
 };
 
 const Globe = ({ threats = [] }) => {
-  const [showLabels, setShowLabels] = useState(true);
   const [globeKey, setGlobeKey] = useState(0);
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative', minHeight: 0, overflow: 'hidden' }}>
       <div style={controlsStyle}>
         <button type="button" onClick={() => setGlobeKey((value) => value + 1)} title="Reset globe" style={controlButtonStyle}>Reset</button>
-        <button type="button" onClick={() => setShowLabels((value) => !value)} title="Toggle label" style={controlButtonStyle}>{showLabels ? 'Hide Label' : 'Show Label'}</button>
+        <button type="button" onClick={() => setGlobeKey((value) => value + 1)} title="Re-center globe" style={controlButtonStyle}>Center</button>
       </div>
       <Canvas
         key={globeKey}
         style={{ width: '100%', height: '100%' }}
         dpr={[1, 2]}
-        camera={{ position: [0, 0, 3.6], fov: 35, near: 0.1, far: 200 }}
+        camera={{ position: [0, 0.12, 4.8], fov: 32, near: 0.1, far: 200 }}
         gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
       >
         <color attach="background" args={['#040a12']} />
@@ -237,13 +231,13 @@ const Globe = ({ threats = [] }) => {
         <OrbitControls
           enablePan={false}
           enableZoom={true}
-          minDistance={2.4}
-          maxDistance={5.2}
+          minDistance={3.4}
+          maxDistance={6.0}
           rotateSpeed={0.4}
           zoomSpeed={0.8}
           target={[0, 0, 0]}
         />
-        <GlobeScene threats={threats} showLabels={showLabels} />
+        <GlobeScene threats={threats} />
       </Canvas>
     </div>
   );
@@ -271,19 +265,6 @@ const controlButtonStyle = {
   cursor: 'pointer',
   backdropFilter: 'blur(10px)',
   boxShadow: '0 6px 18px rgba(0, 0, 0, 0.28)'
-};
-
-const labelStyle = {
-  color: '#9be7ff',
-  fontSize: '11px',
-  fontWeight: 700,
-  letterSpacing: '0.08em',
-  textTransform: 'uppercase',
-  background: 'rgba(3, 10, 16, 0.45)',
-  border: '1px solid rgba(155, 231, 255, 0.12)',
-  padding: '6px 10px',
-  borderRadius: '999px',
-  backdropFilter: 'blur(8px)'
 };
 
 export default Globe;
