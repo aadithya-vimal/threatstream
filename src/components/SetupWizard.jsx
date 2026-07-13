@@ -66,8 +66,8 @@ export const SetupWizard = ({ onComplete }) => {
             {/* Step 1: Org Info */}
             {step === 1 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Establish Organization Directory</h3>
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Identify your organization and primary operations node for incident tracking and report branding.</span>
+                <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Establish Validation Workspace</h3>
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Identify your organization and primary workspace for tracking exposure reviews, evidence, and workflow state.</span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>Organization Name</label>
                   <input
@@ -92,8 +92,8 @@ export const SetupWizard = ({ onComplete }) => {
             {/* Step 2: Admin Profile */}
             {step === 2 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Administrator Profile</h3>
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Assign the initial operator profile who will hold Administrator credentials.</span>
+                <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Workspace Owner Profile</h3>
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Assign the initial operator profile who will manage the workspace.</span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>Operator Full Name</label>
                   <input
@@ -121,7 +121,7 @@ export const SetupWizard = ({ onComplete }) => {
             {step === 3 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>System Default Timezone</h3>
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Standardize alert timestamps and compliance logs to a default time structure.</span>
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Standardize timestamps for alerts, evidence, and reports.</span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>Preferred Timezone</label>
                   <select
@@ -143,7 +143,7 @@ export const SetupWizard = ({ onComplete }) => {
             {step === 4 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Default Infrastructure Region</h3>
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Set the target scanning region for local assets routing catalog.</span>
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Set the default region for inventory and telemetry grouping.</span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>Deployment Region</label>
                   <select
@@ -164,7 +164,7 @@ export const SetupWizard = ({ onComplete }) => {
             {step === 5 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Threat Intelligence Feeds</h3>
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Select default automated threat feed lists to fetch reputation records.</span>
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Select default feeds to enrich indicators and context records.</span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {['AbuseIPDB', 'CISA Feed', 'VirusTotal Pulses', 'GreyNoise Analytics'].map(feed => (
                     <label key={feed} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: 'var(--text-primary)', cursor: 'pointer' }}>
@@ -184,7 +184,7 @@ export const SetupWizard = ({ onComplete }) => {
             {step === 6 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Log Retention & Storage</h3>
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Define auto-pruning parameters for PCAPs, evidence logs, and sandbox samples.</span>
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Define retention for evidence, telemetry, and analysis artifacts.</span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>Telemetry Logs Retention (Days)</label>
                   <select
@@ -229,7 +229,7 @@ export const SetupWizard = ({ onComplete }) => {
                 </div>
                 <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Provisioning Complete</h3>
                 <span style={{ fontSize: '12px', color: 'var(--text-secondary)', maxWidth: '400px' }}>
-                  ThreatStream has been configured successfully. We will write these settings to the database and initialize the operational console.
+                  ThreatStream has been configured successfully. We will write these settings to the database and initialize the validation workspace.
                 </span>
                 
                 <div style={{

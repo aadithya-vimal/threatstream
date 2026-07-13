@@ -21,10 +21,10 @@ export const Landing = () => {
         <div className="hero-content">
           <div className="hero-badge">Open-source cyber operations platform</div>
           <h1 className="hero-title">
-            Next-Generation <span>Cyber Operations</span> Console
+            Next-Generation <span>Validation</span> Operations Console
           </h1>
           <p className="hero-subtitle">
-            Ingest, correlate, and investigate live telemetry in real-time. Built for open-source threat intelligence, endpoint visibility, graph investigation, and incident response.
+            Track exposure, evidence, and workflow state in real-time. Built to help you validate findings, preserve context, and keep control of what matters.
           </p>
           <div className="cta-group">
             <Link to="/dashboard" className="cta-primary">
@@ -94,9 +94,9 @@ export const Landing = () => {
               Correlate vulnerabilities with asset inventory. Prioritize remediation based on current exposure and business context.
             </p>
             <div className="attack-types">
-              <span className="attack-badge">CVE-2024-3094</span>
-              <span className="attack-badge">Log4Shell</span>
-              <span className="attack-badge">libwebp</span>
+              <span className="attack-badge">Exposure Review</span>
+              <span className="attack-badge">Control Gap</span>
+              <span className="attack-badge">Remediation</span>
             </div>
           </div>
 
@@ -136,7 +136,7 @@ export const Landing = () => {
 
       {/* Footer */}
       <footer className="landing-footer">
-        <p>ThreatStream Cyber Operations Platform - Open-Source Dashboard Console</p>
+        <p>ThreatStream Cyber Operations Platform - Open-Source Validation Console</p>
         <p>© 2025 Aadithya Vimal. All rights reserved. | <Link to="/terms" style={{ color: 'var(--color-blue)', textDecoration: 'none' }}>Terms & Conditions</Link></p>
       </footer>
     </div>

@@ -23,11 +23,6 @@ import YARAPlatform from './pages/YARAPlatform';
 import GraphInvestigation from './pages/GraphInvestigation';
 import Incidents from './pages/Incidents';
 import Reports from './pages/Reports';
-import Administration from './pages/Administration';
-import Operations from './pages/Operations';
-import Connectors from './pages/Connectors';
-import AuditLog from './pages/AuditLog';
-import BackupManager from './pages/BackupManager';
 import SystemSettings from './pages/SystemSettings';
 
 function App() {
@@ -107,34 +102,9 @@ function App() {
                 <Reports />
               </ProtectedRoute>
             } />
-            <Route path="/operations" element={
-              <ProtectedRoute requiredPermission="read:telemetry">
-                <Operations />
-              </ProtectedRoute>
-            } />
-            <Route path="/connectors" element={
-              <ProtectedRoute requiredPermission="read:intel">
-                <Connectors />
-              </ProtectedRoute>
-            } />
-            <Route path="/audit-log" element={
-              <ProtectedRoute requiredPermission="read:intel">
-                <AuditLog />
-              </ProtectedRoute>
-            } />
-            <Route path="/backup-manager" element={
-              <ProtectedRoute requiredPermission="read:intel">
-                <BackupManager />
-              </ProtectedRoute>
-            } />
             <Route path="/settings" element={
               <ProtectedRoute requiredPermission="read:intel">
                 <SystemSettings />
-              </ProtectedRoute>
-            } />
-            <Route path="/administration" element={
-              <ProtectedRoute requiredPermission="manage:users">
-                <Administration />
               </ProtectedRoute>
             } />
           </Routes>

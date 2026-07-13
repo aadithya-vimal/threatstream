@@ -28,6 +28,7 @@ export const Topbar = ({ onSearchTrigger }) => {
     if (segments.length === 0) return 'Landing';
     
     return segments.map(seg => {
+      if (seg.toLowerCase() === 'incidents') return 'Vector Packs';
       return seg
         .replace(/[-_]/g, ' ')
         .replace(/\b\w/g, c => c.toUpperCase());
@@ -78,7 +79,7 @@ export const Topbar = ({ onSearchTrigger }) => {
       {/* Page Breadcrumbs */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-muted)' }}>
-          Operations Portal
+          ThreatStream Portal
         </span>
         <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>/</span>
         <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>

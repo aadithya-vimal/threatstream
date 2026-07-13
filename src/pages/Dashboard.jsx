@@ -137,17 +137,17 @@ function Dashboard() {
     : 0;
   const detectedCoverage = Math.min(100, Math.max(45, Math.round((threats.length * 12) + (incidents.length * 8))));
   const executionCoverage = Math.min(100, Math.max(50, Math.round((assets.length * 4) + (incidents.length * 6) + (threats.length * 2))));
-  const sourceLabel = 'Live data from Supabase assets, threats, and incidents tables';
+  const sourceLabel = 'Live data from validation cases, assets, and telemetry';
 
   // Alerts column structures
   const alertColumns = [
     {
-      header: 'Incident Case',
+      header: 'Vector Pack ID',
       accessor: 'id',
       renderCell: (val) => <span style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--color-blue)' }}>{val}</span>
     },
     {
-      header: 'Summary',
+      header: 'Breach Vector / Step Summary',
       accessor: 'summary',
       renderCell: (val) => <span style={{ fontSize: '12px' }}>{val}</span>
     },
@@ -164,7 +164,7 @@ function Dashboard() {
   // Threat stream column structures
   const columns = [
     {
-      header: 'Timestamp',
+      header: 'Simulation Timestamp',
       accessor: 'timestamp',
       renderCell: (val) => (
         <span style={{ fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
@@ -173,7 +173,7 @@ function Dashboard() {
       )
     },
     {
-      header: 'Attack Type',
+      header: 'Attack Phase / Vector',
       accessor: 'attack_type',
       renderCell: (val) => {
         const type = val?.toLowerCase() || 'unknown';
@@ -185,14 +185,14 @@ function Dashboard() {
       }
     },
     {
-      header: 'Source IP',
+      header: 'Target IP Address',
       accessor: 'ip',
       renderCell: (val) => (
         <span style={{ fontFamily: 'monospace', fontWeight: 500 }}>{val}</span>
       )
     },
     {
-      header: 'Country',
+      header: 'Origin Location',
       accessor: 'country',
       renderCell: (val) => (
         <span style={{ fontWeight: 600 }}>{val?.toUpperCase() || '??'}</span>
@@ -205,7 +205,7 @@ function Dashboard() {
   if (isLoading) {
     return (
       <DashboardLayout>
-        <LoadingState message="Resolving console datasets..." />
+        <LoadingState message="Resolving workspace datasets..." />
       </DashboardLayout>
     );
   }
@@ -220,7 +220,7 @@ function Dashboard() {
       <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
         <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-blue)' }}>{sourceLabel}</span>
         <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-          Aggregated from {threats.length} threats, {assets.length} assets, and {incidents.length} incidents
+          Aggregated from {threats.length} live events, {assets.length} assets, and {incidents.length} vector packs
         </span>
       </div>
 
@@ -235,32 +235,32 @@ function Dashboard() {
         }}
       >
         <MetricCard 
-          title="Active Security Incidents" 
+          title="Active Vector Packs" 
           value={activeIncidentsCount} 
           status={activeIncidentsCount > 0 ? 'critical' : 'low'} 
           icon={<Icon name="incidents" size={16} />}
-          subtitle="Pending mitigation triage"
+          subtitle="Cases requiring documentation"
         />
         <MetricCard 
-          title="Monitored Asset Catalog" 
+          title="Observed Target Scope" 
           value={totalAssetsCount} 
           status="info" 
           icon={<Icon name="shield" size={16} />}
-          subtitle={`${criticalAssetsCount} high-criticality nodes`}
+          subtitle={`${criticalAssetsCount} high-risk assets`}
         />
         <MetricCard 
-          title="Honeypots Attack Flow" 
+          title="Validation Event Log" 
           value={threats.length} 
           status="high" 
           icon={<Icon name="terminal" size={16} />}
-          subtitle="Realtime connection streams"
+          subtitle="Realtime workflow traces"
         />
         <MetricCard 
-          title="Infrastructure Risk Score" 
+          title="Asset Exposure Index" 
           value={`${meanRiskScore}/100`} 
           status={meanRiskScore > 75 ? 'critical' : meanRiskScore > 40 ? 'high' : 'low'} 
           icon={<Icon name="vulnerabilities" size={16} />}
-          subtitle="Weighted asset scores average"
+          subtitle="Weighted exposure average"
         />
       </div>
 
@@ -277,12 +277,12 @@ function Dashboard() {
       >
         {/* Globe Panel */}
         <Panel 
-          title="Live Threat Globe" 
-          hint="3D globe showing only live threat locations and response arcs."
+          title="Validation Exposure Map" 
+          hint="3D globe showing observed origins and relationship arcs."
           actions={
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-low)' }}>
               <span className="pulse-dot" style={{ backgroundColor: 'var(--color-low)' }} />
-              <span style={{ fontSize: '11px', fontWeight: 600 }}>LIVE THREAT FEED</span>
+              <span style={{ fontSize: '11px', fontWeight: 600 }}>LIVE VALIDATION FEED</span>
             </div>
           }
           style={{ height: '64vh', minHeight: '560px' }}
@@ -296,22 +296,22 @@ function Dashboard() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
           {/* Active Incidents Alerts */}
-          <Panel title="Open Incidents" hint="Live incident queue showing currently open cases." style={{ flex: 1, minHeight: '228px' }}>
+          <Panel title="Active Vector Packs" hint="Active vector packs tracking validation steps and evidence." style={{ flex: 1, minHeight: '228px' }}>
             <div style={{ height: '100%', overflowY: 'auto' }}>
               <DataTable 
                 columns={alertColumns} 
                 data={openIncidents.slice(0, 4)} 
-                emptyText="No critical tickets open." 
+                emptyText="No active vector packs." 
               />
             </div>
           </Panel>
 
           {/* Platform system health */}
-          <Panel title="Backend Health" hint="Live platform health indicators from the console runtime." style={{ minHeight: '228px' }}>
+          <Panel title="Platform Engine Health" hint="Live metrics of the validation runner." style={{ minHeight: '228px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '4px 0' }}>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                  <span>DB WORKER CPU</span>
+                  <span>SCHEDULER ENGINE LOAD</span>
                   <span>14%</span>
                 </div>
                 <div style={{ height: '4px', backgroundColor: 'var(--bg-primary)', borderRadius: '2px' }}>
@@ -320,7 +320,7 @@ function Dashboard() {
               </div>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                  <span>MEMORY STORAGE ALLOCATION</span>
+                  <span>WORKFLOW BUFFER PIPES</span>
                   <span>42%</span>
                 </div>
                 <div style={{ height: '4px', backgroundColor: 'var(--bg-primary)', borderRadius: '2px' }}>
@@ -329,7 +329,7 @@ function Dashboard() {
               </div>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                  <span>WEBSOCKET PUBSUB BUFFERS</span>
+                  <span>CLIENT DISPATCH CHANNELS</span>
                   <span>98% Live</span>
                 </div>
                 <div style={{ height: '4px', backgroundColor: 'var(--bg-primary)', borderRadius: '2px' }}>
@@ -352,18 +352,18 @@ function Dashboard() {
         className="dashboard-grid-layout"
       >
         {/* Realtime Stream Grid */}
-        <Panel title="Live Threat Log" hint="Streaming threat events received from the backend." style={{ height: '420px' }}>
+        <Panel title="Validation Event Stream" hint="Streaming live workflow events dispatched across the workspace." style={{ height: '420px' }}>
           <div style={{ height: '100%', overflowY: 'auto' }}>
             <DataTable 
               columns={columns} 
               data={threats.slice(0, 8)} 
-              emptyText="Waiting for incoming live threat events..." 
+              emptyText="Waiting for live events..." 
             />
           </div>
         </Panel>
 
-        {/* MITRE ATT&CK Mapping coverage progress */}
-        <Panel title="MITRE Coverage" hint="Coverage estimates for the ATT&CK techniques represented in current detections." style={{ height: '420px' }}>
+        {/* Coverage mapping progress */}
+        <Panel title="Coverage Mapping" hint="Tactics and techniques mapped against live observations." style={{ height: '420px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', overflowY: 'auto', height: '100%' }}>
             <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Calculated detection signatures coverage against threat vectors:</span>
             

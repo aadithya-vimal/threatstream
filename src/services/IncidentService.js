@@ -1,6 +1,6 @@
 /**
  * src/services/IncidentService.js
- * Case Management & Incident Response Service Layer
+ * Vector Pack & Validation Case Service Layer
  */
 import { IncidentRepository } from '../repositories/IncidentRepository';
 
@@ -52,32 +52,32 @@ export class ReportGenerator {
     const timelineList = incident.timeline || [];
     const recsList = incident.recommendations || [];
 
-    return `# ThreatStream Incident Report - Case: ${incident.id}
+    return `# ThreatStream Validation Report - Vector Pack: ${incident.id}
 ## Summary
-* **Classification:** ${incident.summary}
-* **Severity:** ${(incident.severity || '').toUpperCase()}
-* **Current Status:** ${incident.status}
-* **Owner Assigned:** ${incident.owner}
+* **Primary Finding:** ${incident.summary}
+* **Impact Level:** ${(incident.severity || '').toUpperCase()}
+* **Workflow Status:** ${incident.status}
+* **Lead Operator:** ${incident.owner}
 * **Date Logged:** ${incident.date || incident.logged_date}
 
-## Affected System Assets
-${assetsList.map(asset => `* ${asset}`).join('\n')}
+## Targeted Infrastructure Assets
+${assetsList.map(asset => `* Target Asset: ${asset}`).join('\n')}
 
-## MITRE ATT&CK Mapping
+## MITRE ATT&CK Mapping Reference
 * **Technique:** ${incident.mitreMapping?.id || incident.mitre_id || 'N/A'} - ${incident.mitreMapping?.name || incident.mitre_name || 'N/A'}
 * **Tactic Focus:** ${incident.mitreMapping?.tactic || incident.mitre_tactic || 'N/A'}
 
-## Triage Timeline
+## Chronological Workflow Steps
 ${timelineList.map(item => `* **[${item.timestamp}] ${item.author}:** ${item.details}`).join('\n')}
 
-## Evidence Assets Vault
-${evidenceList.map(e => `* **${e.name}** (${e.type}, Size: ${e.size}) - Uploaded by ${e.addedBy}`).join('\n')}
+## Evidence & Artifacts
+${evidenceList.map(e => `* **${e.name}** (${e.type}, Size: ${e.size}) - Registered by ${e.addedBy}. Detail: ${e.custody}`).join('\n')}
 
-## Remediation Recommendations
+## Recommendations & Follow-Up
 ${recsList.map((rec, idx) => `${idx + 1}. ${rec}`).join('\n')}
 
 ---
-*Report generated automatically by ThreatStream SOC Incident Response module on ${new Date().toISOString().split('T')[0]}.*`;
+*Report compiled automatically by ThreatStream on ${new Date().toISOString().split('T')[0]}.*`;
   }
 }
 
@@ -116,7 +116,7 @@ export class MalwareAnalyzer {
         exports: []
       },
       strings: [
-        'http://91.240.118.12/c2/payload.bin',
+        'https://example.org/artifact.bin',
         'cmd.exe /c powershell.exe -windowstyle hidden -nop -enc ...',
         'Restore-My-Files.txt',
         'vssadmin delete shadows /all',

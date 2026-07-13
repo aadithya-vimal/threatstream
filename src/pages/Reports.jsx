@@ -82,8 +82,8 @@ export const Reports = () => {
   return (
     <DashboardLayout>
       <SectionHeader
-        title="Security Compliance Reports"
-        description="Access security summaries, automated scanning outputs, and compliance checklists."
+        title="Validation Reports"
+        description="Access generated validation dossiers, evidence summaries, and workflow outputs."
         actions={
           <button
             onClick={refresh}
@@ -97,16 +97,16 @@ export const Reports = () => {
       <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
         <MetricCard title="Total Reports" value={total.toLocaleString()} status="info" subtitle="In report archive" />
         <MetricCard title="This Month" value={thisMonthCount} status="low" subtitle="Generated this month" />
-        <MetricCard title="PDF Reports" value={pdfCount} status="info" subtitle="PDF format reports" />
+        <MetricCard title="PDF Dossiers" value={pdfCount} status="info" subtitle="PDF format reports" />
         <MetricCard title="Other Formats" value={total - pdfCount} status="info" subtitle="Excel, CSV, JSON…" />
       </div>
 
-      <Panel title="Saved Report Archive">
+      <Panel title="Saved Campaign Report Archive">
         <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'flex-start' }}>
           <SearchBar
             value={searchTerm}
             onChange={setSearchTerm}
-            placeholder="Search by title, classification, or author…"
+            placeholder="Search by title, classification, or operator…"
             style={{ maxWidth: '400px' }}
           />
         </div>
@@ -127,9 +127,9 @@ export const Reports = () => {
             emptyText={
               searchTerm
                 ? "No reports match your search."
-                : "No reports generated yet. Run scans or incidents to generate compliance reports."
-            }
-          />
+              : "No validation reports generated yet. Create a pack or case to compile one."
+          }
+        />
         )}
       </Panel>
     </DashboardLayout>

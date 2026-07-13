@@ -1,6 +1,6 @@
 /**
  * src/pages/Incidents.jsx
- * Incident Response, Case Management, and Forensic Evidence Workspace
+ * Validation Case Management and Evidence Workspace
  */
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
@@ -21,21 +21,21 @@ export const Incidents = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [incidents, setIncidents] = useState([]);
   
-  // Active Triage Case State
+  // Active Validation Case State
   const [selectedIncidentId, setSelectedIncidentId] = useState(null);
   const [selectedIncident, setSelectedIncident] = useState(null);
 
-  // New Case Modal / Triage Inputs
+  // New Case Modal / Validation Inputs
   const [newCaseTitle, setNewCaseTitle] = useState('');
   const [newCaseSeverity, setNewCaseSeverity] = useState('high');
   const [newCaseCategory, setNewCaseCategory] = useState('Malware Execution');
 
-  // Forensic Upload Inputs
+  // Evidence Upload Inputs
   const [evidenceName, setEvidenceName] = useState('');
   const [evidenceHash, setEvidenceHash] = useState('');
   const [evidenceCustody, setEvidenceCustody] = useState('Acquired by Analyst');
 
-  // Playbook / Checklist State
+  // Workflow / Checklist State
   const [playbookItems, setPlaybookItems] = useState([]);
   
   // Collaboration / Task inputs
@@ -89,7 +89,7 @@ export const Incidents = () => {
       const found = incidents.find(i => i.id === selectedIncidentId);
       if (found) {
         setSelectedIncident(found);
-        setPlaybookItems(found.playbook_checklist || []);
+      setPlaybookItems(found.playbook_checklist || []);
       }
     } else {
       setSelectedIncident(null);
@@ -119,7 +119,7 @@ export const Incidents = () => {
 
     const newComment = {
       id: `c-${Date.now()}`,
-      author: 'Admin Vimal',
+      author: 'Workspace Owner',
       text: commentText,
       timestamp: new Date().toISOString()
     };
@@ -159,7 +159,7 @@ export const Incidents = () => {
       name: evidenceName,
       type: evidenceName.includes('.') ? evidenceName.split('.').pop().toUpperCase() + ' dump' : 'Forensic Artifact',
       size: '2.5 MB',
-      addedBy: 'Admin Vimal',
+      addedBy: 'Workspace Owner',
       date: new Date().toISOString().split('T')[0],
       hash: evidenceHash.trim() || 'SHA256-PENDING-INTEGRITY-COMPUTE',
       custody: evidenceCustody
@@ -172,7 +172,7 @@ export const Incidents = () => {
       setEvidenceName('');
       setEvidenceHash('');
       setEvidenceCustody('Acquired by Analyst');
-      alert('Forensics file registered with hash integrity checks.');
+      alert('Evidence file registered with hash integrity checks.');
     }
   };
 
@@ -187,11 +187,11 @@ export const Incidents = () => {
     const updated = await incidentService.updateIncident(selectedIncident.id, { 
       status: 'Closed', 
       closed_at: new Date().toISOString(),
-      resolution: 'Remediation completed, firewall isolation revoked.'
+      resolution: 'Validation complete, follow-up actions captured.'
     });
     if (updated) {
       setIncidents(prev => prev.map(i => i.id === selectedIncident.id ? updated : i));
-      alert('Case closed successfully.');
+      alert('Validation case closed successfully.');
     }
   };
 
@@ -211,7 +211,7 @@ export const Incidents = () => {
   if (isLoading) {
     return (
       <DashboardLayout>
-        <LoadingState message="Connecting to incident case cabinet..." />
+        <LoadingState message="Connecting to validation case cabinet..." />
       </DashboardLayout>
     );
   }
@@ -219,30 +219,30 @@ export const Incidents = () => {
   return (
     <DashboardLayout>
       <SectionHeader 
-        title="Incident Response & Case Management" 
-        description="Investigate compromised assets, audit chronological timeline trails, and coordinate eradication playbooks."
+        title="Validation Cases & Vector Packs" 
+        description="Track scoped validation cases, manage evidence files, trace workflow steps, and document outcomes."
       />
 
       <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
         <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-blue)' }}>{sourceLabel}</span>
         <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-          Aggregated from {incidents.length} live incident record{incidents.length === 1 ? '' : 's'}
+          Aggregated from {incidents.length} active vector pack{incidents.length === 1 ? '' : 's'}
         </span>
       </div>
 
       {/* SLA / MTTD / MTTR Metrics */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <MetricCard title="Mean Time To Detect (MTTD)" value="Live from incident timeline" status="low" subtitle="Calculated from recorded case timestamps" />
-        <MetricCard title="Mean Time To Respond (MTTR)" value="Live from incident timeline" status="low" subtitle="Calculated from assignment and containment events" />
-        <MetricCard title="Open Incidents Queue" value={incidents.filter(i => i.status !== 'Closed').length} status="critical" subtitle="Assigned cases requiring review" />
-        <MetricCard title="Playbook Completion SLA" value="Live from playbook checklist" status="high" subtitle="Derived from current containment tasks" />
+        <MetricCard title="Mean Validation Time" value="Live from workflow logs" status="low" subtitle="Average time to document a case" />
+        <MetricCard title="Closed Case Rate" value={`${Math.round((incidents.filter(i => i.status === 'Closed').length / Math.max(1, incidents.length)) * 100)}%`} status="info" subtitle="Percentage of cases finalized" />
+        <MetricCard title="Active Vector Packs" value={incidents.filter(i => i.status !== 'Closed').length} status="critical" subtitle="Cases requiring documentation" />
+        <MetricCard title="Workflow Steps Completed" value="Live from checklist" status="high" subtitle="Documented steps in validation packs" />
       </div>
 
       {/* Tabs */}
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', gap: '4px', marginBottom: '20px', overflowX: 'auto' }}>
-        <button style={navTabStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>Analyst Dashboard</button>
-        <button style={navTabStyle('queue')} onClick={() => setActiveTab('queue')}>Incidents Queue ({incidents.length})</button>
-        <button style={navTabStyle('workspace')} onClick={() => setActiveTab('workspace')}>Triage Workspace {selectedIncident ? `(${selectedIncident.id})` : ''}</button>
+        <button style={navTabStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>Case Dashboard</button>
+        <button style={navTabStyle('queue')} onClick={() => setActiveTab('queue')}>Vector Packs Queue ({incidents.length})</button>
+        <button style={navTabStyle('workspace')} onClick={() => setActiveTab('workspace')}>Validation Workspace {selectedIncident ? `(${selectedIncident.id})` : ''}</button>
       </div>
 
       {/* 1. ANALYST DASHBOARD */}
@@ -251,13 +251,13 @@ export const Incidents = () => {
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
             
-            <Panel title="Incident Category Distributions">
+            <Panel title="Vector Classification Distributions">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '6px 0' }}>
                 {Object.entries(incidentCategoryCounts).map(([category, count]) => (
                   <div key={category}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>
                       <span>{category.toUpperCase()}</span>
-                      <span>{count} Ticket{count === 1 ? '' : 's'}</span>
+                      <span>{count} Pack{count === 1 ? '' : 's'}</span>
                     </div>
                     <div style={{ height: '5px', backgroundColor: 'var(--bg-primary)', borderRadius: '2px' }}>
                       <div style={{ width: `${Math.max(25, (count / Math.max(1, incidents.length)) * 100)}%`, height: '100%', backgroundColor: 'var(--color-critical)' }} />
@@ -265,21 +265,21 @@ export const Incidents = () => {
                   </div>
                 ))}
                 {Object.keys(incidentCategoryCounts).length === 0 && (
-                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>No live incident records available yet.</span>
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>No active validation vector packs available yet.</span>
                 )}
               </div>
             </Panel>
 
-            <Panel title="Top Affected Asset Registries">
+            <Panel title="Top Targeted Asset Registries">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
                 {topAffectedAssetEntries.map(([asset, count]) => (
                   <div key={asset} style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span>{asset}</span>
-                    <strong style={{ color: 'var(--color-critical)' }}>{count} Live Incident{count === 1 ? '' : 's'}</strong>
+                    <strong style={{ color: 'var(--color-critical)' }}>{count} Simulation Hit{count === 1 ? '' : 's'}</strong>
                   </div>
                 ))}
                 {topAffectedAssetEntries.length === 0 && (
-                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>No affected asset links recorded in live incidents yet.</span>
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>No asset targets recorded yet.</span>
                 )}
               </div>
             </Panel>
@@ -289,16 +289,16 @@ export const Incidents = () => {
 
       {/* 2. INCIDENTS QUEUE */}
       {activeTab === 'queue' && (
-        <Panel title="SecOps Active Tickets Queue">
+        <Panel title="Active Vector Packs Queue">
           <DataTable 
             columns={[
-              { header: 'Case ID', accessor: 'id', renderCell: (val) => <span style={{ fontWeight: 700 }}>{val}</span> },
-              { header: 'Title Summary', accessor: 'title', renderCell: (val, row) => <span>{val || row.summary}</span> },
-              { header: 'Severity', accessor: 'severity', renderCell: (val) => <StatusBadge status={val} text={val.toUpperCase()} /> },
-              { header: 'Priority', accessor: 'priority', renderCell: (val) => <StatusBadge status={val || 'medium'} text={(val || 'medium').toUpperCase()} /> },
-              { header: 'Category', accessor: 'category' },
-              { header: 'Assignee', accessor: 'assignee' },
-              { header: 'Status', accessor: 'status', renderCell: (val) => <StatusBadge status={val === 'Closed' ? 'low' : 'warning'} text={val} /> }
+              { header: 'Vector Pack ID', accessor: 'id', renderCell: (val) => <span style={{ fontWeight: 700 }}>{val}</span> },
+              { header: 'Exploitation Step / Vector Description', accessor: 'title', renderCell: (val, row) => <span>{val || row.summary}</span> },
+              { header: 'Impact Severity', accessor: 'severity', renderCell: (val) => <StatusBadge status={val} text={val.toUpperCase()} /> },
+              { header: 'Execution Priority', accessor: 'priority', renderCell: (val) => <StatusBadge status={val || 'medium'} text={(val || 'medium').toUpperCase()} /> },
+              { header: 'Attack Method', accessor: 'category' },
+              { header: 'Red Team Lead', accessor: 'assignee' },
+              { header: 'Breach Status', accessor: 'status', renderCell: (val) => <StatusBadge status={val === 'Closed' ? 'low' : 'warning'} text={val === 'Closed' ? 'Breached' : 'Simulating'} /> }
             ]}
             data={incidents}
             onRowClick={(row) => { setSelectedIncidentId(row.id); setActiveTab('workspace'); }}
@@ -316,7 +316,7 @@ export const Incidents = () => {
               
               {/* Incident Header dossier */}
               <Panel 
-                title={`Active Incident Dossier: ${selectedIncident.id}`}
+                title={`Active Vector Pack Dossier: ${selectedIncident.id}`}
                 actions={
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button
@@ -330,7 +330,7 @@ export const Incidents = () => {
                         onClick={handleCloseIncident}
                         style={{ backgroundColor: 'var(--color-blue)', border: 'none', color: '#fff', padding: '6px 14px', borderRadius: '4px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
                       >
-                        Close Incident
+                        Mark Breached
                       </button>
                     )}
                   </div>
@@ -339,24 +339,24 @@ export const Incidents = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <div>
                     <h2 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 6px 0', color: 'var(--text-primary)' }}>{selectedIncident.title || selectedIncident.summary}</h2>
-                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0, lineHeight: '1.5' }}>{selectedIncident.description || 'No descriptive incident notes provided.'}</p>
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0, lineHeight: '1.5' }}>{selectedIncident.description || 'No descriptive validation notes provided.'}</p>
                   </div>
 
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', fontSize: '11px', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
                     <span>Priority: <strong>{selectedIncident.priority}</strong></span>
                     <span>•</span>
-                    <span>Category: <strong>{selectedIncident.category}</strong></span>
+                    <span>Attack Vector: <strong>{selectedIncident.category}</strong></span>
                     <span>•</span>
-                    <span>Reporter: <strong>{selectedIncident.reporter}</strong></span>
+                    <span>Lead Operator: <strong>{selectedIncident.reporter}</strong></span>
                     <span>•</span>
-                    <span>Risk Score: <strong>{selectedIncident.risk_score}/100</strong></span>
+                    <span>Exposure Score: <strong>{selectedIncident.risk_score}/100</strong></span>
                   </div>
                 </div>
               </Panel>
 
               {/* Remediations playbooks */}
               {/* Playbooks - Containment, Eradication, Recovery checklist steps */}
-              <Panel title="Remediation Playbook Checklist">
+              <Panel title="Attack Simulation Steps Checklist">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {playbookItems.map(item => (
                     <div 
@@ -388,14 +388,14 @@ export const Incidents = () => {
 
               {/* Forensic Evidence cabinet file list */}
               {/* Evidence Management - SHA-256 integrity hashes and chain of custody tracking */}
-              <Panel title="Forensic Evidence Cabinet">
+              <Panel title="Generated Payload & Exploit Files Repository">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   
                   {/* Registry, Memory, PCAP ingest */}
                   <form onSubmit={handleAddEvidence} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '8px' }} className="evidence-form">
                     <input 
                       type="text" 
-                      placeholder="Artifact Name (update.exe)..." 
+                      placeholder="Artifact Name (notes.txt)..." 
                       value={evidenceName} 
                       onChange={e => setEvidenceName(e.target.value)} 
                       style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'var(--text-primary)', padding: '6px 10px', fontSize: '12px' }}
@@ -409,13 +409,13 @@ export const Incidents = () => {
                     />
                     <input 
                       type="text" 
-                      placeholder="Chain of Custody details..." 
+                      placeholder="Code / Exploit Description..." 
                       value={evidenceCustody} 
                       onChange={e => setEvidenceCustody(e.target.value)} 
                       style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'var(--text-primary)', padding: '6px 10px', fontSize: '12px' }}
                     />
                     <button type="submit" style={{ backgroundColor: 'var(--color-blue)', border: 'none', color: '#fff', borderRadius: '4px', padding: '6px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
-                      Register Evidence
+                      Register Payload File
                     </button>
                   </form>
 
@@ -429,7 +429,7 @@ export const Incidents = () => {
                         </div>
                         <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'monospace', marginBottom: '4px' }}>SHA-256: {ev.hash}</span>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-secondary)' }}>
-                          <span>Custody: <strong>{ev.custody}</strong></span>
+                          <span>Detail: <strong>{ev.custody}</strong></span>
                           <span>Added by: {ev.addedBy}</span>
                         </div>
                       </div>
@@ -438,41 +438,72 @@ export const Incidents = () => {
                 </div>
               </Panel>
 
-              {/* Relationship visual graph mapping */}
               {/* Investigation Graph - Incident -> Assets -> Users -> IOCs -> Threat Actors -> MITRE */}
-              <Panel title="Investigation Relationship Linkages">
-                <div style={{ 
-                  border: '1px solid var(--border-color)', 
-                  borderRadius: '6px', 
-                  backgroundColor: 'var(--bg-primary)', 
-                  padding: '16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '12px',
-                  fontSize: '11px',
-                  fontFamily: 'monospace'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'center' }}>
-                    <div style={{ border: '1px solid var(--color-critical)', borderRadius: '4px', padding: '6px 10px', backgroundColor: 'var(--bg-secondary)', textAlign: 'center' }}>
-                      🚩 [ Incident ID: {selectedIncident.id} ]
+              <Panel title="Workflow & Evidence Chain">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                    Detailed case path showing progression from initial observation to outcome tracking:
+                  </span>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', position: 'relative' }}>
+                    {/* Step 1: Enumerate */}
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '12px', border: '1px solid var(--border-color)', borderRadius: '6px', backgroundColor: 'var(--bg-secondary)' }}>
+                      <div style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: 'var(--color-blue)', borderRadius: '4px', padding: '4px 8px', fontSize: '11px', fontWeight: 700 }}>
+                        STEP 1
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                        <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>Observation & Scope Review</span>
+                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                          Identified the target scope and reviewed exposed services and assets.
+                        </span>
+                        <div style={{ fontFamily: 'monospace', fontSize: '10px', backgroundColor: 'var(--bg-primary)', padding: '6px', borderRadius: '4px', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+                          nmap -sV -p 80,443,8080 --script http-enum 192.168.1.105
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'center', fontSize: '14px', color: 'var(--text-muted)' }}>↓</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                    <div style={{ border: '1px solid var(--border-color)', borderRadius: '4px', padding: '6px 10px', backgroundColor: 'var(--bg-secondary)', textAlign: 'center' }}>
-                      🖥️ Host Asset: {selectedIncident.affected_assets?.[0] || 'Unassigned'}
+
+                    <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '14px', margin: '-4px 0' }}>↓</div>
+
+                    {/* Step 2: Upload Payload File */}
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '12px', border: '1px solid var(--border-color)', borderRadius: '6px', backgroundColor: 'var(--bg-secondary)' }}>
+                      <div style={{ backgroundColor: 'rgba(245, 158, 11, 0.1)', color: 'var(--color-high)', borderRadius: '4px', padding: '4px 8px', fontSize: '11px', fontWeight: 700 }}>
+                        STEP 2
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                        <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>Evidence Capture & Artifact Storage</span>
+                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                          Stored an attachment with context, ownership, and integrity metadata.
+                        </span>
+                        
+                        <div style={{ marginTop: '6px', border: '1px solid var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ backgroundColor: 'var(--bg-primary)', padding: '4px 8px', borderBottom: '1px solid var(--border-color)', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>artifact.txt (Stored Evidence Contents)</span>
+                            <span style={{ fontSize: '9px', backgroundColor: 'var(--panel-bg)', padding: '2px 4px', borderRadius: '2px' }}>TEXT</span>
+                          </div>
+                          <pre style={{ margin: 0, padding: '8px', fontSize: '10px', fontFamily: 'monospace', backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)', overflowX: 'auto', textAlign: 'left' }}>
+{`# Evidence artifact
+source: operator note
+type: validation record
+status: stored
+integrity: pending`}
+                          </pre>
+                        </div>
+                      </div>
                     </div>
-                    <div style={{ border: '1px solid var(--border-color)', borderRadius: '4px', padding: '6px 10px', backgroundColor: 'var(--bg-secondary)', textAlign: 'center' }}>
-                      👤 Affected User: {selectedIncident.affected_users?.[0] || 'SYSTEM'}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'center', fontSize: '14px', color: 'var(--text-muted)' }}>↓</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                    <div style={{ border: '1px solid var(--border-color)', borderRadius: '4px', padding: '6px 10px', backgroundColor: 'var(--bg-secondary)', textAlign: 'center' }}>
-                      🏷️ MITRE Mapping: {selectedIncident.mitre_id || 'T1486'}
-                    </div>
-                    <div style={{ border: '1px solid var(--border-color)', borderRadius: '4px', padding: '6px 10px', backgroundColor: 'var(--bg-secondary)', textAlign: 'center' }}>
-                      👾 Threat Intel Actor: LockBit ransomware variant
+
+                    <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '14px', margin: '-4px 0' }}>↓</div>
+
+                    {/* Step 3: Breach */}
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '12px', border: '1px solid var(--border-color)', borderRadius: '6px', backgroundColor: 'var(--bg-secondary)' }}>
+                      <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-critical)', borderRadius: '4px', padding: '4px 8px', fontSize: '11px', fontWeight: 700 }}>
+                        STEP 3
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                        <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>Validation Outcome & Follow-Up</span>
+                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                          Confirmed the observation, recorded the impact, and linked follow-up recommendations.
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -500,14 +531,14 @@ export const Incidents = () => {
               </Panel>
 
               {/* Case task board */}
-              <Panel title="Incident Task Board">
+              <Panel title="Validation Tasks">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   
                   {/* Task Input */}
                   <form onSubmit={handleAddTask} style={{ display: 'flex', gap: '6px' }}>
                     <input 
                       type="text" 
-                      placeholder="Assign new case task..." 
+                      placeholder="Assign new validation task..." 
                       value={taskText} 
                       onChange={e => setTaskText(e.target.value)} 
                       style={{ flex: 1, backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'var(--text-primary)', padding: '6px 10px', fontSize: '12px' }}
@@ -532,14 +563,14 @@ export const Incidents = () => {
               </Panel>
 
               {/* Collaboration Notes / Comments */}
-              <Panel title="Collaborators Case Logs">
+              <Panel title="Operators Log Book">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   
                   {/* Comment Input */}
                   <form onSubmit={handleAddComment} style={{ display: 'flex', gap: '6px' }}>
                     <input 
                       type="text" 
-                      placeholder="Write internal case notes..." 
+                      placeholder="Write internal operator notes..." 
                       value={commentText} 
                       onChange={e => setCommentText(e.target.value)} 
                       style={{ flex: 1, backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'var(--text-primary)', padding: '6px 10px', fontSize: '12px' }}
@@ -585,7 +616,7 @@ export const Incidents = () => {
             </div>
           </div>
         ) : (
-          <EmptyState title="No active triage case selected" description="Select a ticket from the Incidents Queue tab to load the digital forensics timeline reconstruction workspace." />
+          <EmptyState title="No active vector pack selected" description="Select a pack from the Vector Packs Queue tab to load the validation workspace." />
         )
       )}
     </DashboardLayout>
