@@ -281,9 +281,9 @@ function Dashboard() {
               <span style={{ fontSize: '11px', fontWeight: 600 }}>LIVE THREAT FEED</span>
             </div>
           }
-          style={{ height: '56vh', minHeight: '480px' }}
+          style={{ height: '60vh', minHeight: '520px' }}
         >
-          <div style={{ width: '100%', height: '100%', minHeight: 0, maxHeight: '100%', borderRadius: '4px', overflow: 'hidden', backgroundColor: '#000', paddingBottom: '24px', boxSizing: 'border-box' }}>
+          <div style={{ width: '100%', height: '100%', minHeight: 0, maxHeight: '100%', borderRadius: '4px', overflow: 'hidden', backgroundColor: '#000', paddingBottom: '12px', boxSizing: 'border-box' }}>
             <Globe threats={threats} />
           </div>
         </Panel>
