@@ -140,7 +140,7 @@ const GlobeComponent = ({ threats = [] }) => {
         justifyContent: 'center',
         position: 'relative',
         overflow: 'hidden',
-        background: 'radial-gradient(circle at center, rgba(4, 24, 37, 0.28) 0%, rgba(0, 0, 0, 0.96) 72%)'
+        background: 'radial-gradient(circle at center, rgba(4, 24, 37, 0.35) 0%, rgba(0, 0, 0, 0.98) 72%)'
       }}
     >
       <div style={{ position: 'absolute', top: '12px', left: '12px', zIndex: 2, fontSize: '11px', fontWeight: 700, color: '#9be7ff', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
@@ -150,41 +150,43 @@ const GlobeComponent = ({ threats = [] }) => {
         ref={globeRef}
         width={dimensions.width}
         height={dimensions.height}
-        globeImageUrl="//unpkg.com/three-globe/example/img/earth-day.jpg"
-        backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
-        bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+        globeImageUrl="https://cdn.jsdelivr.net/gh/turban/webgl-earth@main/images/2_no_clouds_4k.jpg"
+        bumpImageUrl="https://cdn.jsdelivr.net/gh/turban/webgl-earth@main/images/elev_bump_4k.jpg"
+        specularColor="#9bdfff"
+        specularSize={18}
+        showGlobe={true}
         rendererConfig={{ antialias: true, alpha: true, preserveDrawingBuffer: true, precision: 'highp', powerPreference: 'high-performance' }}
         showGraticules={true}
-        graticuleColor="rgba(155, 231, 255, 0.08)"
+        graticuleColor="rgba(155, 231, 255, 0.05)"
         onGlobeReady={() => {
           if (globeRef.current) {
-            globeRef.current.pointOfView({ lat: 18, lng: 15, altitude: 2.35 }, 0);
+            globeRef.current.pointOfView({ lat: 18, lng: 15, altitude: 2.15 }, 0);
           }
         }}
         animateIn={true}
         autoRotate={true}
-        autoRotateSpeed={0.22}
+        autoRotateSpeed={0.14}
         arcsData={arcs}
         arcStartLat={d => d.startLat}
         arcStartLng={d => d.startLng}
         arcEndLat={d => d.endLat}
         arcEndLng={d => d.endLng}
         arcColor={d => d.color}
-        arcDashLength={0.5}
-        arcDashGap={0.25}
-        arcDashAnimateTime={2200}
-        arcStroke={0.65}
-        arcAltitude={0.32}
+        arcDashLength={0.42}
+        arcDashGap={0.18}
+        arcDashAnimateTime={1800}
+        arcStroke={0.55}
+        arcAltitude={0.28}
         pointsData={allPoints}
         pointLat={d => d.lat}
         pointLng={d => d.lng || d.lon}
         pointColor={d => d.color}
         pointAltitude={0}
-        pointRadius={d => d.radius}
+        pointRadius={d => d.radius * 0.95}
         pointLabel={d => d.label || ''}
         showAtmosphere={true}
         atmosphereColor="#00a3ff"
-        atmosphereAltitude={0.26}
+        atmosphereAltitude={0.18}
         enablePointerInteraction={true}
       />
     </div>
