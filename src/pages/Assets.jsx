@@ -443,8 +443,12 @@ export const Assets = () => {
             <Panel title="Exposed Ingress Certificates Status">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <span style={{ fontSize: '24px', fontWeight: 700, color: 'var(--color-low)' }}>1 Active</span>
-                  <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>SSL certificate expiring in less than 30 days</span>
+                  <span style={{ fontSize: '24px', fontWeight: 700, color: 'var(--color-low)' }}>
+                    {stats.total > 0 ? 'Live' : 'No Data'}
+                  </span>
+                  <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                    {stats.total > 0 ? 'Certificate status is derived from live asset records' : 'No certificate metadata is currently present in the live inventory'}
+                  </span>
                 </div>
                 <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-blue)' }}>
                   🔑
