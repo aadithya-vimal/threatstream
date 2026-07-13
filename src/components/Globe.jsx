@@ -51,6 +51,14 @@ const GlobeComponent = ({ threats = [] }) => {
     { ...VICTIM_LOCATIONS.singapore, radius: 0.45 }
   ]), []);
 
+  const globeSize = useMemo(() => {
+    const devicePixelRatio = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1;
+    return {
+      width: Math.max(320, Math.floor(dimensions.width * devicePixelRatio)),
+      height: Math.max(320, Math.floor(dimensions.height * devicePixelRatio))
+    };
+  }, [dimensions.width, dimensions.height]);
+
   useEffect(() => {
     const updateDimensions = () => {
       if (containerRef.current) {
@@ -148,46 +156,47 @@ const GlobeComponent = ({ threats = [] }) => {
       </div>
       <Globe
         ref={globeRef}
-        width={dimensions.width}
-        height={dimensions.height}
+        width={globeSize.width}
+        height={globeSize.height}
         globeImageUrl="/earth-day.jpg"
         bumpImageUrl="/earth-topology.png"
         backgroundImageUrl="/night-sky.png"
-        specularColor="#9bdfff"
-        specularSize={18}
+        resolution={3}
+        specularColor="rgba(255,255,255,0.25)"
+        specularSize={8}
         showGlobe={true}
         rendererConfig={{ antialias: true, alpha: true, preserveDrawingBuffer: true, precision: 'highp', powerPreference: 'high-performance' }}
         showGraticules={true}
-        graticuleColor="rgba(155, 231, 255, 0.05)"
+        graticuleColor="rgba(155, 231, 255, 0.025)"
         onGlobeReady={() => {
           if (globeRef.current) {
-            globeRef.current.pointOfView({ lat: 18, lng: 15, altitude: 2.45 }, 0);
+            globeRef.current.pointOfView({ lat: 22, lng: 15, altitude: 2.9 }, 0);
           }
         }}
         animateIn={true}
         autoRotate={true}
-        autoRotateSpeed={0.12}
+        autoRotateSpeed={0.09}
         arcsData={arcs}
         arcStartLat={d => d.startLat}
         arcStartLng={d => d.startLng}
         arcEndLat={d => d.endLat}
         arcEndLng={d => d.endLng}
         arcColor={d => d.color}
-        arcDashLength={0.42}
-        arcDashGap={0.18}
+        arcDashLength={0.28}
+        arcDashGap={0.22}
         arcDashAnimateTime={1800}
-        arcStroke={0.55}
-        arcAltitude={0.28}
+        arcStroke={0.45}
+        arcAltitude={0.22}
         pointsData={allPoints}
         pointLat={d => d.lat}
         pointLng={d => d.lng || d.lon}
         pointColor={d => d.color}
         pointAltitude={0}
-        pointRadius={d => d.radius * 0.95}
+        pointRadius={d => d.radius * 0.8}
         pointLabel={d => d.label || ''}
         showAtmosphere={true}
-        atmosphereColor="#00a3ff"
-        atmosphereAltitude={0.18}
+        atmosphereColor="rgba(59, 130, 246, 0.22)"
+        atmosphereAltitude={0.08}
         enablePointerInteraction={true}
       />
     </div>
