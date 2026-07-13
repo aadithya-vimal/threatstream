@@ -50,7 +50,7 @@ export const Assets = () => {
   const [selectedAssetIds, setSelectedAssetIds] = useState([]);
 
   // Scanner States
-  const [scanTarget, setScanTarget] = useState('127.0.0.1');
+  const [scanTarget, setScanTarget] = useState('');
   const [scannerId, setScannerId] = useState('pipeline');
   const [scanPreset, setScanPreset] = useState('quick_discovery');
   const [selectedStages, setSelectedStages] = useState(['rustscan', 'nmap', 'whatweb']);
@@ -677,16 +677,19 @@ export const Assets = () => {
                 {/* Timeline / Lifecycle events SubTab */}
                 {inspectorTab === 'timeline' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', borderLeft: '1px solid var(--border-color)', paddingLeft: '14px', position: 'relative' }}>
-                    <div style={{ position: 'relative' }}>
-                      <span style={{ position: 'absolute', left: '-18px', top: '4px', width: '7px', height: '7px', borderRadius: '50%', backgroundColor: 'var(--color-blue)' }} />
-                      <span style={{ display: 'block', fontSize: '11px', fontWeight: 600 }}>Active Ingress Scanner Sync</span>
-                      <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-muted)' }}>2026-07-05 11:40 • SSH port 22 verified active</span>
-                    </div>
-                    <div style={{ position: 'relative' }}>
-                      <span style={{ position: 'absolute', left: '-18px', top: '4px', width: '7px', height: '7px', borderRadius: '50%', backgroundColor: 'var(--color-low)' }} />
-                      <span style={{ display: 'block', fontSize: '11px', fontWeight: 600 }}>CVE Vulnerability Mapped</span>
-                      <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-muted)' }}>2026-03-10 08:12 • Backdoored xz-utils (CVE-2024-3094) package identified</span>
-                    </div>
+                    {Array.isArray(selectedAsset?.timeline) && selectedAsset.timeline.length > 0 ? (
+                      selectedAsset.timeline.map((entry, idx) => (
+                        <div key={`${entry.title || 'entry'}-${idx}`} style={{ position: 'relative' }}>
+                          <span style={{ position: 'absolute', left: '-18px', top: '4px', width: '7px', height: '7px', borderRadius: '50%', backgroundColor: idx === 0 ? 'var(--color-blue)' : 'var(--color-low)' }} />
+                          <span style={{ display: 'block', fontSize: '11px', fontWeight: 600 }}>{entry.title || 'Live asset event'}</span>
+                          <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-muted)' }}>{entry.timestamp || 'Timestamp unavailable'}{entry.detail ? ` • ${entry.detail}` : ''}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div style={{ padding: '12px', border: '1px dashed var(--border-color)', borderRadius: '6px', color: 'var(--text-muted)', fontSize: '11px' }}>
+                        No live asset timeline is available yet.
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -716,7 +719,7 @@ export const Assets = () => {
                     outline: 'none',
                     fontSize: '13px'
                   }}
-                  placeholder="e.g. 10.100.4.0/24"
+                  placeholder="Enter an IP, host, or subnet"
                 />
               </div>
 
@@ -870,7 +873,7 @@ export const Assets = () => {
                           fontSize: '13px',
                           fontFamily: 'monospace'
                         }}
-                        placeholder="e.g. -sS -p 22,80,443 -Pn"
+                        placeholder="Custom Nmap arguments"
                       />
                     </div>
                   )}
@@ -944,7 +947,7 @@ export const Assets = () => {
                           outline: 'none',
                           fontSize: '13px'
                         }}
-                        placeholder="e.g. /home/user/nuclei-templates/custom"
+                        placeholder="Custom template directory"
                       />
                     </div>
                   )}
@@ -988,7 +991,7 @@ export const Assets = () => {
                         outline: 'none',
                         fontSize: '13px'
                       }}
-                      placeholder="e.g. cve,log4j,wordpress"
+                      placeholder="Template tags"
                     />
                   </div>
                 </>
