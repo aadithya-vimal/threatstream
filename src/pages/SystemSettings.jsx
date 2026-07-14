@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Panel } from '../components/Panel';
 import { SectionHeader } from '../components/SectionHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { Icon } from '../components/Icons';
+import { ConfigurationRepository } from '../repositories/ConfigurationRepository';
 
 /* ─────────────────────────────────────────────
    Shared micro-components
@@ -270,216 +271,103 @@ const SecuritySection = () => {
   );
 };
 
-/* ─────────────────────────────────────────────
-   Section: API Keys
-───────────────────────────────────────────── */
-const ALL_SCOPES = [
-  'read:intel', 'write:intel', 'read:incidents', 'write:incidents',
-  'read:assets', 'manage:users', 'read:telemetry', 'manage:connectors',
+const INTEGRATION_FIELDS = [
+  { key: 'virustotal.api_key', label: 'VirusTotal API Key', type: 'password', help: 'File hash, URL, IP, and domain enrichment.' },
+  { key: 'abuseipdb.api_key', label: 'AbuseIPDB API Key', type: 'password', help: 'IP reputation lookups.' },
+  { key: 'greynoise.api_key', label: 'GreyNoise API Key', type: 'password', help: 'IP noise classification.' },
+  { key: 'shodan.api_key', label: 'Shodan API Key', type: 'password', help: 'Host and exposure lookups.' },
+  { key: 'censys.api_id', label: 'Censys API ID', type: 'text', help: 'Pair this with the Censys API secret.' },
+  { key: 'censys.api_secret', label: 'Censys API Secret', type: 'password', help: 'Stored in workspace settings.' },
+  { key: 'otx.api_key', label: 'AlienVault OTX API Key', type: 'password', help: 'Pulse and reputation lookups.' },
+  { key: 'hybridanalysis.api_key', label: 'Hybrid Analysis API Key', type: 'password', help: 'Sample and sandbox lookups.' },
+  { key: 'anyrun.api_key', label: 'Any.Run API Key', type: 'password', help: 'Detonation and report lookup.' },
+  { key: 'misp.url', label: 'MISP URL', type: 'text', help: 'Base URL for your MISP instance.' },
+  { key: 'misp.api_key', label: 'MISP API Key', type: 'password', help: 'API key for MISP sync.' },
+  { key: 'opencti.url', label: 'OpenCTI URL', type: 'text', help: 'Base URL for your OpenCTI instance.' },
+  { key: 'opencti.api_key', label: 'OpenCTI API Key', type: 'password', help: 'API key for OpenCTI GraphQL.' },
 ];
 
-const MOCK_KEYS = [
-  {
-    id: 1, name: 'Automation', prefix: 'ts_live_ab12',
-    scopes: ALL_SCOPES, created: '2026-06-01', lastUsed: '2026-07-05', expires: '2027-06-01', status: 'active',
-  },
-  {
-    id: 2, name: 'SIEM Integration', prefix: 'ts_live_cd34',
-    scopes: ['read:intel', 'read:incidents', 'read:assets', 'read:telemetry'],
-    created: '2026-05-15', lastUsed: '2026-07-04', expires: '2027-05-15', status: 'active',
-  },
-  {
-    id: 3, name: 'Reporting Bot', prefix: 'ts_live_ef56',
-    scopes: ['read:incidents'],
-    created: '2026-04-01', lastUsed: '2026-07-03', expires: '2026-07-20', status: 'active',
-  },
-  {
-    id: 4, name: 'Deprecated Key', prefix: 'ts_live_gh78',
-    scopes: ['read:intel'],
-    created: '2026-01-01', lastUsed: '2026-03-12', expires: '—', status: 'revoked',
-  },
-];
+const buildDefaultIntegrationValues = () => INTEGRATION_FIELDS.reduce((accumulator, field) => {
+  accumulator[field.key] = '';
+  return accumulator;
+}, {});
 
 const ApiKeysSection = () => {
-  const [keys, setKeys] = useState(MOCK_KEYS);
-  const [showModal, setShowModal] = useState(false);
-  const [showCopyModal, setShowCopyModal] = useState(null);
-  const [newKey, setNewKey] = useState({ name: '', scopes: [], expiry: '1 year' });
-  const [copied, setCopied] = useState(false);
+  const configRepo = useMemo(() => new ConfigurationRepository(), []);
+  const [values, setValues] = useState(buildDefaultIntegrationValues());
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [savedMessage, setSavedMessage] = useState('');
 
-  const toggleScope = (scope) => {
-    setNewKey((k) => ({
-      ...k,
-      scopes: k.scopes.includes(scope) ? k.scopes.filter((s) => s !== scope) : [...k.scopes, scope],
-    }));
-  };
-
-  const createKey = () => {
-    if (!newKey.name.trim()) return;
-    const prefix = 'ts_live_' + Math.random().toString(36).substring(2, 6);
-    const fullKey = prefix + '_' + Math.random().toString(36).substring(2, 18);
-    const entry = {
-      id: Date.now(), name: newKey.name, prefix,
-      scopes: newKey.scopes, created: '2026-07-05',
-      lastUsed: '—', expires: newKey.expiry, status: 'active',
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      const settings = await configRepo.getSettings();
+      const nextValues = buildDefaultIntegrationValues();
+      INTEGRATION_FIELDS.forEach(({ key }) => {
+        nextValues[key] = settings[`integrations.${key}`] || '';
+      });
+      setValues(nextValues);
+      setLoading(false);
     };
-    setKeys((k) => [entry, ...k]);
-    setShowModal(false);
-    setShowCopyModal({ ...entry, fullKey });
-    setNewKey({ name: '', scopes: [], expiry: '1 year' });
+    load();
+  }, [configRepo]);
+
+  const updateField = (key, value) => {
+    setValues((current) => ({ ...current, [key]: value }));
+    setSavedMessage('');
   };
 
-  const revokeKey = (id) =>
-    setKeys((ks) => ks.map((k) => (k.id === id ? { ...k, status: 'revoked' } : k)));
-
-  const statusColor = (s) =>
-    s === 'active' ? 'var(--color-low)' : 'var(--color-critical)';
-
-  const isExpiringSoon = (exp) => {
-    if (exp === '—' || !exp.includes('-')) return false;
-    return (new Date(exp) - new Date()) / 86400000 < 30;
+  const saveAll = async () => {
+    setSaving(true);
+    try {
+      await Promise.all(
+        INTEGRATION_FIELDS.map((field) => configRepo.updateSetting(`integrations.${field.key}`, values[field.key] || ''))
+      );
+      setSavedMessage('Integration credentials saved to workspace settings.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <div>
       <SectionHeader
-        title="API Keys"
-        description="Manage API credentials and access scopes."
+        title="Integration Credentials"
+        description="Store provider credentials in the workspace so live enrichment no longer depends on local environment files."
         actions={
-          <button style={btnPrimary} className="btn-primary-hover" onClick={() => setShowModal(true)}>
-            + Create New API Key
+          <button style={btnPrimary} className="btn-primary-hover" onClick={saveAll} disabled={saving}>
+            {saving ? 'Saving…' : 'Save Credentials'}
           </button>
         }
       />
 
-      {/* Keys Table */}
-      <div style={{ overflowX: 'auto', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--panel-bg)' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-          <thead>
-            <tr style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)' }}>
-              {['Name', 'Prefix', 'Scopes', 'Created', 'Last Used', 'Expires', 'Status', 'Actions'].map((h) => (
-                <th key={h} style={{ padding: '12px 14px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '0.05em', whiteSpace: 'nowrap', textAlign: 'left' }}>
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {keys.map((key, idx) => (
-              <tr key={key.id} className="table-row-hover" style={{ borderBottom: idx === keys.length - 1 ? 'none' : '1px solid var(--border-color)' }}>
-                <td style={{ padding: '12px 14px', color: 'var(--text-primary)', fontWeight: 600 }}>{key.name}</td>
-                <td style={{ padding: '12px 14px' }}>
-                  <code style={{ fontSize: '12px', color: 'var(--color-blue)', backgroundColor: 'var(--color-blue-bg)', padding: '2px 6px', borderRadius: '4px' }}>
-                    {key.prefix}
-                  </code>
-                </td>
-                <td style={{ padding: '12px 14px', maxWidth: '200px' }}>
-                  <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                    {key.scopes.slice(0, 3).map((s) => (
-                      <span key={s} style={{ fontSize: '10px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '3px', padding: '1px 5px', color: 'var(--text-secondary)' }}>
-                        {s}
-                      </span>
-                    ))}
-                    {key.scopes.length > 3 && (
-                      <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>+{key.scopes.length - 3}</span>
-                    )}
-                  </div>
-                </td>
-                <td style={{ padding: '12px 14px', color: 'var(--text-secondary)' }}>{key.created}</td>
-                <td style={{ padding: '12px 14px', color: 'var(--text-secondary)' }}>{key.lastUsed}</td>
-                <td style={{ padding: '12px 14px' }}>
-                  <span style={{ color: isExpiringSoon(key.expires) ? 'var(--color-high)' : 'var(--text-secondary)' }}>
-                    {key.expires}
-                  </span>
-                </td>
-                <td style={{ padding: '12px 14px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '4px', backgroundColor: key.status === 'active' ? 'var(--color-low-bg)' : 'var(--color-critical-bg)', color: statusColor(key.status), border: `1px solid ${key.status === 'active' ? 'var(--color-low-border)' : 'var(--color-critical-border)'}`, textTransform: 'uppercase' }}>
-                    {key.status}
-                  </span>
-                </td>
-                <td style={{ padding: '12px 14px' }}>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    {key.status === 'active' && (
-                      <button
-                        style={{ ...btnSecondary, padding: '4px 10px', fontSize: '12px', color: 'var(--color-critical)', borderColor: 'var(--color-critical-border)' }}
-                        onClick={() => revokeKey(key.id)}
-                      >
-                        Revoke
-                      </button>
-                    )}
-                    <button
-                      style={{ ...btnSecondary, padding: '4px 10px', fontSize: '12px' }}
-                      onClick={() => { navigator.clipboard?.writeText(key.prefix); }}
-                    >
-                      Copy
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Create Key Modal */}
-      {showModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '28px', width: '480px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <h3 style={{ margin: '0 0 20px', fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>Create New API Key</h3>
-
-            <div style={fieldStyle}>
-              <label style={labelStyle}>Key Name</label>
-              <input style={inputStyle} placeholder="e.g. SIEM Integration" value={newKey.name} onChange={(e) => setNewKey((k) => ({ ...k, name: e.target.value }))} />
-            </div>
-
-            <div style={fieldStyle}>
-              <label style={labelStyle}>Expiry</label>
-              <select style={inputStyle} value={newKey.expiry} onChange={(e) => setNewKey((k) => ({ ...k, expiry: e.target.value }))}>
-                {['30 days', '90 days', '1 year', 'Never'].map((o) => <option key={o}>{o}</option>)}
-              </select>
-            </div>
-
-            <div style={fieldStyle}>
-              <label style={labelStyle}>Scopes</label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                {ALL_SCOPES.map((scope) => (
-                  <label key={scope} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: 'var(--text-primary)', padding: '6px 10px', border: '1px solid var(--border-color)', borderRadius: '4px', backgroundColor: newKey.scopes.includes(scope) ? 'var(--color-blue-bg)' : 'transparent' }}>
-                    <input type="checkbox" checked={newKey.scopes.includes(scope)} onChange={() => toggleScope(scope)} style={{ accentColor: 'var(--color-blue)' }} />
-                    <code style={{ fontSize: '12px' }}>{scope}</code>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '8px' }}>
-              <button style={btnSecondary} onClick={() => setShowModal(false)}>Cancel</button>
-              <button style={btnPrimary} className="btn-primary-hover" onClick={createKey}>Create Key</button>
-            </div>
-          </div>
+      {savedMessage && (
+        <div style={{ marginBottom: '16px', padding: '10px 14px', borderRadius: '6px', border: '1px solid var(--color-low-border)', backgroundColor: 'var(--color-low-bg)', color: 'var(--color-low)', fontSize: '13px' }}>
+          {savedMessage}
         </div>
       )}
 
-      {/* Copy Key Modal */}
-      {showCopyModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '28px', width: '480px' }}>
-            <h3 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>API Key Created</h3>
-            <p style={{ fontSize: '13px', color: 'var(--color-high)', marginBottom: '16px' }}>
-              ⚠ Copy this key now. It will not be shown again.
-            </p>
-            <div style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '5px', padding: '12px', fontFamily: 'monospace', fontSize: '13px', color: 'var(--color-low)', wordBreak: 'break-all', marginBottom: '16px' }}>
-              {showCopyModal.fullKey}
+      {loading ? (
+        <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Loading integration settings…</div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '18px 24px' }}>
+          {INTEGRATION_FIELDS.map((field) => (
+            <div key={field.key} style={fieldStyle}>
+              <label style={labelStyle}>{field.label}</label>
+              <input
+                style={inputStyle}
+                type={field.type}
+                placeholder={field.label}
+                value={values[field.key] || ''}
+                onChange={(e) => updateField(field.key, e.target.value)}
+                autoComplete="off"
+              />
+              <div style={{ marginTop: '6px', fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.45 }}>
+                {field.help}
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button
-                style={btnSecondary}
-                onClick={() => { navigator.clipboard?.writeText(showCopyModal.fullKey); setCopied(true); }}
-              >
-                {copied ? '✓ Copied!' : 'Copy to Clipboard'}
-              </button>
-              <button style={btnPrimary} className="btn-primary-hover" onClick={() => { setShowCopyModal(null); setCopied(false); }}>Done</button>
-            </div>
-          </div>
+          ))}
         </div>
       )}
     </div>
@@ -749,35 +637,107 @@ const ImportExportSection = () => {
   );
 };
 
+const LIVE_INTEGRATIONS = [
+  {
+    name: 'VirusTotal',
+    category: 'Enrichment',
+    icon: '🔬',
+    description: 'File malware scanning and indicator enrichment.',
+    requiredKeys: ['virustotal.api_key'],
+  },
+  {
+    name: 'AbuseIPDB',
+    category: 'Reputation',
+    icon: '🛡️',
+    description: 'IP reputation and abuse history lookups.',
+    requiredKeys: ['abuseipdb.api_key'],
+  },
+  {
+    name: 'GreyNoise',
+    category: 'Reputation',
+    icon: '🌐',
+    description: 'Public IP noise classification.',
+    requiredKeys: ['greynoise.api_key'],
+  },
+  {
+    name: 'Shodan',
+    category: 'Exposure',
+    icon: '🔎',
+    description: 'Host exposure and service discovery.',
+    requiredKeys: ['shodan.api_key'],
+  },
+  {
+    name: 'Censys',
+    category: 'Exposure',
+    icon: '🛰️',
+    description: 'Internet asset and certificate lookups.',
+    requiredKeys: ['censys.api_id', 'censys.api_secret'],
+  },
+  {
+    name: 'AlienVault OTX',
+    category: 'Threat Intel',
+    icon: '📡',
+    description: 'Pulse and IOC enrichment.',
+    requiredKeys: ['otx.api_key'],
+  },
+  {
+    name: 'Hybrid Analysis',
+    category: 'Sandbox',
+    icon: '🧪',
+    description: 'Sample detonation and sandbox reports.',
+    requiredKeys: ['hybridanalysis.api_key'],
+  },
+  {
+    name: 'Any.Run',
+    category: 'Sandbox',
+    icon: '▶️',
+    description: 'Interactive detonation and artifact review.',
+    requiredKeys: ['anyrun.api_key'],
+  },
+  {
+    name: 'MISP',
+    category: 'Threat Intel',
+    icon: '📚',
+    description: 'IOC synchronization with your MISP instance.',
+    requiredKeys: ['misp.url', 'misp.api_key'],
+  },
+  {
+    name: 'OpenCTI',
+    category: 'Threat Intel',
+    icon: '🧬',
+    description: 'Knowledge graph sync with OpenCTI.',
+    requiredKeys: ['opencti.url', 'opencti.api_key'],
+  },
+];
+
 /* ─────────────────────────────────────────────
    Section: Integrations
 ───────────────────────────────────────────── */
-const INTEGRATIONS = [
-  { name: 'Splunk SIEM', category: 'SIEM', status: 'connected', icon: '🔗', description: 'Forward alerts and events to Splunk Enterprise.' },
-  { name: 'Microsoft Sentinel', category: 'SIEM', status: 'disconnected', icon: '🔗', description: 'Push incidents and IOCs to Microsoft Sentinel.' },
-  { name: 'CrowdStrike Falcon', category: 'EDR', status: 'connected', icon: '🦅', description: 'Receive endpoint telemetry and detections.' },
-  { name: 'VirusTotal', category: 'Enrichment', status: 'connected', icon: '🔬', description: 'Enrich file hashes, URLs, and IPs automatically.' },
-  { name: 'MISP', category: 'Threat Intel', status: 'connected', icon: '📡', description: 'Bi-directional IOC sync with MISP instances.' },
-  { name: 'TheHive', category: 'SOAR', status: 'disconnected', icon: '🐝', description: 'Push cases and alerts to TheHive platform.' },
-  { name: 'Jira', category: 'Ticketing', status: 'disconnected', icon: '📋', description: 'Create Jira tickets from ThreatStream incidents.' },
-  { name: 'Slack', category: 'Comms', status: 'connected', icon: '💬', description: 'Send real-time notifications to Slack channels.' },
-];
-
 const IntegrationsSection = () => {
-  const [integrations, setIntegrations] = useState(INTEGRATIONS);
+  const [credentials, setCredentials] = useState({});
 
-  const toggle = (name) =>
-    setIntegrations((ints) =>
-      ints.map((i) =>
-        i.name === name
-          ? { ...i, status: i.status === 'connected' ? 'disconnected' : 'connected' }
-          : i
-      )
-    );
+  useEffect(() => {
+    const repo = new ConfigurationRepository();
+    const load = async () => {
+      setCredentials(await repo.getSettings());
+    };
+    load();
+  }, []);
+
+  const integrations = LIVE_INTEGRATIONS.map((integration) => {
+    const configured = integration.requiredKeys.every((key) => Boolean(credentials[`integrations.${key}`]));
+    return {
+      ...integration,
+      status: configured ? 'configured' : 'needs setup',
+    };
+  });
 
   return (
     <div>
-      <SectionHeader title="Integrations" description="Connect ThreatStream with your existing security stack." />
+      <SectionHeader
+        title="Integrations"
+        description="Live provider readiness is driven by credentials saved in workspace settings."
+      />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
         {integrations.map((int) => (
           <div
@@ -793,15 +753,9 @@ const IntegrationsSection = () => {
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', flexShrink: 0 }}>
-              <span style={{ fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '4px', textTransform: 'uppercase', backgroundColor: int.status === 'connected' ? 'var(--color-low-bg)' : 'var(--bg-secondary)', color: int.status === 'connected' ? 'var(--color-low)' : 'var(--text-muted)', border: `1px solid ${int.status === 'connected' ? 'var(--color-low-border)' : 'var(--border-color)'}` }}>
+              <span style={{ fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '4px', textTransform: 'uppercase', backgroundColor: int.status === 'configured' ? 'var(--color-low-bg)' : 'var(--bg-secondary)', color: int.status === 'configured' ? 'var(--color-low)' : 'var(--text-muted)', border: `1px solid ${int.status === 'configured' ? 'var(--color-low-border)' : 'var(--border-color)'}` }}>
                 {int.status}
               </span>
-              <button
-                style={{ ...btnSecondary, fontSize: '12px', padding: '4px 10px', color: int.status === 'connected' ? 'var(--color-critical)' : 'var(--color-blue)', borderColor: int.status === 'connected' ? 'var(--color-critical-border)' : 'var(--color-blue)' }}
-                onClick={() => toggle(int.name)}
-              >
-                {int.status === 'connected' ? 'Disconnect' : 'Connect'}
-              </button>
             </div>
           </div>
         ))}
@@ -959,7 +913,7 @@ const AboutSection = () => {
 const NAV_ITEMS = [
   { key: 'general', label: 'General', icon: '⚙' },
   { key: 'security', label: 'Security', icon: '🔒' },
-  { key: 'apikeys', label: 'API Keys', icon: '🔑' },
+  { key: 'apikeys', label: 'Integration Credentials', icon: '🔑' },
   { key: 'notifications', label: 'Notifications', icon: '🔔' },
   { key: 'retention', label: 'Data Retention', icon: '🗄' },
   { key: 'importexport', label: 'Import / Export', icon: '↕' },

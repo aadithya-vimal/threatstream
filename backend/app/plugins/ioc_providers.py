@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional
 import httpx
 
 from app.core.config import settings
+from app.core.runtime_secrets import get_runtime_config, get_secret_value
 from app.plugins.base import BasePlugin
 from app.database.supabase_client import supabase_client
 
@@ -31,7 +32,14 @@ class IOCProviderPlugin(BasePlugin):
         return True
 
     def _api_key(self) -> str:
-        return (self.config.get("api_key") or self.config.get("API_KEY") or getattr(settings, self.api_key_env, "") or "").strip()
+        runtime_config = get_runtime_config(f"integrations.{self.provider_name.lower().replace(' ', '_')}")
+        return (
+            self.config.get("api_key")
+            or self.config.get("API_KEY")
+            or runtime_config.get("api_key")
+            or get_secret_value(f"integrations.{self.provider_name.lower().replace(' ', '_')}.api_key", getattr(settings, self.api_key_env, ""))
+            or ""
+        ).strip()
 
     def _headers(self) -> Dict[str, str]:
         return {"accept": "application/json"}
@@ -172,13 +180,17 @@ class CensysPlugin(IOCProviderPlugin):
     base_url = "https://search.censys.io/api/v2"
 
     def _headers(self) -> Dict[str, str]:
-        creds = f"{getattr(settings, 'CENSYS_API_ID', '')}:{getattr(settings, 'CENSYS_API_SECRET', '')}"
+        config = get_runtime_config("integrations.censys")
+        api_id = self.config.get("api_id") or self.config.get("API_ID") or config.get("api_id") or getattr(settings, 'CENSYS_API_ID', '')
+        api_secret = self.config.get("api_secret") or self.config.get("API_SECRET") or config.get("api_secret") or getattr(settings, 'CENSYS_API_SECRET', '')
+        creds = f"{api_id}:{api_secret}"
         encoded = base64.b64encode(creds.encode()).decode()
         return {"accept": "application/json", "authorization": f"Basic {encoded}"}
 
     def execute(self, payload: Dict[str, Any], progress_callback=None) -> Dict[str, Any]:
         target = payload["ioc_value"]
-        if not getattr(settings, "CENSYS_API_ID", "") or not getattr(settings, "CENSYS_API_SECRET", ""):
+        config = get_runtime_config("integrations.censys")
+        if not (self.config.get("api_id") or config.get("api_id") or getattr(settings, "CENSYS_API_ID", "")) or not (self.config.get("api_secret") or config.get("api_secret") or getattr(settings, "CENSYS_API_SECRET", "")):
             raise ValueError("Censys API credentials missing")
         raw = self._request("GET", f"{self.base_url}/hosts/{target}", headers=self._headers())
         result = {"ioc_value": target, "ioc_type": payload.get("ioc_type"), "provider": self.provider_name, "confidence": 75, "risk_score": 45, "verdict": "suspicious", "reputation": "unknown", "raw": raw}
@@ -186,7 +198,9 @@ class CensysPlugin(IOCProviderPlugin):
         return result
 
     def health(self) -> Dict[str, Any]:
-        return {"status": "connected" if getattr(settings, "CENSYS_API_ID", "") and getattr(settings, "CENSYS_API_SECRET", "") else "not_configured", "last_successful_sync": None, "quota_remaining": None, "error_count": 0}
+        config = get_runtime_config("integrations.censys")
+        ready = (self.config.get("api_id") or config.get("api_id") or getattr(settings, "CENSYS_API_ID", "")) and (self.config.get("api_secret") or config.get("api_secret") or getattr(settings, "CENSYS_API_SECRET", ""))
+        return {"status": "connected" if ready else "not_configured", "last_successful_sync": None, "quota_remaining": None, "error_count": 0}
 
 
 class URLHausPlugin(IOCProviderPlugin):
@@ -270,14 +284,18 @@ class MISPPlugin(IOCProviderPlugin):
     api_key_env = "MISP_API_KEY"
 
     def execute(self, payload: Dict[str, Any], progress_callback=None) -> Dict[str, Any]:
-        if not getattr(settings, "MISP_URL", "") or not self._api_key():
+        config = get_runtime_config("integrations.misp")
+        if not (self.config.get("url") or config.get("url") or getattr(settings, "MISP_URL", "")) or not self._api_key():
             raise ValueError("MISP URL/API key missing")
         value = payload["ioc_value"]
-        raw = self._request("POST", f"{settings.MISP_URL.rstrip('/')}/attributes/restSearch", headers={"Authorization": self._api_key(), "Accept": "application/json"}, params={"value": value})
+        base_url = (self.config.get("url") or config.get("url") or getattr(settings, "MISP_URL", "")).rstrip("/")
+        raw = self._request("POST", f"{base_url}/attributes/restSearch", headers={"Authorization": self._api_key(), "Accept": "application/json"}, params={"value": value})
         return {"ioc_value": value, "ioc_type": payload.get("ioc_type"), "provider": self.provider_name, "confidence": 75, "risk_score": 70, "verdict": "suspicious", "reputation": "unknown", "raw": raw}
 
     def health(self) -> Dict[str, Any]:
-        return {"status": "connected" if getattr(settings, "MISP_URL", "") and self._api_key() else "not_configured", "last_successful_sync": None, "quota_remaining": None, "error_count": 0}
+        config = get_runtime_config("integrations.misp")
+        ready = (self.config.get("url") or config.get("url") or getattr(settings, "MISP_URL", "")) and self._api_key()
+        return {"status": "connected" if ready else "not_configured", "last_successful_sync": None, "quota_remaining": None, "error_count": 0}
 
 
 class OpenCTIPlugin(IOCProviderPlugin):
@@ -285,11 +303,15 @@ class OpenCTIPlugin(IOCProviderPlugin):
     api_key_env = "OPENCTI_API_KEY"
 
     def execute(self, payload: Dict[str, Any], progress_callback=None) -> Dict[str, Any]:
-        if not getattr(settings, "OPENCTI_URL", "") or not self._api_key():
+        config = get_runtime_config("integrations.opencti")
+        if not (self.config.get("url") or config.get("url") or getattr(settings, "OPENCTI_URL", "")) or not self._api_key():
             raise ValueError("OpenCTI URL/API key missing")
         value = payload["ioc_value"]
-        raw = self._request("POST", f"{settings.OPENCTI_URL.rstrip('/')}/graphql", headers={"Authorization": f"Bearer {self._api_key()}", "Content-Type": "application/json"}, params=None)
+        base_url = (self.config.get("url") or config.get("url") or getattr(settings, "OPENCTI_URL", "")).rstrip("/")
+        raw = self._request("POST", f"{base_url}/graphql", headers={"Authorization": f"Bearer {self._api_key()}", "Content-Type": "application/json"}, params=None)
         return {"ioc_value": value, "ioc_type": payload.get("ioc_type"), "provider": self.provider_name, "confidence": 60, "risk_score": 55, "verdict": "suspicious", "reputation": "unknown", "raw": raw}
 
     def health(self) -> Dict[str, Any]:
-        return {"status": "connected" if getattr(settings, "OPENCTI_URL", "") and self._api_key() else "not_configured", "last_successful_sync": None, "quota_remaining": None, "error_count": 0}
+        config = get_runtime_config("integrations.opencti")
+        ready = (self.config.get("url") or config.get("url") or getattr(settings, "OPENCTI_URL", "")) and self._api_key()
+        return {"status": "connected" if ready else "not_configured", "last_successful_sync": None, "quota_remaining": None, "error_count": 0}

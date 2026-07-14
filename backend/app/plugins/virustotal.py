@@ -4,6 +4,7 @@ import logging
 import httpx
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
+from app.core.runtime_secrets import get_runtime_setting
 from app.plugins.base import BasePlugin
 from app.database.supabase_client import supabase_client
 
@@ -17,7 +18,11 @@ class VirusTotalPlugin(BasePlugin):
 
     def __init__(self, config: Dict[str, Any] = None):
         super().__init__(config)
-        self.api_key = self.config.get("api_key") or self.config.get("API_KEY")
+        self.api_key = (
+            self.config.get("api_key")
+            or self.config.get("API_KEY")
+            or get_runtime_setting("integrations.virustotal.api_key")
+        )
         self.base_url = "https://www.virustotal.com/api/v3"
         self.last_sync_time: Optional[str] = None
         self.auth_status = "not_configured"
