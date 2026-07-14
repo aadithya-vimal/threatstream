@@ -8,11 +8,7 @@ import { supabase } from '../lib/supabase/client';
 const NotificationContext = createContext(null);
 
 export const NotificationProvider = ({ children }) => {
-  const [notifications, setNotifications] = useState([
-    { id: 'notif-1', title: 'New CISA Advisory Synced', message: 'US-CISA pulse AA24-184A containing 12 active IOCs has been imported.', type: 'info', read: false, timestamp: new Date(Date.now() - 1000 * 60 * 15).toISOString() },
-    { id: 'notif-2', title: 'Critical Server Risk Spike', message: 'Asset PRD-DB-SRV-01 risk score raised to 92 due to pending security patches.', type: 'critical', read: false, timestamp: new Date(Date.now() - 1000 * 60 * 45).toISOString() },
-    { id: 'notif-3', title: 'SSH Brute-Force Blocked', message: 'Source IP 185.220.101.5 blocked automatically at core edge firewall.', type: 'success', read: true, timestamp: new Date(Date.now() - 1000 * 60 * 120).toISOString() }
-  ]);
+  const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
     let channel;
@@ -36,7 +32,7 @@ export const NotificationProvider = ({ children }) => {
         )
         .subscribe();
     } catch {
-      // Mock client or unavailable — notifications still work via addNotification()
+      // Realtime channel unavailable — notifications still work via addNotification()
     }
 
     return () => {
