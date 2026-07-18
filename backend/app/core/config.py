@@ -21,8 +21,6 @@ class Settings(BaseSettings):
     CLERK_JWKS_CACHE_SECONDS: int = 300
     CLERK_JWKS_TIMEOUT_SECONDS: float = 3.0
 
-    SUPABASE_URL: str = ""
-    SUPABASE_ANON_KEY: str = ""
     CREDENTIAL_ENCRYPTION_KEY: str = ""
     CREDENTIAL_KEY_VERSION: int = 1
 

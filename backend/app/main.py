@@ -1,8 +1,8 @@
 import logging
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-import httpx
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,11 +11,19 @@ from fastapi.responses import JSONResponse
 from app.api.routes import tenancy
 from app.core.config import settings
 from app.core.errors import UpstreamServiceError
+from app.database.engine import database_is_ready, dispose_engine
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("threatstream.api")
 
-app = FastAPI(title=settings.PROJECT_NAME, openapi_url=f"{settings.API_V1_STR}/openapi.json")
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    yield
+    await dispose_engine()
+
+
+app = FastAPI(title=settings.PROJECT_NAME, openapi_url=f"{settings.API_V1_STR}/openapi.json", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -82,16 +90,8 @@ async def health_check():
 
 @app.get("/ready", tags=["Health"])
 async def readiness_check():
-    if not settings.SUPABASE_URL or not settings.SUPABASE_ANON_KEY:
+    if not settings.DATABASE_URL:
         return JSONResponse(status_code=503, content={"status": "unavailable", "database": "not_configured"})
-    try:
-        async with httpx.AsyncClient(timeout=3.0) as client:
-            response = await client.get(
-                f"{settings.SUPABASE_URL.rstrip('/')}/rest/v1/",
-                headers={"apikey": settings.SUPABASE_ANON_KEY},
-            )
-        database_status = "reachable" if response.status_code < 500 else "unavailable"
-    except httpx.RequestError:
-        database_status = "unavailable"
+    database_status = "reachable" if await database_is_ready() else "unavailable"
     status_code = 200 if database_status == "reachable" else 503
     return JSONResponse(status_code=status_code, content={"status": "ready" if status_code == 200 else "unavailable", "database": database_status})
