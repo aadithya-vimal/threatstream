@@ -1,99 +1,51 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase/client';
+import React, { createContext, useContext, useEffect } from 'react';
+import { ClerkProvider, useAuth as useClerkAuth, useClerk, useUser } from '@clerk/clerk-react';
+import { configureApiAuth } from '../lib/api';
 
 const AuthContext = createContext(null);
+const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(true);
+const ClerkAuthBridge = ({ children }) => {
+  const { isLoaded, isSignedIn, getToken, sessionId } = useClerkAuth();
+  const { user: clerkUser } = useUser();
+  const clerk = useClerk();
 
   useEffect(() => {
-    let active = true;
-    supabase.auth.getSession()
-      .then(({ data }) => {
-        if (!active) return;
-        const currentSession = data?.session ?? null;
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+    configureApiAuth(() => getToken());
+    return () => configureApiAuth(async () => null);
+  }, [getToken]);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      if (!active) return;
-      setSession(nextSession);
-      setUser(nextSession?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => {
-      active = false;
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const login = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    return data;
-  };
-
-  const signup = async (email, password) => {
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) throw error;
-    return data;
-  };
-
-  const signInWithGoogle = async () => {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}/overview` }
-    });
-    if (error) throw error;
-    return data;
-  };
-
-  const resetPassword = async (email) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset`
-    });
-    if (error) throw error;
-    return true;
-  };
-
-  const refreshSession = async () => {
-    const { data, error } = await supabase.auth.refreshSession();
-    if (error) throw error;
-    setSession(data.session);
-    setUser(data.session?.user ?? null);
-    return data.session;
-  };
-
-  const logout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-    setUser(null);
-    setSession(null);
-    window.location.replace('/overview');
-  };
+  const user = isSignedIn && clerkUser ? {
+    id: clerkUser.id,
+    email: clerkUser.primaryEmailAddress?.emailAddress || null,
+    displayName: clerkUser.fullName || clerkUser.username || null,
+    imageUrl: clerkUser.imageUrl || null,
+  } : null;
 
   return (
     <AuthContext.Provider value={{
       user,
-      session,
-      loading,
-      login,
-      logout,
-      signup,
-      signInWithGoogle,
-      resetPassword,
-      refreshSession
+      session: sessionId ? { id: sessionId } : null,
+      loading: !isLoaded,
+      login: () => clerk.openSignIn(),
+      signup: () => clerk.openSignUp(),
+      logout: () => clerk.signOut({ redirectUrl: '/' }),
+      getToken,
     }}>
       {children}
     </AuthContext.Provider>
   );
+};
+
+export const AuthProvider = ({ children }) => {
+  if (!publishableKey) {
+    return (
+      <div role="alert" style={{ padding: '32px', color: '#fca5a5', background: '#0a0c10', minHeight: '100vh' }}>
+        Authentication is not configured. Set VITE_CLERK_PUBLISHABLE_KEY locally.
+      </div>
+    );
+  }
+  return <ClerkProvider publishableKey={publishableKey}><ClerkAuthBridge>{children}</ClerkAuthBridge></ClerkProvider>;
 };
 
 export const useAuth = () => {

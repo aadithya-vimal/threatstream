@@ -2,45 +2,12 @@
  * src/contexts/NotificationContext.jsx
  * Centralized Security Alert and Notification Context Provider
  */
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase/client';
+import React, { createContext, useContext, useState } from 'react';
 
 const NotificationContext = createContext(null);
 
 export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
-
-  useEffect(() => {
-    let channel;
-    try {
-      channel = supabase
-        .channel('public:alerts')
-        .on(
-          'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'alerts' },
-          (payload) => {
-            addNotification({
-              id: payload.new.id,
-              title: payload.new.title,
-              message: payload.new.details || 'Security alert triggered.',
-              type: payload.new.severity === 'critical' ? 'critical'
-                  : payload.new.severity === 'high'     ? 'warning' : 'info',
-              read: false,
-              timestamp: payload.new.created_at,
-            });
-          }
-        )
-        .subscribe();
-    } catch {
-      // Realtime channel unavailable — notifications still work via addNotification()
-    }
-
-    return () => {
-      if (channel) {
-        try { supabase.removeChannel(channel); } catch { /* ignore */ }
-      }
-    };
-  }, []);
 
   const addNotification = (notif) => {
     setNotifications(prev => [
