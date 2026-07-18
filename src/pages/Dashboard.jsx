@@ -1,416 +1,102 @@
-// src/pages/Dashboard.jsx
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
-import MetricCard from '../components/MetricCard';
 import Panel from '../components/Panel';
-import DataTable from '../components/DataTable';
-import StatusBadge from '../components/StatusBadge';
-import LoadingState from '../components/LoadingState';
-import Globe from '../components/Globe';
-import { SetupWizard } from '../components/SetupWizard';
-import { ThreatService } from '../services/ThreatService';
-import { AssetService } from '../services/AssetService';
-import { IncidentService } from '../services/IncidentService';
-import { ConfigurationService } from '../services/ConfigurationService';
-import { Icon } from '../components/Icons';
+import SectionHeader from '../components/SectionHeader';
 
-const threatService = new ThreatService();
-const assetService = new AssetService();
-const incidentService = new IncidentService();
-const configService = new ConfigurationService();
-
-function Dashboard() {
-  const [threats, setThreats] = useState([]);
-  const [assets, setAssets] = useState([]);
-  const [incidents, setIncidents] = useState([]);
-  const [showSetupWizard, setShowSetupWizard] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Format timestamp to readable format: YYYY-MM-DD HH:MM:SS UTC
-  const formatTimestamp = (timestamp) => {
-    try {
-      const date = new Date(timestamp);
-      const year = date.getUTCFullYear();
-      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-      const day = String(date.getUTCDate()).padStart(2, '0');
-      const hours = String(date.getUTCHours()).padStart(2, '0');
-      const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-      const seconds = String(date.getUTCSeconds()).padStart(2, '0');
-      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds} UTC`;
-    } catch (e) {
-      return 'Invalid';
-    }
-  };
-
-  useEffect(() => {
-    let unsubscribe = null;
-    let isMounted = true;
-
-    const setupListener = () => {
-      unsubscribe = threatService.listenForThreats((newThreat) => {
-        if (isMounted) {
-          setThreats(prev => {
-            if (prev.some(t => t.timestamp === newThreat.timestamp && t.ip === newThreat.ip)) {
-              return prev;
-            }
-            const updated = [newThreat, ...prev];
-            threatService.updateLocalThreatCache(updated.slice(0, 100));
-            return updated.slice(0, 100);
-          });
-        }
-      });
-    };
-
-    const fetchInitialData = async () => {
-      setIsLoading(true);
-      try {
-        // 1. Check if first time setup is completed
-        const settings = await configService.getSettings();
-        if (isMounted && settings && settings['setup_completed'] !== 'true') {
-          setShowSetupWizard(true);
-        }
-
-        // 2. Fetch Assets, Incidents & Threats
-        const [initialThreats, allAssets, allIncidents] = await Promise.all([
-          threatService.getRecentThreats(50),
-          assetService.getAssets(),
-          incidentService.getIncidents()
-        ]);
-
-        if (isMounted) {
-          setThreats(initialThreats);
-          setAssets(allAssets);
-          setIncidents(allIncidents);
-          setIsLoading(false);
-          setupListener();
-        }
-      } catch (err) {
-        console.error('Failed to load dashboard parameters:', err);
-        if (isMounted) setIsLoading(false);
-      }
-    };
-
-    fetchInitialData();
-
-    return () => {
-      isMounted = false;
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, []);
-
-  const handleSetupComplete = async (wizardData) => {
-    try {
-      setIsLoading(true);
-      // Save wizard configurations inside system_settings
-      await Promise.all([
-        configService.updateSetting('organization_name', wizardData.orgName),
-        configService.updateSetting('soc_name', wizardData.socName),
-        configService.updateSetting('admin_profile_name', wizardData.adminName),
-        configService.updateSetting('admin_profile_role', wizardData.adminRole),
-        configService.updateSetting('default_timezone', wizardData.timezone),
-        configService.updateSetting('default_region', wizardData.defaultRegion),
-        configService.updateSetting('storage_retention_days', wizardData.storageRetentionDays),
-        configService.updateSetting('evidence_quota_gb', wizardData.evidenceBucketQuota),
-        configService.updateSetting('feeds_list', JSON.stringify(wizardData.feedsEnabled)),
-        configService.updateSetting('setup_completed', 'true')
-      ]);
-      setShowSetupWizard(false);
-      // Reload settings state
-      window.location.reload();
-    } catch (err) {
-      console.error('Setup provisioning failed:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Calculations for executive stats
-  const totalAssetsCount = assets.length;
-  const criticalAssetsCount = assets.filter(a => (a.riskScore || a.risk_score || 0) >= 80).length;
-  const openIncidents = incidents.filter(i => i.status?.toLowerCase() !== 'closed');
-  const activeIncidentsCount = openIncidents.length;
-
-  const meanRiskScore = totalAssetsCount > 0
-    ? Math.round(assets.reduce((sum, a) => sum + (a.riskScore || a.risk_score || 0), 0) / totalAssetsCount)
-    : 0;
-  const detectedCoverage = Math.min(100, Math.max(45, Math.round((threats.length * 12) + (incidents.length * 8))));
-  const executionCoverage = Math.min(100, Math.max(50, Math.round((assets.length * 4) + (incidents.length * 6) + (threats.length * 2))));
-  const sourceLabel = 'Live data from validation cases, assets, and telemetry';
-
-  // Alerts column structures
-  const alertColumns = [
-    {
-      header: 'Vector Pack ID',
-      accessor: 'id',
-      renderCell: (val) => <span style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--color-blue)' }}>{val}</span>
-    },
-    {
-      header: 'Breach Vector / Step Summary',
-      accessor: 'summary',
-      renderCell: (val) => <span style={{ fontSize: '12px' }}>{val}</span>
-    },
-    {
-      header: 'Severity',
-      accessor: 'severity',
-      renderCell: (val) => {
-        const sev = val?.toLowerCase() || 'low';
-        return <StatusBadge status={sev === 'critical' ? 'critical' : sev === 'high' ? 'high' : 'medium'} text={val?.toUpperCase()} />;
-      }
-    }
-  ];
-
-  // Threat stream column structures
-  const columns = [
-    {
-      header: 'Simulation Timestamp',
-      accessor: 'timestamp',
-      renderCell: (val) => (
-        <span style={{ fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
-          {formatTimestamp(val)}
-        </span>
-      )
-    },
-    {
-      header: 'Attack Phase / Vector',
-      accessor: 'attack_type',
-      renderCell: (val) => {
-        const type = val?.toLowerCase() || 'unknown';
-        let status = 'info';
-        if (type === 'bots' || type === 'strongips') status = 'critical';
-        else if (type === 'ssh' || type === 'apache') status = 'high';
-        else if (type === 'ftp' || type === 'imap' || type === 'sip') status = 'medium';
-        return <StatusBadge status={status} text={val || 'UNKNOWN'} />;
-      }
-    },
-    {
-      header: 'Target IP Address',
-      accessor: 'ip',
-      renderCell: (val) => (
-        <span style={{ fontFamily: 'monospace', fontWeight: 500 }}>{val}</span>
-      )
-    },
-    {
-      header: 'Origin Location',
-      accessor: 'country',
-      renderCell: (val) => (
-        <span style={{ fontWeight: 600 }}>{val?.toUpperCase() || '??'}</span>
-      )
-    }
-  ];
-
-  const jobs = [];
-
-  if (isLoading) {
-    return (
-      <DashboardLayout>
-        <LoadingState message="Resolving workspace datasets..." />
-      </DashboardLayout>
-    );
+const foundations = [
+  {
+    name: 'Authenticated web application',
+    status: 'Available',
+    detail: 'React, Vite, Supabase Auth, and the protected application shell are working foundations.'
+  },
+  {
+    name: 'API and persistence foundation',
+    status: 'Experimental',
+    detail: 'FastAPI and Supabase are connected, but tenancy and backend permission enforcement are not complete.'
+  },
+  {
+    name: 'Background execution concepts',
+    status: 'Experimental',
+    detail: 'Jobs, scheduling, and plugins exist but must move to a dedicated, isolated worker architecture.'
+  },
+  {
+    name: 'Repository-to-runtime workflow',
+    status: 'Planned',
+    detail: 'Applications, GitHub, normalized findings, deployments, runtime events, remediation, and verification are the active roadmap.'
   }
+];
 
-  return (
-    <DashboardLayout>
-      {/* First-time Seeding Overlay */}
-      {showSetupWizard && (
-        <SetupWizard onComplete={handleSetupComplete} />
-      )}
+const workflow = [
+  'Connect a repository to an application',
+  'Run versioned scanners in a dedicated worker',
+  'Normalize and deduplicate findings',
+  'Map a commit or artifact to a deployment',
+  'Ingest an authenticated runtime event',
+  'Correlate evidence and assign remediation',
+  'Rescan, redeploy, and verify the fix'
+];
 
-      <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-blue)' }}>{sourceLabel}</span>
-        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-          Aggregated from {threats.length} live events, {assets.length} assets, and {incidents.length} vector packs
-        </span>
-      </div>
+const statusStyle = {
+  Available: { color: 'var(--color-low)', background: 'var(--color-low-bg)' },
+  Experimental: { color: 'var(--color-medium)', background: 'var(--color-medium-bg)' },
+  Planned: { color: 'var(--text-secondary)', background: 'var(--bg-primary)' }
+};
 
-      {/* Metrics Row */}
-      <div 
-        style={{ 
-          display: 'flex', 
-          gap: '16px', 
-          marginBottom: '24px', 
-          flexWrap: 'wrap', 
-          width: '100%' 
-        }}
-      >
-        <MetricCard 
-          title="Active Vector Packs" 
-          value={activeIncidentsCount} 
-          status={activeIncidentsCount > 0 ? 'critical' : 'low'} 
-          icon={<Icon name="incidents" size={16} />}
-          subtitle="Cases requiring documentation"
-        />
-        <MetricCard 
-          title="Observed Target Scope" 
-          value={totalAssetsCount} 
-          status="info" 
-          icon={<Icon name="shield" size={16} />}
-          subtitle={`${criticalAssetsCount} high-risk assets`}
-        />
-        <MetricCard 
-          title="Validation Event Log" 
-          value={threats.length} 
-          status="high" 
-          icon={<Icon name="terminal" size={16} />}
-          subtitle="Realtime workflow traces"
-        />
-        <MetricCard 
-          title="Asset Exposure Index" 
-          value={`${meanRiskScore}/100`} 
-          status={meanRiskScore > 75 ? 'critical' : meanRiskScore > 40 ? 'high' : 'low'} 
-          icon={<Icon name="vulnerabilities" size={16} />}
-          subtitle="Weighted exposure average"
-        />
-      </div>
+export const Dashboard = () => (
+  <DashboardLayout>
+    <SectionHeader
+      title="Application Security Operations"
+      description="Connect code-security findings, deployments, runtime evidence, ownership, remediation, and verification around the applications your team operates."
+    />
 
-      {/* Dashboard Core Grid */}
-      <div 
-        style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1.1fr)', 
-          gap: '24px',
-          alignItems: 'stretch',
-          marginBottom: '24px'
-        }}
-        className="dashboard-grid-layout"
-      >
-        {/* Globe Panel */}
-        <Panel 
-          title="Validation Exposure Map" 
-          hint="3D globe showing observed origins and relationship arcs."
-          actions={
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-low)' }}>
-              <span className="pulse-dot" style={{ backgroundColor: 'var(--color-low)' }} />
-              <span style={{ fontSize: '11px', fontWeight: 600 }}>LIVE VALIDATION FEED</span>
-            </div>
-          }
-          style={{ height: '64vh', minHeight: '560px' }}
-        >
-          <div style={{ width: '100%', height: '100%', minHeight: 0, maxHeight: '100%', borderRadius: '4px', overflow: 'hidden', backgroundColor: '#000', paddingBottom: '4px', boxSizing: 'border-box' }}>
-            <Globe threats={threats} />
-          </div>
-        </Panel>
-
-        {/* Critical Alerts & Health Stack */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          
-          {/* Active Incidents Alerts */}
-          <Panel title="Active Vector Packs" hint="Active vector packs tracking validation steps and evidence." style={{ flex: 1, minHeight: '228px' }}>
-            <div style={{ height: '100%', overflowY: 'auto' }}>
-              <DataTable 
-                columns={alertColumns} 
-                data={openIncidents.slice(0, 4)} 
-                emptyText="No active vector packs." 
-              />
-            </div>
-          </Panel>
-
-          {/* Platform system health */}
-          <Panel title="Platform Engine Health" hint="Live metrics of the validation runner." style={{ minHeight: '228px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '4px 0' }}>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                  <span>SCHEDULER ENGINE LOAD</span>
-                  <span>14%</span>
-                </div>
-                <div style={{ height: '4px', backgroundColor: 'var(--bg-primary)', borderRadius: '2px' }}>
-                  <div style={{ width: '14%', height: '100%', backgroundColor: 'var(--color-low)' }} />
-                </div>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(300px, 0.8fr)', gap: '20px', marginTop: '20px' }}>
+      <Panel title="Current foundation" hint="Verified repository capabilities and their implementation status.">
+        <div style={{ display: 'grid', gap: '12px' }}>
+          {foundations.map((item) => (
+            <div key={item.name} style={{ border: '1px solid var(--border-color)', borderRadius: '6px', padding: '14px', background: 'var(--bg-primary)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '7px' }}>
+                <strong style={{ fontSize: '13px', color: 'var(--text-primary)' }}>{item.name}</strong>
+                <span style={{ ...statusStyle[item.status], border: '1px solid var(--border-color)', borderRadius: '999px', fontSize: '9px', fontWeight: 700, letterSpacing: '0.05em', padding: '3px 8px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                  {item.status}
+                </span>
               </div>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                  <span>WORKFLOW BUFFER PIPES</span>
-                  <span>42%</span>
-                </div>
-                <div style={{ height: '4px', backgroundColor: 'var(--bg-primary)', borderRadius: '2px' }}>
-                  <div style={{ width: '42%', height: '100%', backgroundColor: 'var(--color-low)' }} />
-                </div>
-              </div>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                  <span>CLIENT DISPATCH CHANNELS</span>
-                  <span>98% Live</span>
-                </div>
-                <div style={{ height: '4px', backgroundColor: 'var(--bg-primary)', borderRadius: '2px' }}>
-                  <div style={{ width: '98%', height: '100%', backgroundColor: 'var(--color-low)' }} />
-                </div>
-              </div>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '12px', lineHeight: 1.55, margin: 0 }}>{item.detail}</p>
             </div>
-          </Panel>
+          ))}
         </div>
-      </div>
+      </Panel>
 
-      {/* Grid: Realtime Feeds & MITRE Matrices */}
-      <div 
-        style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr)', 
-          gap: '24px',
-          alignItems: 'stretch'
-        }}
-        className="dashboard-grid-layout"
-      >
-        {/* Realtime Stream Grid */}
-        <Panel title="Validation Event Stream" hint="Streaming live workflow events dispatched across the workspace." style={{ height: '420px' }}>
-          <div style={{ height: '100%', overflowY: 'auto' }}>
-            <DataTable 
-              columns={columns} 
-              data={threats.slice(0, 8)} 
-              emptyText="Waiting for live events..." 
-            />
+      <Panel title="First complete workflow" hint="The vertical slice ThreatStream must prove before adding broader integrations.">
+        <ol style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '10px' }}>
+          {workflow.map((step, index) => (
+            <li key={step} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', color: 'var(--text-secondary)', fontSize: '12px', lineHeight: 1.45 }}>
+              <span style={{ width: '22px', height: '22px', flex: '0 0 22px', borderRadius: '50%', background: 'var(--color-blue-bg)', border: '1px solid rgba(59, 130, 246, 0.25)', color: 'var(--color-blue)', display: 'grid', placeItems: 'center', fontSize: '10px', fontWeight: 700 }}>
+                {index + 1}
+              </span>
+              <span style={{ paddingTop: '2px' }}>{step}</span>
+            </li>
+          ))}
+        </ol>
+      </Panel>
+    </div>
+
+    <Panel title="Next milestone: tenant security" hint="Application data cannot be introduced safely until tenant boundaries are enforced." style={{ marginTop: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+        {[
+          ['Organizations and workspaces', 'Create explicit operational boundaries for every record.'],
+          ['Backend permissions', 'Enforce permissions in API routes instead of trusting frontend role checks.'],
+          ['Tenant-safe RLS', 'Replace broad authenticated policies with organization and workspace predicates.'],
+          ['Secure credentials', 'Encrypt provider secrets and return only masked configuration metadata.'],
+          ['Append-only audit', 'Record membership, authorization, integration, and configuration changes.']
+        ].map(([title, detail]) => (
+          <div key={title} style={{ padding: '12px', borderLeft: '3px solid var(--color-blue)', background: 'var(--bg-primary)' }}>
+            <div style={{ color: 'var(--text-primary)', fontSize: '12px', fontWeight: 700, marginBottom: '5px' }}>{title}</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '11px', lineHeight: 1.5 }}>{detail}</div>
           </div>
-        </Panel>
-
-        {/* Coverage mapping progress */}
-        <Panel title="Coverage Mapping" hint="Tactics and techniques mapped against live observations." style={{ height: '420px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', overflowY: 'auto', height: '100%' }}>
-            <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Calculated detection signatures coverage against threat vectors:</span>
-            
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>
-                <span>Initial Access (T1190, T1566)</span>
-                <span>{detectedCoverage}% Coverage</span>
-              </div>
-              <div style={{ height: '6px', backgroundColor: 'var(--bg-primary)', borderRadius: '3px' }}>
-                <div style={{ width: `${detectedCoverage}%`, height: '100%', backgroundColor: 'var(--color-blue)' }} />
-              </div>
-            </div>
-
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>
-                <span>Execution (T1059 Command Shell)</span>
-                <span>{executionCoverage}% Coverage</span>
-              </div>
-              <div style={{ height: '6px', backgroundColor: 'var(--bg-primary)', borderRadius: '3px' }}>
-                <div style={{ width: `${executionCoverage}%`, height: '100%', backgroundColor: 'var(--color-blue)' }} />
-              </div>
-            </div>
-
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>
-                <span>Persistence (T1543 System Service)</span>
-                <span>{Math.max(35, Math.min(90, threats.length * 7 + incidents.length * 5))}% Coverage</span>
-              </div>
-              <div style={{ height: '6px', backgroundColor: 'var(--bg-primary)', borderRadius: '3px' }}>
-                <div style={{ width: `${Math.max(35, Math.min(90, threats.length * 7 + incidents.length * 5))}%`, height: '100%', backgroundColor: 'var(--color-blue)' }} />
-              </div>
-            </div>
-
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>
-                <span>Credential Access (T1003 Dumping)</span>
-                <span>{Math.max(30, Math.min(85, assets.length * 6 + incidents.length * 4))}% Coverage</span>
-              </div>
-              <div style={{ height: '6px', backgroundColor: 'var(--bg-primary)', borderRadius: '3px' }}>
-                <div style={{ width: `${Math.max(30, Math.min(85, assets.length * 6 + incidents.length * 4))}%`, height: '100%', backgroundColor: 'var(--color-blue)' }} />
-              </div>
-            </div>
-          </div>
-        </Panel>
+        ))}
       </div>
-    </DashboardLayout>
-  );
-}
+    </Panel>
+  </DashboardLayout>
+);
 
 export default Dashboard;

@@ -1,23 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
-import GlobalSearch from '../components/GlobalSearch';
 
 export const DashboardLayout = ({ children }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-
-  useEffect(() => {
-    const handleGlobalKeydown = (e) => {
-      // Check for Ctrl+K or Cmd+K
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        setIsSearchOpen(prev => !prev);
-      }
-    };
-    window.addEventListener('keydown', handleGlobalKeydown);
-    return () => window.removeEventListener('keydown', handleGlobalKeydown);
-  }, []);
 
   return (
     <div 
@@ -49,7 +35,7 @@ export const DashboardLayout = ({ children }) => {
         }}
       >
         {/* Top Header Bar */}
-        <Topbar onSearchTrigger={() => setIsSearchOpen(true)} />
+        <Topbar />
 
         {/* Dynamic Page content */}
         <main 
@@ -65,9 +51,6 @@ export const DashboardLayout = ({ children }) => {
           {children}
         </main>
       </div>
-
-      {/* Reusable Enterprise Command Palette */}
-      <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </div>
   );
 };

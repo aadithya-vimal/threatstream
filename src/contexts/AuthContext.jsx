@@ -158,7 +158,7 @@ export const AuthProvider = ({ children }) => {
   const signInWithGoogle = async () => {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/dashboard` }
+      options: { redirectTo: `${window.location.origin}/overview` }
     });
     if (error) throw error;
     return data;
@@ -186,7 +186,7 @@ export const AuthProvider = ({ children }) => {
     setSession(null);
     applyRole(DEFAULT_ROLE);
     setLoading(false);
-    window.location.replace('/dashboard');
+    window.location.replace('/overview');
   };
 
   const hasPermission = (code) => permissions.includes(code);

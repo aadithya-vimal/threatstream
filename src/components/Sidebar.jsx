@@ -6,13 +6,7 @@ export const Sidebar = ({ collapsed = false, onToggle }) => {
   const location = useLocation();
 
   const navigationItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
-    { name: 'Emulation Workspace', path: '/incidents', icon: 'incidents' },
-    { name: 'Threat Intelligence', path: '/threat-intelligence', icon: 'intelligence' },
-    { name: 'Target Assets Scope', path: '/assets', icon: 'assets' },
-    { name: 'Vulnerability Targets', path: '/vulnerabilities', icon: 'vulnerabilities' },
-    { name: 'Remediation Database', path: '/reports', icon: 'reports' },
-    { name: 'Settings', path: '/settings', icon: 'administration' },
+    { name: 'Overview', path: '/overview', icon: 'dashboard' },
   ];
 
   return (
@@ -56,7 +50,7 @@ export const Sidebar = ({ collapsed = false, onToggle }) => {
         )}
       </div>
 
-      {/* Navigation Items */}
+      {/* Only completed product surfaces belong in active navigation. */}
       <nav style={{ flex: 1, padding: '16px 8px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
         {navigationItems.map((item) => {
           const isActive = location.pathname === item.path;
@@ -89,6 +83,13 @@ export const Sidebar = ({ collapsed = false, onToggle }) => {
           );
         })}
       </nav>
+
+      {!collapsed && (
+        <div style={{ margin: '0 16px 16px', padding: '12px', border: '1px solid var(--border-color)', borderRadius: '6px', backgroundColor: 'var(--bg-primary)' }}>
+          <div style={{ color: 'var(--text-primary)', fontSize: '11px', fontWeight: 700, marginBottom: '6px' }}>Repository and runtime correlation</div>
+          <div style={{ color: 'var(--text-muted)', fontSize: '10px', lineHeight: 1.5 }}>Modules appear here only after their persisted workflow and authorization controls are implemented.</div>
+        </div>
+      )}
 
       {/* Toggle button at the bottom */}
       <div 

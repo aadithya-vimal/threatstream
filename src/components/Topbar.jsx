@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import { Icon } from './Icons';
 
-export const Topbar = ({ onSearchTrigger }) => {
+export const Topbar = () => {
   const location = useLocation();
   const { user, role, logout } = useAuth();
   const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotification } = useNotifications();
@@ -28,7 +28,6 @@ export const Topbar = ({ onSearchTrigger }) => {
     if (segments.length === 0) return 'Landing';
     
     return segments.map(seg => {
-      if (seg.toLowerCase() === 'incidents') return 'Vector Packs';
       return seg
         .replace(/[-_]/g, ' ')
         .replace(/\b\w/g, c => c.toUpperCase());
@@ -79,7 +78,7 @@ export const Topbar = ({ onSearchTrigger }) => {
       {/* Page Breadcrumbs */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-muted)' }}>
-          ThreatStream Portal
+          Application Security Operations
         </span>
         <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>/</span>
         <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
@@ -90,42 +89,14 @@ export const Topbar = ({ onSearchTrigger }) => {
       {/* Utilities / Profile */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', position: 'relative' }}>
         
-        {/* Command Search Bar Trigger */}
-        <button
-          onClick={onSearchTrigger}
-          title="Open command palette (Ctrl+K)"
-          style={{
-            background: 'none',
-            color: 'var(--text-secondary)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            border: '1px solid var(--border-color)',
-            backgroundColor: 'var(--bg-primary)',
-            padding: '6px 12px',
-            fontSize: '11px',
-            gap: '8px',
-            borderRadius: '4px',
-            fontFamily: 'inherit'
-          }}
-          className="btn-icon-hover hide-on-mobile"
-        >
-          <Icon name="search" size={13} />
-          <span style={{ color: 'var(--text-muted)' }}>Search console...</span>
-          <span style={{ fontSize: '9px', color: 'var(--text-muted)', backgroundColor: 'var(--bg-secondary)', padding: '1px 4px', borderRadius: '2px' }}>
-            ⌘K
-          </span>
-        </button>
-
-        {/* System Status Indicator */}
+        {/* Phase indicator; this is product state, not a synthetic health signal. */}
         <div 
           style={{ 
             display: 'flex', 
             alignItems: 'center', 
             gap: '6px',
-            backgroundColor: 'rgba(16, 185, 129, 0.08)',
-            border: '1px solid rgba(16, 185, 129, 0.2)',
+            backgroundColor: 'var(--color-blue-bg)',
+            border: '1px solid rgba(59, 130, 246, 0.2)',
             padding: '4px 8px',
             borderRadius: '4px'
           }}
@@ -135,14 +106,13 @@ export const Topbar = ({ onSearchTrigger }) => {
             style={{ 
               width: '6px', 
               height: '6px', 
-              backgroundColor: 'var(--color-low)', 
+              backgroundColor: 'var(--color-blue)',
               borderRadius: '50%',
-              display: 'inline-block',
-              animation: 'pulse-slow 2s infinite'
+              display: 'inline-block'
             }}
           />
-          <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--color-low)', textTransform: 'uppercase' }}>
-            Live backend
+          <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--color-blue)', textTransform: 'uppercase' }}>
+            Foundation phase
           </span>
         </div>
 
@@ -205,7 +175,7 @@ export const Topbar = ({ onSearchTrigger }) => {
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderBottom: '1px solid var(--border-color)' }}>
-                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>Operational Warnings & Notifications</span>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>Notifications</span>
                 {unreadCount > 0 && (
                   <button 
                     onClick={markAllAsRead}
@@ -269,7 +239,7 @@ export const Topbar = ({ onSearchTrigger }) => {
                   ))
                 ) : (
                   <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '11px' }}>
-                    No pending alerts in queue.
+                    No notifications.
                   </div>
                 )}
               </div>
@@ -305,7 +275,7 @@ export const Topbar = ({ onSearchTrigger }) => {
         {/* Logout Secure Action Icon */}
         <button
           onClick={handleLogout}
-          title="Disconnect Session"
+          title="Sign out"
           style={{
             background: 'none',
             border: 'none',

@@ -306,7 +306,7 @@ export const ProtectedRoute = ({ children, requiredPermission }) => {
               </span>
             </div>
             <p style={{ fontSize: '12px', color: '#6b7280', fontFamily: 'Inter, system-ui, sans-serif' }}>
-              Security Operations Console
+              Application Security Operations
             </p>
           </div>
 
@@ -331,7 +331,7 @@ export const ProtectedRoute = ({ children, requiredPermission }) => {
                       required
                       value={email}
                       onChange={e => setEmail(e.target.value)}
-                      placeholder="operator@threatstream.io"
+                      placeholder="you@company.com"
                       style={inputStyle}
                     />
                   </div>
@@ -348,7 +348,7 @@ export const ProtectedRoute = ({ children, requiredPermission }) => {
                     />
                   </div>
                   <button type="submit" disabled={busy} style={primaryBtnStyle(busy)}>
-                    {busy ? 'Signing in…' : 'Sign In to Portal'}
+                    {busy ? 'Signing in…' : 'Sign in to ThreatStream'}
                   </button>
                 </form>
               )}
@@ -367,7 +367,7 @@ export const ProtectedRoute = ({ children, requiredPermission }) => {
                       required
                       value={email}
                       onChange={e => setEmail(e.target.value)}
-                      placeholder="operator@threatstream.io"
+                      placeholder="you@company.com"
                       style={inputStyle}
                     />
                   </div>
@@ -415,7 +415,7 @@ export const ProtectedRoute = ({ children, requiredPermission }) => {
                       required
                       value={forgotEmail}
                       onChange={e => setForgotEmail(e.target.value)}
-                      placeholder="operator@threatstream.io"
+                      placeholder="you@company.com"
                       style={inputStyle}
                     />
                   </div>
