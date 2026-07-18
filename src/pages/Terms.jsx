@@ -17,7 +17,7 @@ export const Terms = () => (
 
       <section className="terms-section">
         <h2>Current status</h2>
-        <p>ThreatStream is under active development. The current repository provides an authenticated React application, a FastAPI service foundation, Supabase persistence, and experimental job and plugin concepts. It is not production ready.</p>
+        <p>ThreatStream is under active development. The current repository provides an authenticated React application, a FastAPI service foundation, PostgreSQL persistence, and an application-owned authorization model. It is not production ready.</p>
       </section>
 
       <section className="terms-section">

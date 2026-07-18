@@ -5,7 +5,7 @@ import SectionHeader from '../components/SectionHeader';
 import { useTenancy } from '../contexts/TenancyContext';
 
 const foundations = [
-  ['Authenticated web application', 'Available', 'React, Vite, and Supabase Auth provide the protected application shell.'],
+  ['Authenticated web application', 'Available', 'React, Vite, and Clerk provide the protected application shell.'],
   ['Tenant authorization', 'Available', 'Organizations, workspaces, teams, backend permissions, RLS boundaries, and audit foundations are implemented.'],
   ['Background execution concepts', 'Experimental', 'Jobs and plugins exist in the legacy archive but are not active API capabilities.'],
   ['Repository-to-runtime workflow', 'Planned', 'Applications, GitHub, normalized findings, deployments, runtime events, remediation, and verification are next.']
