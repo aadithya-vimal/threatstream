@@ -5,20 +5,20 @@ ThreatStream is an open-source Application Security Operations platform. Phase 2
 ## Architecture
 
 ```text
-React → Clerk authentication → FastAPI → SQLAlchemy async → PostgreSQL
+React → Neon Auth → FastAPI → SQLAlchemy async → Neon PostgreSQL
 ```
 
-ThreatStream Cloud currently targets Neon PostgreSQL. The application requires standard PostgreSQL and contains no Neon-specific domain logic. Clerk authenticates identity; ThreatStream owns users, tenancy, roles, permissions, and audit history.
+ThreatStream Cloud uses branchable Neon Auth and Neon PostgreSQL. Neon Auth authenticates identity; ThreatStream owns local users, tenancy, roles, permissions, and audit history. The browser never accesses PostgreSQL or the Neon Data API.
 
 ## Current status
 
 - SQLAlchemy 2.0 async data access and `asyncpg` are active.
 - Alembic is the only schema-management system.
-- Clerk JWTs are verified using issuer-bound, cached JWKS keys.
-- External Clerk subjects map to local ThreatStream users.
+- Neon Auth JWTs are verified using issuer-bound, cached JWKS keys and an explicit asymmetric algorithm policy.
+- External Neon Auth subjects map idempotently to local ThreatStream users without receiving tenancy permissions.
 - React accesses operational data only through FastAPI.
 - Phase 3 has not started.
-- A clean Neon deployment still requires local database and Clerk configuration before Phase 2 can be declared operational.
+- A clean Neon deployment and real Neon Auth lifecycle still require local branch configuration before Phase 2 can be declared operational.
 
 ## Local setup
 
@@ -36,7 +36,7 @@ In a second terminal:
 ```powershell
 cd C:\Users\aadit\OneDrive\Desktop\threatstream
 npm install
-if (-not $env:VITE_CLERK_PUBLISHABLE_KEY) { throw "VITE_CLERK_PUBLISHABLE_KEY is not set" }
+if (-not $env:VITE_NEON_AUTH_URL) { throw "VITE_NEON_AUTH_URL is not set" }
 npm run dev
 ```
 
@@ -59,4 +59,4 @@ npm test
 npm run build
 ```
 
-See `DATABASE.md`, `DEPLOYMENT.md`, and `NEON_CLERK_MIGRATION_REPORT.md` for operational details.
+See `DATABASE.md`, `DEPLOYMENT.md`, and `NEON_AUTH_MIGRATION_REPORT.md` for operational details.
