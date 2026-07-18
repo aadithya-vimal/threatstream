@@ -25,10 +25,11 @@ ThreatStream integrates existing security engines. It is not intended to be a SI
 |---|---|---|
 | React/Vite application shell | Available | Public landing page, protected overview, responsive shared layout |
 | Supabase authentication | Available | Email/password and configured OAuth authentication through Supabase Auth |
-| FastAPI service | Experimental | Versioned job, plugin, scheduler, malware, and telemetry endpoints from the legacy product direction |
-| Supabase persistence | Experimental | Existing SOC-oriented schema and repositories; tenancy is not implemented |
-| Background jobs and scheduler | Experimental | Database polling and scheduling concepts; execution is not yet a dedicated production worker |
-| Organizations and workspaces | Planned | Phase 2 |
+| FastAPI service | Available | Versioned tenant APIs, JWT validation, correlation IDs, and typed error envelopes |
+| Supabase persistence | Experimental | Additive tenancy migration is implemented but must be applied and validated in each deployment |
+| Organizations, workspaces, and teams | Available after migration | Tenant onboarding, workspace selection, memberships, roles, permissions, and RLS boundaries |
+| Encrypted integration credentials | Available after migration | AES-256-GCM encryption, masked metadata readback, rotation/removal audit events |
+| Background jobs and scheduler | Archived | Legacy execution APIs are no longer registered; dedicated worker is planned |
 | Applications and components | Planned | Phase 3 |
 | GitHub App and repository discovery | Planned | Phase 4 |
 | Semgrep, Gitleaks, Trivy, OSV-Scanner, Checkov, Syft | Planned | Phase 5 |
@@ -45,16 +46,14 @@ Inactive legacy pages and plugins are not completed product capabilities. See [M
 ```text
 React + Vite frontend
         |
-        | Supabase Auth / direct legacy repositories
+        | Supabase Auth access token
         v
-Supabase PostgreSQL
-
-FastAPI API ----> Supabase using service-role client
-    |
-    +----> optional in-process job loop and scheduler
+FastAPI tenant API ----> Supabase PostgREST with the user's bearer token
+                              |
+                              +----> tenant RLS + permission functions
 ```
 
-This architecture is a foundation, not the target security boundary. User-facing API requests currently use a service-role client, backend permissions are not implemented, and existing RLS policies are too broad. Do not expose the current build to untrusted tenants.
+Legacy SOC tables still contain broad historical policies, but they are no longer exposed through active backend routes. New tenant records use explicit organization/workspace policies. Do not reactivate legacy routes until their data models and RLS policies are migrated.
 
 The target architecture is documented in [TARGET_ARCHITECTURE.md](TARGET_ARCHITECTURE.md).
 
@@ -80,7 +79,7 @@ Required frontend values belong in `.env.local`:
 ```dotenv
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
-VITE_API_BASE_URL=http://127.0.0.1:8000/api/v1
+VITE_API_URL=http://127.0.0.1:8000
 ```
 
 Never place a Supabase service-role key in a frontend environment variable.
@@ -97,13 +96,43 @@ The backend reads bootstrap configuration from `backend/.env`:
 
 ```dotenv
 SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 SUPABASE_JWT_SECRET=your-jwt-secret
+SUPABASE_JWT_AUDIENCE=authenticated
+SUPABASE_JWT_ISSUER=https://your-project.supabase.co/auth/v1
+CREDENTIAL_ENCRYPTION_KEY=base64url-encoded-32-byte-key
+CREDENTIAL_KEY_VERSION=1
 CORS_ALLOW_ORIGINS=http://127.0.0.1:5173,http://localhost:5173
 ENABLE_BACKGROUND_TASKS=false
 ```
 
 Keep `ENABLE_BACKGROUND_TASKS=false` for the API while the dedicated worker architecture is being built.
+
+Generate a credential-encryption key once and store it in the API/worker secret manager:
+
+```powershell
+[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32)).Replace('+','-').Replace('/','_')
+```
+
+Back up this key securely. Losing it makes stored provider credentials unrecoverable.
+
+### Apply database migrations
+
+Validate against a disposable local stack first:
+
+```powershell
+supabase start
+supabase db reset
+```
+
+Run `supabase/tests/tenancy_authorization.sql` against that disposable database. Applying the migration to a remote project requires its database password and should occur only after reviewing the dry run:
+
+```powershell
+$env:SUPABASE_DB_PASSWORD='your-database-password'
+supabase db push --dry-run --include-all
+supabase db push --include-all
+```
 
 ## Verification
 
@@ -111,6 +140,7 @@ Current repository checks:
 
 ```powershell
 npm run build
+npm test
 
 cd backend
 $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD='1'
@@ -118,22 +148,21 @@ python -m pytest -q
 python -m compileall app
 ```
 
-The frontend currently has no configured lint, typecheck, or unit-test scripts. The backend has two smoke tests. These are known gaps, not skipped successful checks.
+The frontend has a Vitest tenant-context suite but still has no configured lint or typecheck script. The backend has security and legacy worker tests. These remaining gaps are not treated as successful checks.
+
+`npm audit --omit=dev` currently reports zero production dependency vulnerabilities. The Vite 5 development toolchain retains two advisories that require a breaking Vite upgrade; that upgrade is deferred to a dedicated compatibility change.
 
 ## Security status
 
 Before production use, the project must complete:
 
-- Organization and workspace tenancy
-- Backend permission enforcement
-- Tenant-safe RLS policies
-- Request-scoped database access
-- Encrypted and masked integration credentials
 - Dedicated isolated scanner workers
 - Signed and replay-protected webhooks
 - Evidence integrity and secret redaction
 - Cross-tenant and authorization-bypass tests
 - Production deployment and recovery documentation
+
+The Phase 2 implementation report, including migration-validation limitations, is in [PHASE_2_REPORT.md](PHASE_2_REPORT.md).
 
 See [CURRENT_STATE.md](CURRENT_STATE.md) for the evidence-backed audit and [MIGRATION_PLAN.md](MIGRATION_PLAN.md) for phase gates.
 
