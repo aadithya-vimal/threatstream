@@ -8,12 +8,12 @@ describe('apiFetch authentication', () => {
     vi.restoreAllMocks();
   });
 
-  it('attaches the Clerk bearer token and workspace scope', async () => {
-    configureApiAuth(async () => 'clerk-session-token');
+  it('attaches the configured bearer token and workspace scope', async () => {
+    configureApiAuth(async () => 'neon-auth-session-token');
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
     await apiFetch('/example', { workspaceId: 'workspace-1' });
     const request = fetchMock.mock.calls[0][1];
-    expect(request.headers.Authorization).toBe('Bearer clerk-session-token');
+    expect(request.headers.Authorization).toBe('Bearer neon-auth-session-token');
     expect(request.headers['X-Workspace-ID']).toBe('workspace-1');
   });
 
