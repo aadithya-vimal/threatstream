@@ -14,19 +14,15 @@ class Settings(BaseSettings):
     DATABASE_POOL_SIZE: int = 5
     DATABASE_MAX_OVERFLOW: int = 10
 
-    SUPABASE_URL: str = ""
-    SUPABASE_ANON_KEY: str = ""
-    SUPABASE_SERVICE_ROLE_KEY: str = ""
-    SUPABASE_JWT_SECRET: str = ""
-    SUPABASE_JWT_AUDIENCE: str = "authenticated"
-    SUPABASE_JWT_ISSUER: str = ""
-
     CLERK_JWT_ISSUER: str = ""
     CLERK_JWKS_URL: str = ""
     CLERK_AUDIENCE: str = ""
     CLERK_AUTHORIZED_PARTY: str = ""
     CLERK_JWKS_CACHE_SECONDS: int = 300
     CLERK_JWKS_TIMEOUT_SECONDS: float = 3.0
+
+    SUPABASE_URL: str = ""
+    SUPABASE_ANON_KEY: str = ""
     CREDENTIAL_ENCRYPTION_KEY: str = ""
     CREDENTIAL_KEY_VERSION: int = 1
 
@@ -53,9 +49,5 @@ class Settings(BaseSettings):
     def cors_allow_origins(self) -> list[str]:
         origins = [origin.strip() for origin in self.CORS_ALLOW_ORIGINS.split(",") if origin.strip()]
         return origins or ["http://localhost:5173", "http://127.0.0.1:5173"]
-
-    @property
-    def supabase_jwt_issuer(self) -> str:
-        return self.SUPABASE_JWT_ISSUER or f"{self.SUPABASE_URL.rstrip('/')}/auth/v1"
 
 settings = Settings()

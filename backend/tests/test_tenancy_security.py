@@ -1,52 +1,88 @@
 import asyncio
 import base64
 import os
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 import pytest
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import HTTPException
-from fastapi.security import HTTPAuthorizationCredentials
 from fastapi.testclient import TestClient
-from jose import jwt
+from jose import JWTError, jwt
 from starlette.requests import Request
 
 from app.api.dependencies import tenancy as tenancy_dependencies
 from app.core.config import settings
 from app.core.credentials import CredentialCipher, secret_hint
-from app.core.security import AuthenticatedUser, get_current_user
+from app.core.security import AuthenticatedUser, decode_clerk_token
 from app.domains.tenancy.service import TenancyService
 from app.main import app
 
 
-def test_valid_supabase_token_is_decoded(monkeypatch):
-    secret = "phase-two-test-secret-with-sufficient-length"
-    user_id = uuid4()
-    monkeypatch.setattr(settings, "SUPABASE_JWT_SECRET", secret)
-    monkeypatch.setattr(settings, "SUPABASE_URL", "https://tenant-test.supabase.co")
-    monkeypatch.setattr(settings, "SUPABASE_JWT_ISSUER", "")
-    token = jwt.encode(
-        {
-            "sub": str(user_id),
-            "email": "engineer@example.test",
-            "aud": "authenticated",
-            "iss": settings.supabase_jwt_issuer,
-        },
-        secret,
-        algorithm="HS256",
-    )
-
-    user = get_current_user(HTTPAuthorizationCredentials(scheme="Bearer", credentials=token))
-
-    assert user.id == user_id
-    assert user.email == "engineer@example.test"
-    assert user.token == token
+def signing_material():
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    private_pem = private_key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption())
+    public_pem = private_key.public_key().public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
+    return private_pem, public_pem
 
 
-def test_invalid_token_returns_generic_unauthorized(monkeypatch):
-    monkeypatch.setattr(settings, "SUPABASE_JWT_SECRET", "configured-secret")
+def clerk_token(private_key, **overrides):
+    now = datetime.now(UTC)
+    claims = {"sub": "user_2test", "iss": "https://clerk.example.test", "aud": "threatstream", "azp": "http://localhost:5173", "iat": now, "nbf": now - timedelta(seconds=1), "exp": now + timedelta(minutes=5)}
+    claims.update(overrides)
+    return jwt.encode(claims, private_key, algorithm="RS256", headers={"kid": "test-key"})
+
+
+def configure_clerk(monkeypatch):
+    monkeypatch.setattr(settings, "CLERK_JWT_ISSUER", "https://clerk.example.test")
+    monkeypatch.setattr(settings, "CLERK_AUDIENCE", "threatstream")
+    monkeypatch.setattr(settings, "CLERK_AUTHORIZED_PARTY", "http://localhost:5173")
+
+
+def test_valid_clerk_token_is_decoded(monkeypatch):
+    private_key, public_key = signing_material()
+    configure_clerk(monkeypatch)
+    monkeypatch.setattr("app.core.security.clerk_jwks.get_key", lambda_key(public_key))
+    payload = asyncio.run(decode_clerk_token(clerk_token(private_key, email="engineer@example.test")))
+    assert payload["sub"] == "user_2test"
+    assert payload["email"] == "engineer@example.test"
+
+
+def lambda_key(public_key):
+    async def get_key(_key_id):
+        return public_key
+    return get_key
+
+
+@pytest.mark.parametrize("claim,value", [("iss", "https://wrong.example.test"), ("aud", "wrong"), ("azp", "https://wrong.example.test")])
+def test_clerk_token_rejects_wrong_trust_boundary(monkeypatch, claim, value):
+    private_key, public_key = signing_material()
+    configure_clerk(monkeypatch)
+    monkeypatch.setattr("app.core.security.clerk_jwks.get_key", lambda_key(public_key))
     with pytest.raises(HTTPException) as exc_info:
-        get_current_user(HTTPAuthorizationCredentials(scheme="Bearer", credentials="invalid"))
+        asyncio.run(decode_clerk_token(clerk_token(private_key, **{claim: value})))
     assert exc_info.value.status_code == 401
+
+
+def test_clerk_token_rejects_expired_and_missing_subject(monkeypatch):
+    private_key, public_key = signing_material()
+    configure_clerk(monkeypatch)
+    monkeypatch.setattr("app.core.security.clerk_jwks.get_key", lambda_key(public_key))
+    with pytest.raises(HTTPException):
+        asyncio.run(decode_clerk_token(clerk_token(private_key, exp=datetime.now(UTC) - timedelta(minutes=1))))
+    with pytest.raises(HTTPException):
+        asyncio.run(decode_clerk_token(clerk_token(private_key, sub="")))
+
+
+def test_unknown_signing_key_is_rejected(monkeypatch):
+    private_key, _ = signing_material()
+    configure_clerk(monkeypatch)
+    async def missing_key(_key_id):
+        raise JWTError("unknown")
+    monkeypatch.setattr("app.core.security.clerk_jwks.get_key", missing_key)
+    with pytest.raises(HTTPException) as exc_info:
+        asyncio.run(decode_clerk_token(clerk_token(private_key)))
     assert exc_info.value.detail == "Invalid or expired access token"
 
 
@@ -73,9 +109,7 @@ def test_credentials_are_encrypted_with_workspace_bound_aad(monkeypatch):
     monkeypatch.setattr(settings, "CREDENTIAL_ENCRYPTION_KEY", encoded_key)
     workspace_id = str(uuid4())
     cipher = CredentialCipher()
-
     ciphertext, nonce = cipher.encrypt("provider-secret-value", workspace_id, "github")
-
     assert "provider-secret-value" not in ciphertext
     assert cipher.decrypt(ciphertext, nonce, workspace_id, "github") == "provider-secret-value"
     with pytest.raises(Exception):
@@ -83,50 +117,29 @@ def test_credentials_are_encrypted_with_workspace_bound_aad(monkeypatch):
     assert secret_hint("provider-secret-value") == "••••alue"
 
 
+def principal():
+    return AuthenticatedUser(id=uuid4(), email=None, token="token", claims={}, external_subject="user_test")
+
+
 def test_permission_dependency_denies_missing_permission(monkeypatch):
-    class FakeClient:
-        def __init__(self, access_token):
-            self.access_token = access_token
-
-        async def rpc(self, function_name, payload):
-            assert function_name == "has_workspace_permission"
-            assert payload["required_permission"] == "team:manage"
-            return False
-
-    monkeypatch.setattr(tenancy_dependencies, "SupabaseRestClient", FakeClient)
+    class FakeRepository:
+        def __init__(self, _session): pass
+        async def has_workspace_permission(self, *_args): return False
+    monkeypatch.setattr(tenancy_dependencies, "TenancyRepository", FakeRepository)
     dependency = tenancy_dependencies.require_workspace_permission("team:manage")
     request = Request({"type": "http", "headers": []})
-    user = AuthenticatedUser(id=uuid4(), email=None, token="token", claims={})
-
     with pytest.raises(HTTPException) as exc_info:
-        asyncio.run(dependency(request, uuid4(), user))
+        asyncio.run(dependency(request, uuid4(), principal(), object()))
     assert exc_info.value.status_code == 403
 
 
 def test_tenancy_context_attaches_membership_roles():
-    workspace_id = uuid4()
-    organization_id = uuid4()
-    user = AuthenticatedUser(id=uuid4(), email=None, token="token", claims={})
-
-    class FakeClient:
-        async def select(self, table, params):
-            if table == "organizations":
-                return [{"id": str(organization_id), "name": "Example", "slug": "example", "created_at": "2026-07-18T00:00:00Z"}]
-            if table == "workspaces":
-                return [{
-                    "id": str(workspace_id),
-                    "organization_id": str(organization_id),
-                    "name": "Product",
-                    "slug": "product",
-                    "description": None,
-                    "created_at": "2026-07-18T00:00:00Z",
-                }]
-            return [{"workspace_id": str(workspace_id), "role_key": "application_security_engineer"}]
-
-    service = object.__new__(TenancyService)
-    service.user = user
-    service.client = FakeClient()
+    organization = type("Organization", (), {"id": uuid4(), "name": "Example", "slug": "example", "created_at": datetime.now(UTC)})()
+    workspace = type("Workspace", (), {"id": uuid4(), "organization_id": organization.id, "name": "Product", "slug": "product", "description": None, "created_at": datetime.now(UTC)})()
+    class FakeRepository:
+        async def context(self, _user_id): return [organization], [(workspace, "application_security_engineer")]
+    service = TenancyService(object(), principal())
+    service.repository = FakeRepository()
     context = asyncio.run(service.context())
-
-    assert context["organizations"][0]["id"] == str(organization_id)
+    assert context["organizations"][0]["id"] == organization.id
     assert context["workspaces"][0]["role_key"] == "application_security_engineer"
