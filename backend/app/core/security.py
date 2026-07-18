@@ -28,15 +28,6 @@ class AuthenticatedPrincipal:
     email: str | None
     display_name: str | None
     token_claims: dict[str, Any]
-
-    @property
-    def id(self) -> UUID:
-        return self.user_id
-
-
-AuthenticatedUser = AuthenticatedPrincipal
-
-
 class NeonAuthJwksCache:
     def __init__(self) -> None:
         self._keys: dict[str, dict[str, Any]] = {}

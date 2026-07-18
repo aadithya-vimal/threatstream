@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.credentials import CredentialCipher, secret_hint
-from app.core.security import AuthenticatedUser
+from app.core.security import AuthenticatedPrincipal
 from app.database.repositories import TenancyRepository
 from app.domains.tenancy.schemas import CredentialWrite, OrganizationCreate, TeamCreate, WorkspaceCreate
 
@@ -24,23 +24,23 @@ def team_dict(row) -> dict[str, Any]:
 
 
 class TenancyService:
-    def __init__(self, session: AsyncSession, user: AuthenticatedUser):
+    def __init__(self, session: AsyncSession, user: AuthenticatedPrincipal):
         self.session = session
         self.user = user
         self.repository = TenancyRepository(session)
 
     async def context(self) -> dict[str, list[dict[str, Any]]]:
-        organizations, workspaces = await self.repository.context(self.user.id)
+        organizations, workspaces = await self.repository.context(self.user.user_id)
         return {"organizations": [organization_dict(row) for row in organizations], "workspaces": [workspace_dict(row, role) for row, role in workspaces]}
 
     async def create_organization(self, payload: OrganizationCreate) -> dict[str, Any]:
         async with self.session.begin():
-            organization, workspace = await self.repository.create_organization(self.user.id, payload.name, payload.slug, payload.workspace_name, payload.workspace_slug)
+            organization, workspace = await self.repository.create_organization(self.user.user_id, payload.name, payload.slug, payload.workspace_name, payload.workspace_slug)
         return {"organization": organization_dict(organization), "workspace": workspace_dict(workspace, "workspace_administrator"), "role_key": "workspace_administrator"}
 
     async def create_workspace(self, organization_id: UUID, payload: WorkspaceCreate) -> dict[str, Any]:
         async with self.session.begin():
-            workspace = await self.repository.create_workspace(organization_id, self.user.id, payload.name, payload.slug, payload.description)
+            workspace = await self.repository.create_workspace(organization_id, self.user.user_id, payload.name, payload.slug, payload.description)
         return workspace_dict(workspace, "workspace_administrator")
 
     async def list_teams(self, workspace_id: UUID) -> list[dict[str, Any]]:
@@ -51,7 +51,7 @@ class TenancyService:
             organization_id = await self.repository.workspace_organization_id(workspace_id)
             if organization_id is None:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
-            team = await self.repository.create_team(workspace_id, organization_id, self.user.id, payload.name, payload.slug, payload.description)
+            team = await self.repository.create_team(workspace_id, organization_id, self.user.user_id, payload.name, payload.slug, payload.description)
         return team_dict(team)
 
     async def list_credential_metadata(self, workspace_id: UUID) -> list[dict[str, Any]]:
@@ -64,7 +64,7 @@ class TenancyService:
             organization_id = await self.repository.workspace_organization_id(workspace_id)
             if organization_id is None:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
-            row = await self.repository.upsert_credential(workspace_id=workspace_id, organization_id=organization_id, user_id=self.user.id, provider_key=normalized_provider, ciphertext=ciphertext, nonce=nonce, hint=secret_hint(payload.secret), key_version=settings.CREDENTIAL_KEY_VERSION)
+            row = await self.repository.upsert_credential(workspace_id=workspace_id, organization_id=organization_id, user_id=self.user.user_id, provider_key=normalized_provider, ciphertext=ciphertext, nonce=nonce, hint=secret_hint(payload.secret), key_version=settings.CREDENTIAL_KEY_VERSION)
         return {"provider_key": row.provider_key, "secret_hint": row.secret_hint, "key_version": row.key_version, "rotated_at": row.rotated_at}
 
     async def delete_credential(self, workspace_id: UUID, provider_key: str) -> bool:
@@ -72,4 +72,4 @@ class TenancyService:
             organization_id = await self.repository.workspace_organization_id(workspace_id)
             if organization_id is None:
                 return False
-            return await self.repository.delete_credential(workspace_id, organization_id, self.user.id, provider_key.lower())
+            return await self.repository.delete_credential(workspace_id, organization_id, self.user.user_id, provider_key.lower())

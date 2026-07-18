@@ -17,7 +17,7 @@ from starlette.requests import Request
 from app.api.dependencies import tenancy as tenancy_dependencies
 from app.core.config import settings
 from app.core.credentials import CredentialCipher, secret_hint
-from app.core.security import AuthenticatedUser, decode_neon_auth_token
+from app.core.security import AuthenticatedPrincipal, decode_neon_auth_token
 from app.domains.tenancy.service import TenancyService
 from app.main import app
 
@@ -134,7 +134,7 @@ def test_credentials_are_encrypted_with_workspace_bound_aad(monkeypatch):
 
 
 def principal():
-    return AuthenticatedUser(
+    return AuthenticatedPrincipal(
         user_id=uuid4(),
         subject="user_test",
         issuer="https://auth.example.test",
