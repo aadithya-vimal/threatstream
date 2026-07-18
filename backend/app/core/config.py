@@ -7,14 +7,26 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "ThreatStream Application Security API"
     ENABLE_BACKGROUND_TASKS: bool = False
     CORS_ALLOW_ORIGINS: str = ""
-    
-    # Supabase configurations
+
+    DATABASE_URL: str = ""
+    DATABASE_URL_DIRECT: str = ""
+    DATABASE_ECHO: bool = False
+    DATABASE_POOL_SIZE: int = 5
+    DATABASE_MAX_OVERFLOW: int = 10
+
     SUPABASE_URL: str = ""
     SUPABASE_ANON_KEY: str = ""
     SUPABASE_SERVICE_ROLE_KEY: str = ""
     SUPABASE_JWT_SECRET: str = ""
     SUPABASE_JWT_AUDIENCE: str = "authenticated"
     SUPABASE_JWT_ISSUER: str = ""
+
+    CLERK_JWT_ISSUER: str = ""
+    CLERK_JWKS_URL: str = ""
+    CLERK_AUDIENCE: str = ""
+    CLERK_AUTHORIZED_PARTY: str = ""
+    CLERK_JWKS_CACHE_SECONDS: int = 300
+    CLERK_JWKS_TIMEOUT_SECONDS: float = 3.0
     CREDENTIAL_ENCRYPTION_KEY: str = ""
     CREDENTIAL_KEY_VERSION: int = 1
 
