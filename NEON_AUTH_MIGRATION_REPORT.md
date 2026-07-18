@@ -61,6 +61,7 @@ All real values must be configured locally and must refer to the same intended N
 | Backend deterministic tests | 18 passed |
 | Frontend deterministic tests | 7 passed |
 | Frontend production build | Passed |
+| Production dependency audit | Blocked: current official Neon Auth betas pin vulnerable Better Auth versions |
 | Alembic offline PostgreSQL rendering | Passed |
 | Neon Auth invalid signature, issuer, audience, expiry, subject, algorithm, unknown-key, timeout | Passed |
 | Idempotent local identity mapping | Passed |
@@ -78,10 +79,12 @@ All real values must be configured locally and must refer to the same intended N
 
 ## Provider eradication
 
-Active Clerk implementation and dependencies are removed. Active Supabase runtime dependencies remain removed. Historical removal reports may name retired providers for auditability.
+Active Clerk implementation and dependencies are removed. ThreatStream has no direct Supabase code or manifest dependency. The official Neon Auth package currently includes `@supabase/auth-js` as an internal transitive migration adapter; ThreatStream does not import or configure it. Historical removal reports may name retired providers for auditability.
 
 ## Portability and limitations
 
 ThreatStream Cloud uses managed Neon Auth, which is tied to Neon and is not described as self-hostable. The provider-neutral principal and external identity mapping preserve a future path to self-hosted Better Auth or generic OIDC, but neither adapter is implemented in this phase.
+
+The latest official packages available during this migration pin Better Auth `1.4.18`. The production audit reports advisories including a critical issue affecting optional server plugins. Forcing Better Auth `1.6.23` was tested and rejected because it breaks the official Neon Auth UI bundle API. The application must not be declared production-ready until Neon publishes a compatible patched SDK, even though ThreatStream uses the managed Neon server and only the browser client bundle.
 
 Phase 2 is locally code-verified but not operationally complete until every pending hosted gate above passes. `repomix-output.xml` was not modified and remains untracked.

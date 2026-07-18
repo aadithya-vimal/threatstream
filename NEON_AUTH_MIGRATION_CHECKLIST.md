@@ -33,15 +33,16 @@ Starting commit: `e7bf8a3`
 
 ## Completion gates
 
-- [ ] Clerk package and active references removed.
-- [ ] Neon Auth frontend session, sign-in, sign-up, sign-out, and restoration implemented.
-- [ ] FastAPI Neon Auth JWT validation implemented and security-tested.
-- [ ] Local identity resolution is idempotent and provider-neutral.
-- [ ] Existing authorization, onboarding, audit, and credential encryption tests pass.
-- [ ] Alembic excludes the `neon_auth` schema.
-- [ ] Backend tests, frontend tests, and production build pass.
+- [x] Clerk package and active references removed.
+- [x] Neon Auth frontend session, sign-in, sign-up, sign-out, and restoration implemented.
+- [x] FastAPI Neon Auth JWT validation implemented and security-tested.
+- [x] Local identity resolution is idempotent and provider-neutral.
+- [x] Existing authorization, onboarding, audit, and credential encryption tests pass.
+- [x] Alembic excludes the `neon_auth` schema.
+- [x] Backend tests, frontend tests, and production build pass.
+- [ ] Neon releases SDK versions using a patched Better Auth dependency; the current supported beta is blocked by upstream production audit advisories.
 - [ ] Intended Neon development branch is confirmed without printing secrets.
 - [ ] Real Neon migration reaches `20260718_0001`.
 - [ ] Real sign-up, sign-in, restoration, onboarding, and cross-tenant checks pass.
 - [ ] `repomix-output.xml` remains untouched and untracked.
-- [ ] Phase 3 remains unstarted.
+- [x] Phase 3 remains unstarted.
