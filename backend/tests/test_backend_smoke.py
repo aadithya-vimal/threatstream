@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from app.core.config import settings
+from app.core.config import BACKEND_DIRECTORY, REPOSITORY_DIRECTORY, Settings, settings
 from app.main import app
 
 
@@ -15,3 +15,10 @@ def test_readiness_reports_missing_database_without_details(monkeypatch):
     response = TestClient(app).get("/ready")
     assert response.status_code == 503
     assert response.json() == {"status": "unavailable", "database": "not_configured"}
+
+
+def test_environment_files_are_resolved_independently_of_launch_directory():
+    assert Settings.model_config["env_file"] == (
+        REPOSITORY_DIRECTORY / ".env",
+        BACKEND_DIRECTORY / ".env",
+    )
