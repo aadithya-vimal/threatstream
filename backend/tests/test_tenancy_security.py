@@ -5,17 +5,19 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 import pytest
+import jwt
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
-from jose import JWTError, jwt
+from jwt import InvalidTokenError
+from jwt.algorithms import RSAAlgorithm
 from starlette.requests import Request
 
 from app.api.dependencies import tenancy as tenancy_dependencies
 from app.core.config import settings
 from app.core.credentials import CredentialCipher, secret_hint
-from app.core.security import AuthenticatedUser, decode_clerk_token
+from app.core.security import AuthenticatedUser, decode_neon_auth_token
 from app.domains.tenancy.service import TenancyService
 from app.main import app
 
@@ -23,67 +25,81 @@ from app.main import app
 def signing_material():
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     private_pem = private_key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption())
-    public_pem = private_key.public_key().public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
-    return private_pem, public_pem
+    return private_pem, private_key.public_key()
 
 
-def clerk_token(private_key, **overrides):
+def neon_auth_token(private_key, **overrides):
     now = datetime.now(UTC)
-    claims = {"sub": "user_2test", "iss": "https://clerk.example.test", "aud": "threatstream", "azp": "http://localhost:5173", "iat": now, "nbf": now - timedelta(seconds=1), "exp": now + timedelta(minutes=5)}
+    claims = {"sub": "user_2test", "iss": "https://auth.example.test", "aud": "threatstream", "iat": now, "nbf": now - timedelta(seconds=1), "exp": now + timedelta(minutes=5)}
     claims.update(overrides)
     return jwt.encode(claims, private_key, algorithm="RS256", headers={"kid": "test-key"})
 
 
-def configure_clerk(monkeypatch):
-    monkeypatch.setattr(settings, "CLERK_JWT_ISSUER", "https://clerk.example.test")
-    monkeypatch.setattr(settings, "CLERK_AUDIENCE", "threatstream")
-    monkeypatch.setattr(settings, "CLERK_AUTHORIZED_PARTY", "http://localhost:5173")
+def configure_neon_auth(monkeypatch):
+    monkeypatch.setattr(settings, "NEON_AUTH_ISSUER", "https://auth.example.test")
+    monkeypatch.setattr(settings, "NEON_AUTH_JWKS_URL", "https://auth.example.test/api/auth/jwks")
+    monkeypatch.setattr(settings, "NEON_AUTH_AUDIENCE", "threatstream")
 
 
-def test_valid_clerk_token_is_decoded(monkeypatch):
+def test_valid_neon_auth_token_is_decoded(monkeypatch):
     private_key, public_key = signing_material()
-    configure_clerk(monkeypatch)
-    monkeypatch.setattr("app.core.security.clerk_jwks.get_key", lambda_key(public_key))
-    payload = asyncio.run(decode_clerk_token(clerk_token(private_key, email="engineer@example.test")))
+    configure_neon_auth(monkeypatch)
+    monkeypatch.setattr("app.core.security.neon_auth_jwks.get_key", lambda_key(public_key))
+    payload = asyncio.run(decode_neon_auth_token(neon_auth_token(private_key, email="engineer@example.test")))
     assert payload["sub"] == "user_2test"
     assert payload["email"] == "engineer@example.test"
 
 
 def lambda_key(public_key):
     async def get_key(_key_id):
-        return public_key
+        key = RSAAlgorithm.to_jwk(public_key, as_dict=True)
+        return {**key, "kid": "test-key", "alg": "RS256", "use": "sig"}
     return get_key
 
 
-@pytest.mark.parametrize("claim,value", [("iss", "https://wrong.example.test"), ("aud", "wrong"), ("azp", "https://wrong.example.test")])
-def test_clerk_token_rejects_wrong_trust_boundary(monkeypatch, claim, value):
+@pytest.mark.parametrize("claim,value", [("iss", "https://wrong.example.test"), ("aud", "wrong")])
+def test_neon_auth_token_rejects_wrong_trust_boundary(monkeypatch, claim, value):
     private_key, public_key = signing_material()
-    configure_clerk(monkeypatch)
-    monkeypatch.setattr("app.core.security.clerk_jwks.get_key", lambda_key(public_key))
+    configure_neon_auth(monkeypatch)
+    monkeypatch.setattr("app.core.security.neon_auth_jwks.get_key", lambda_key(public_key))
     with pytest.raises(HTTPException) as exc_info:
-        asyncio.run(decode_clerk_token(clerk_token(private_key, **{claim: value})))
+        asyncio.run(decode_neon_auth_token(neon_auth_token(private_key, **{claim: value})))
     assert exc_info.value.status_code == 401
 
 
-def test_clerk_token_rejects_expired_and_missing_subject(monkeypatch):
+def test_neon_auth_token_rejects_expired_and_missing_subject(monkeypatch):
     private_key, public_key = signing_material()
-    configure_clerk(monkeypatch)
-    monkeypatch.setattr("app.core.security.clerk_jwks.get_key", lambda_key(public_key))
+    configure_neon_auth(monkeypatch)
+    monkeypatch.setattr("app.core.security.neon_auth_jwks.get_key", lambda_key(public_key))
     with pytest.raises(HTTPException):
-        asyncio.run(decode_clerk_token(clerk_token(private_key, exp=datetime.now(UTC) - timedelta(minutes=1))))
+        asyncio.run(decode_neon_auth_token(neon_auth_token(private_key, exp=datetime.now(UTC) - timedelta(minutes=1))))
     with pytest.raises(HTTPException):
-        asyncio.run(decode_clerk_token(clerk_token(private_key, sub="")))
+        asyncio.run(decode_neon_auth_token(neon_auth_token(private_key, sub="")))
 
 
 def test_unknown_signing_key_is_rejected(monkeypatch):
     private_key, _ = signing_material()
-    configure_clerk(monkeypatch)
+    configure_neon_auth(monkeypatch)
     async def missing_key(_key_id):
-        raise JWTError("unknown")
-    monkeypatch.setattr("app.core.security.clerk_jwks.get_key", missing_key)
+        raise InvalidTokenError("unknown")
+    monkeypatch.setattr("app.core.security.neon_auth_jwks.get_key", missing_key)
     with pytest.raises(HTTPException) as exc_info:
-        asyncio.run(decode_clerk_token(clerk_token(private_key)))
+        asyncio.run(decode_neon_auth_token(neon_auth_token(private_key)))
     assert exc_info.value.detail == "Invalid or expired access token"
+
+
+def test_unsupported_signing_algorithm_is_rejected(monkeypatch):
+    configure_neon_auth(monkeypatch)
+    now = datetime.now(UTC)
+    token = jwt.encode(
+        {"sub": "user_2test", "iss": "https://auth.example.test", "aud": "threatstream", "exp": now + timedelta(minutes=5)},
+        "not-a-production-secret-used-only-in-this-unit-test",
+        algorithm="HS256",
+        headers={"kid": "test-key"},
+    )
+    with pytest.raises(HTTPException) as exc_info:
+        asyncio.run(decode_neon_auth_token(token))
+    assert exc_info.value.status_code == 401
 
 
 def test_api_errors_include_correlation_id():
@@ -121,7 +137,7 @@ def principal():
     return AuthenticatedUser(
         user_id=uuid4(),
         subject="user_test",
-        issuer="https://clerk.example.test",
+        issuer="https://auth.example.test",
         email=None,
         display_name=None,
         token_claims={},

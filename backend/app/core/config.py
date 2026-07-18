@@ -14,12 +14,12 @@ class Settings(BaseSettings):
     DATABASE_POOL_SIZE: int = 5
     DATABASE_MAX_OVERFLOW: int = 10
 
-    CLERK_JWT_ISSUER: str = ""
-    CLERK_JWKS_URL: str = ""
-    CLERK_AUDIENCE: str = ""
-    CLERK_AUTHORIZED_PARTY: str = ""
-    CLERK_JWKS_CACHE_SECONDS: int = 300
-    CLERK_JWKS_TIMEOUT_SECONDS: float = 3.0
+    NEON_AUTH_ISSUER: str = ""
+    NEON_AUTH_JWKS_URL: str = ""
+    NEON_AUTH_AUDIENCE: str = ""
+    NEON_AUTH_JWT_ALGORITHMS: str = "EdDSA,RS256,ES256"
+    NEON_AUTH_JWKS_CACHE_SECONDS: int = 300
+    NEON_AUTH_JWKS_TIMEOUT_SECONDS: float = 3.0
 
     CREDENTIAL_ENCRYPTION_KEY: str = ""
     CREDENTIAL_KEY_VERSION: int = 1
@@ -47,5 +47,9 @@ class Settings(BaseSettings):
     def cors_allow_origins(self) -> list[str]:
         origins = [origin.strip() for origin in self.CORS_ALLOW_ORIGINS.split(",") if origin.strip()]
         return origins or ["http://localhost:5173", "http://127.0.0.1:5173"]
+
+    @property
+    def neon_auth_jwt_algorithms(self) -> list[str]:
+        return [algorithm.strip() for algorithm in self.NEON_AUTH_JWT_ALGORITHMS.split(",") if algorithm.strip()]
 
 settings = Settings()
