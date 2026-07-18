@@ -17,9 +17,17 @@ python -m alembic upgrade head
 python -m alembic current
 ```
 
-## Clerk
+## Neon Auth
 
-Configure a Clerk application and set `CLERK_JWT_ISSUER`, `CLERK_JWKS_URL`, `CLERK_AUDIENCE`, `CLERK_AUTHORIZED_PARTY`, and frontend-only `VITE_CLERK_PUBLISHABLE_KEY`. Never expose a Clerk secret key to React.
+1. Select the same intended development branch used for the database URLs.
+2. Enable the current branchable Neon Auth implementation from the branch's Auth page.
+3. Add `http://localhost:5173` as a trusted frontend origin.
+4. Copy the branch Auth URL into frontend-only `VITE_NEON_AUTH_URL`.
+5. Copy the branch issuer and JWKS URL into backend-only `NEON_AUTH_ISSUER` and `NEON_AUTH_JWKS_URL`.
+6. Set `NEON_AUTH_AUDIENCE` only when the issued token contains an audience that must be enforced.
+7. Confirm the database URLs, Auth URL, issuer, and JWKS configuration are displayed for the same development branch before migration.
+
+Do not paste values into chat, expose backend Auth configuration through Vite, enable the Neon Data API for this application, or configure the obsolete Stack Auth-based Neon Auth product.
 
 ## Runtime checks
 
@@ -29,4 +37,4 @@ Configure a Clerk application and set `CLERK_JWT_ISSUER`, `CLERK_JWKS_URL`, `CLE
 
 ## Self-hosting
 
-Use a standard PostgreSQL connection URL and run the same Alembic migration. Generic OIDC is planned but is not implemented; the current hosted identity provider is Clerk.
+Use a standard PostgreSQL connection URL and run the same Alembic migration. ThreatStream Cloud uses managed Neon Auth, which is tied to Neon. Generic OIDC and self-hosted Better Auth adapters are planned but not implemented.
