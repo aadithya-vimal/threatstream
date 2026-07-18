@@ -6,8 +6,8 @@ Audit date: 2026-07-18
 
 | Capability | State |
 |---|---|
-| React protected shell | Implemented with Clerk |
-| FastAPI identity boundary | Clerk JWT/JWKS validation |
+| React protected shell | Neon Auth SDK and hosted auth UI routes |
+| FastAPI identity boundary | Neon Auth JWT/JWKS validation and normalized principal |
 | Local identity mapping | `users` and `external_identities` |
 | Organizations and workspaces | SQLAlchemy services and API routes |
 | Teams and memberships | SQLAlchemy services and constraints |
@@ -19,7 +19,7 @@ Audit date: 2026-07-18
 
 ## Verification state
 
-Backend unit/API tests and frontend tests/build pass locally. The Alembic migration renders valid PostgreSQL SQL offline. A clean Neon migration, isolated database integration tests, onboarding smoke test, and persistence checks remain blocked until database and Clerk values are configured locally.
+Backend unit/API tests and frontend tests/build pass locally. The Alembic migration renders valid PostgreSQL SQL offline and excludes the managed `neon_auth` schema. A clean Neon migration, real Auth lifecycle, isolated database integration tests, onboarding smoke test, and persistence checks remain blocked until rotated database credentials and branch-specific Neon Auth values are configured locally.
 
 ## Product boundary
 
