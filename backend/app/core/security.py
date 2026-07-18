@@ -52,9 +52,6 @@ class NeonAuthJwksCache:
             await self._refresh()
             key = self._keys.get(key_id)
             if key is None:
-                await self._refresh()
-                key = self._keys.get(key_id)
-            if key is None:
                 raise InvalidTokenError("Unknown signing key")
             return key
 
