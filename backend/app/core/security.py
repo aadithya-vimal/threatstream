@@ -20,12 +20,20 @@ security_scheme = HTTPBearer(auto_error=False)
 
 
 @dataclass(frozen=True)
-class AuthenticatedUser:
-    id: UUID
+class AuthenticatedPrincipal:
+    user_id: UUID
+    subject: str
+    issuer: str
     email: str | None
-    token: str
-    claims: dict[str, Any]
-    external_subject: str
+    display_name: str | None
+    token_claims: dict[str, Any]
+
+    @property
+    def id(self) -> UUID:
+        return self.user_id
+
+
+AuthenticatedUser = AuthenticatedPrincipal
 
 
 class ClerkJwksCache:
@@ -132,7 +140,14 @@ def require_bearer_token(
 async def get_current_user(
     token: str = Depends(require_bearer_token),
     session: AsyncSession = Depends(get_db_session),
-) -> AuthenticatedUser:
+) -> AuthenticatedPrincipal:
     claims = await decode_clerk_token(token)
     user = await resolve_local_user(session, claims)
-    return AuthenticatedUser(id=user.id, email=user.email, token=token, claims=claims, external_subject=str(claims["sub"]))
+    return AuthenticatedPrincipal(
+        user_id=user.id,
+        subject=str(claims["sub"]),
+        issuer=settings.CLERK_JWT_ISSUER,
+        email=user.email,
+        display_name=user.display_name,
+        token_claims=claims,
+    )

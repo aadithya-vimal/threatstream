@@ -118,7 +118,14 @@ def test_credentials_are_encrypted_with_workspace_bound_aad(monkeypatch):
 
 
 def principal():
-    return AuthenticatedUser(id=uuid4(), email=None, token="token", claims={}, external_subject="user_test")
+    return AuthenticatedUser(
+        user_id=uuid4(),
+        subject="user_test",
+        issuer="https://clerk.example.test",
+        email=None,
+        display_name=None,
+        token_claims={},
+    )
 
 
 def test_permission_dependency_denies_missing_permission(monkeypatch):
