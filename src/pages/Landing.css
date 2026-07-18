@@ -186,7 +186,7 @@
 
 .features-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 24px;
 }
 
@@ -204,11 +204,13 @@
   box-shadow: var(--shadow-md);
 }
 
-.feature-icon {
-  font-size: 32px;
-  margin-bottom: 20px;
-  display: inline-block;
+.feature-kicker {
   color: var(--color-blue);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin-bottom: 14px;
+  text-transform: uppercase;
 }
 
 .feature-title {
@@ -224,76 +226,36 @@
   line-height: 1.6;
 }
 
-/* Custom interactive feature widgets on Landing page */
-.attack-types {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 16px;
-}
-
-.attack-badge {
-  padding: 4px 10px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 600;
+.product-statement {
+  align-items: center;
+  background: var(--panel-bg);
   border: 1px solid var(--border-color);
-  background-color: var(--bg-secondary);
-  color: var(--text-secondary);
-}
-
-.targets-grid {
+  border-radius: 8px;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-top: 16px;
+  gap: 32px;
+  grid-template-columns: 1fr 1fr;
+  margin: 0 auto 100px;
+  max-width: 1120px;
+  padding: 32px;
 }
 
-.target-box {
-  padding: 10px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  text-align: center;
+.product-statement h2 {
+  font-size: 22px;
+  margin: 8px 0 0;
 }
 
-.target-box h4 {
-  font-size: 11px;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.target-box p {
-  font-size: 10px;
-  color: var(--text-muted);
+.product-statement p {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.7;
   margin: 0;
 }
 
-.tech-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-top: 16px;
-}
-
-.stat {
-  padding: 10px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  text-align: center;
-}
-
-.stat-value {
-  font-size: 14px;
-  font-weight: 700;
+.product-statement-label {
   color: var(--color-blue);
-  margin-bottom: 2px;
-}
-
-.stat-label {
   font-size: 9px;
-  color: var(--text-muted);
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -324,5 +286,10 @@
   }
   .features-grid {
     grid-template-columns: 1fr;
+  }
+  .product-statement {
+    grid-template-columns: 1fr;
+    margin-left: 20px;
+    margin-right: 20px;
   }
 }

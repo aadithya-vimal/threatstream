@@ -1,7 +1,7 @@
 {
   "name": "threatstream",
   "version": "1.0.0",
-  "description": "Real-time cyber threat visualization platform",
+  "description": "Self-hostable application security operations platform",
   "type": "module",
   "scripts": {
     "dev": "vite",
