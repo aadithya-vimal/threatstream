@@ -1,12 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTenancy } from '../contexts/TenancyContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import { Icon } from './Icons';
 
 export const Topbar = () => {
   const location = useLocation();
-  const { user, role, logout } = useAuth();
+  const { user, logout } = useAuth();
+  const { workspaces, currentWorkspace, selectWorkspace } = useTenancy();
   const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotification } = useNotifications();
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -88,6 +90,27 @@ export const Topbar = () => {
 
       {/* Utilities / Profile */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', position: 'relative' }}>
+        {workspaces.length > 0 && (
+          <select
+            aria-label="Current workspace"
+            value={currentWorkspace?.id || ''}
+            onChange={(event) => selectWorkspace(event.target.value)}
+            style={{
+              background: 'var(--bg-primary)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '4px',
+              color: 'var(--text-primary)',
+              fontFamily: 'inherit',
+              fontSize: '11px',
+              maxWidth: '180px',
+              padding: '6px 8px'
+            }}
+          >
+            {workspaces.map((workspace) => (
+              <option key={workspace.id} value={workspace.id}>{workspace.name}</option>
+            ))}
+          </select>
+        )}
         
         {/* Phase indicator; this is product state, not a synthetic health signal. */}
         <div 
@@ -268,7 +291,9 @@ export const Topbar = () => {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }} className="hide-on-mobile">
             <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>{getDisplayName()}</span>
-            <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{role}</span>
+            <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
+              {currentWorkspace?.role_key?.replaceAll('_', ' ') || 'No workspace'}
+            </span>
           </div>
         </div>
 

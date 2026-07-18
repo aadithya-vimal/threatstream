@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Navigate, Routes, Route } from 'react-router-dom';
 import './App.css';
 import { AuthProvider } from './contexts/AuthContext';
+import { TenancyProvider } from './contexts/TenancyContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -15,8 +16,9 @@ import Dashboard from './pages/Dashboard';
 function App() {
   return (
     <AuthProvider>
-      <NotificationProvider>
-        <Router>
+      <TenancyProvider>
+        <NotificationProvider>
+          <Router>
           <div className="app-container">
           <Routes>
             {/* Public Views */}
@@ -33,8 +35,9 @@ function App() {
             <Route path="*" element={<Navigate to="/overview" replace />} />
           </Routes>
         </div>
-        </Router>
-      </NotificationProvider>
+          </Router>
+        </NotificationProvider>
+      </TenancyProvider>
     </AuthProvider>
   );
 }

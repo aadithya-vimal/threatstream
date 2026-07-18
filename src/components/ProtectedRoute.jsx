@@ -180,8 +180,8 @@ const TabBar = ({ active, onSelect }) => (
 /* ══════════════════════════════════════════════════════════════════════
    MAIN COMPONENT
 ══════════════════════════════════════════════════════════════════════ */
-export const ProtectedRoute = ({ children, requiredPermission }) => {
-  const { user, role, loading, login, signup, signInWithGoogle, resetPassword, hasPermission } = useAuth();
+export const ProtectedRoute = ({ children }) => {
+  const { user, loading, login, signup, signInWithGoogle, resetPassword } = useAuth();
 
   const [tab, setTab]           = useState('signin');
   const [email, setEmail]       = useState('');
@@ -207,7 +207,7 @@ export const ProtectedRoute = ({ children, requiredPermission }) => {
         backgroundColor: '#0a0c10',
         color: '#f9fafb',
       }}>
-        <LoadingState message="Authenticating secure operator session…" />
+        <LoadingState message="Authenticating session…" />
       </div>
     );
   }
@@ -424,59 +424,6 @@ export const ProtectedRoute = ({ children, requiredPermission }) => {
                   </button>
                 </form>
               )}
-            </div>
-          </Panel>
-        </div>
-      </div>
-    );
-  }
-
-  /* ── RBAC gate ── */
-  if (requiredPermission && !hasPermission(requiredPermission)) {
-    return (
-      <div style={{
-        height: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#0a0c10',
-        padding: '20px',
-      }}>
-        <div style={{ width: '100%', maxWidth: '460px' }}>
-          <Panel title="Access Denied">
-            <div style={{ textAlign: 'center', padding: '16px 0', display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
-              <div style={{
-                width: '56px', height: '56px', borderRadius: '50%',
-                backgroundColor: 'rgba(239,68,68,0.1)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '24px',
-              }}>🔒</div>
-              <div>
-                <p style={{ fontSize: '15px', fontWeight: 700, color: '#f9fafb', marginBottom: '6px' }}>
-                  Insufficient Permissions
-                </p>
-                <p style={{ fontSize: '12px', color: '#9ca3af', lineHeight: 1.6 }}>
-                  Your role (<strong style={{ color: '#f9fafb' }}>{role}</strong>) does not have the
-                  &nbsp;<code style={{ color: '#60a5fa', background: 'rgba(96,165,250,0.1)', padding: '1px 5px', borderRadius: '4px' }}>{requiredPermission}</code>
-                &nbsp;permission. Contact your platform administrator.
-                </p>
-              </div>
-              <button
-                onClick={() => window.location.href = '/dashboard'}
-                style={{
-                  backgroundColor: '#1e2535',
-                  border: '1px solid #262e3d',
-                  color: '#f9fafb',
-                  padding: '9px 20px',
-                  borderRadius: '8px',
-                  fontWeight: 600,
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  fontFamily: 'Inter, system-ui, sans-serif',
-                }}
-              >
-                Return to Dashboard
-              </button>
             </div>
           </Panel>
         </div>
