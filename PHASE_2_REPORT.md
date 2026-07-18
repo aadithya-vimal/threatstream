@@ -16,7 +16,7 @@ Phase 2 code now uses managed Neon Auth for identity, FastAPI for authorization,
 
 ## Validation
 
-- Backend tests: 18 passing.
+- Backend tests: 19 passing.
 - Frontend tests: 7 passing.
 - Frontend production build: passing.
 - Alembic offline PostgreSQL SQL rendering: passing.

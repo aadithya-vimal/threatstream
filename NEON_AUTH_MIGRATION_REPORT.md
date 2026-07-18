@@ -7,7 +7,7 @@ Report date: 2026-07-18
 | Item | Result |
 |---|---|
 | Starting commit | `e7bf8a3` |
-| Implementation ending commit | `a8c8909` |
+| Implementation ending commit | `6255ae0` |
 | Branch | `main` |
 | Phase | Phase 2 operationalization only; Phase 3 not started |
 | Neon Auth package | `@neondatabase/auth` `0.4.2-beta` |
@@ -58,9 +58,10 @@ All real values must be configured locally and must refer to the same intended N
 | Gate | Result |
 |---|---|
 | Python compilation | Passed |
-| Backend deterministic tests | 18 passed |
+| Backend deterministic tests | 19 passed |
 | Frontend deterministic tests | 7 passed |
 | Frontend production build | Passed |
+| Clean `npm ci` install | Passed, with upstream Neon Auth peer/deprecation warnings |
 | Production dependency audit | Blocked: current official Neon Auth betas pin vulnerable Better Auth versions |
 | Alembic offline PostgreSQL rendering | Passed |
 | Neon Auth invalid signature, issuer, audience, expiry, subject, algorithm, unknown-key, timeout | Passed |
