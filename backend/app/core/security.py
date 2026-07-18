@@ -1,37 +1,47 @@
+from dataclasses import dataclass
+from typing import Any
+from uuid import UUID
+
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import jwt, JWTError
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError, jwt
+
 from app.core.config import settings
 
-security_scheme = HTTPBearer()
+security_scheme = HTTPBearer(auto_error=False)
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security_scheme)) -> dict:
-    """
-    Validates the Supabase JWT token passed in the Authorization header.
-    Returns the user claims dict if valid, otherwise raises 401.
-    """
-    token = credentials.credentials
+
+@dataclass(frozen=True)
+class AuthenticatedUser:
+    id: UUID
+    email: str | None
+    token: str
+    claims: dict[str, Any]
+
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security_scheme),
+) -> AuthenticatedUser:
+    if credentials is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
+    if not settings.SUPABASE_JWT_SECRET:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Authentication is not configured")
+
     try:
-        # Supabase JWTs use standard HS256 signature
         payload = jwt.decode(
-            token,
+            credentials.credentials,
             settings.SUPABASE_JWT_SECRET,
             algorithms=["HS256"],
-            options={"verify_aud": False} # Supabase might set aud to "authenticated"
+            audience=settings.SUPABASE_JWT_AUDIENCE,
+            issuer=settings.supabase_jwt_issuer,
         )
-        user_id = payload.get("sub")
-        if not user_id:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token claims: sub missing"
-            )
-        return {
-            "id": user_id,
-            "email": payload.get("email"),
-            "role": payload.get("role", "authenticated")
-        }
-    except JWTError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Could not validate credentials: {str(e)}"
-        )
+        user_id = UUID(payload["sub"])
+    except (JWTError, KeyError, TypeError, ValueError):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired access token")
+
+    return AuthenticatedUser(
+        id=user_id,
+        email=payload.get("email"),
+        token=credentials.credentials,
+        claims=payload,
+    )

@@ -1,66 +1,97 @@
 import logging
-from datetime import datetime
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from .core.config import settings
-from .api.endpoints import jobs, malware, plugins, scheduler, telemetry
-from .workers.job_worker import worker_manager
-from .scheduler.task_scheduler import task_scheduler
+from datetime import UTC, datetime
+from uuid import UUID, uuid4
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
+import httpx
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
+from app.api.routes import tenancy
+from app.core.config import settings
+from app.core.errors import UpstreamServiceError
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("threatstream.api")
 
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json"
-)
+app = FastAPI(title=settings.PROJECT_NAME, openapi_url=f"{settings.API_V1_STR}/openapi.json")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_allow_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Correlation-ID", "X-Workspace-ID"],
 )
 
-# Include API endpoints
-app.include_router(jobs.router, prefix=f"{settings.API_V1_STR}/jobs", tags=["Jobs Queue"])
-app.include_router(malware.router, prefix=f"{settings.API_V1_STR}/malware", tags=["Malware Analysis"])
-app.include_router(plugins.router, prefix=f"{settings.API_V1_STR}/plugins", tags=["Plugins Marketplace"])
-app.include_router(scheduler.router, prefix=f"{settings.API_V1_STR}/scheduler", tags=["Scheduler Task List"])
-app.include_router(telemetry.router, prefix=f"{settings.API_V1_STR}/telemetry", tags=["Endpoint Telemetry"])
 
-@app.on_event("startup")
-async def startup_event():
-    logger.info("Initializing ThreatStream backend server...")
+@app.middleware("http")
+async def correlation_middleware(request: Request, call_next):
+    supplied = request.headers.get("X-Correlation-ID")
+    try:
+        correlation_id = UUID(supplied) if supplied else uuid4()
+    except ValueError:
+        correlation_id = uuid4()
+    request.state.correlation_id = correlation_id
+    response = await call_next(request)
+    response.headers["X-Correlation-ID"] = str(correlation_id)
+    return response
 
-    if settings.ENABLE_BACKGROUND_TASKS:
-        # Background workers belong in a dedicated process in production.
-        await worker_manager.start()
-        await task_scheduler.start()
-    else:
-        logger.info("Background task loops are disabled for this API process.")
-    
-    logger.info("All platform backend engines started successfully")
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    logger.info("Shutting down ThreatStream backend server...")
+def error_response(request: Request, status_code: int, code: str, message: str) -> JSONResponse:
+    correlation_id = str(getattr(request.state, "correlation_id", uuid4()))
+    return JSONResponse(
+        status_code=status_code,
+        content={"error": {"code": code, "message": message, "correlation_id": correlation_id}},
+        headers={"X-Correlation-ID": correlation_id},
+    )
 
-    if settings.ENABLE_BACKGROUND_TASKS:
-        worker_manager.stop()
-        await task_scheduler.shutdown()
-    
-    logger.info("All platform backend engines shut down cleanly")
 
-@app.get("/health", tags=["Health Checker"])
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    code = "permission_denied" if exc.status_code == 403 else "request_failed"
+    if exc.status_code == 401:
+        code = "authentication_required"
+    return error_response(request, exc.status_code, code, str(exc.detail))
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return error_response(request, 422, "validation_failed", "Request validation failed")
+
+
+@app.exception_handler(UpstreamServiceError)
+async def upstream_exception_handler(request: Request, exc: UpstreamServiceError):
+    return error_response(request, exc.status_code, exc.code, exc.message)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled API error", extra={"correlation_id": str(getattr(request.state, "correlation_id", "unknown"))})
+    return error_response(request, 500, "internal_error", "An unexpected error occurred")
+
+
+app.include_router(tenancy.router, prefix=f"{settings.API_V1_STR}/tenancy", tags=["Tenancy"])
+
+
+@app.get("/health", tags=["Health"])
 async def health_check():
-    return {
-        "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
-        "active_jobs": len(worker_manager.active_jobs)
-    }
+    return {"status": "ok", "scope": "liveness", "service": "api", "timestamp": datetime.now(UTC).isoformat()}
+
+
+@app.get("/ready", tags=["Health"])
+async def readiness_check():
+    if not settings.SUPABASE_URL or not settings.SUPABASE_ANON_KEY:
+        return JSONResponse(status_code=503, content={"status": "unavailable", "database": "not_configured"})
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            response = await client.get(
+                f"{settings.SUPABASE_URL.rstrip('/')}/rest/v1/",
+                headers={"apikey": settings.SUPABASE_ANON_KEY},
+            )
+        database_status = "reachable" if response.status_code < 500 else "unavailable"
+    except httpx.RequestError:
+        database_status = "unavailable"
+    status_code = 200 if database_status == "reachable" else 503
+    return JSONResponse(status_code=status_code, content={"status": "ready" if status_code == 200 else "unavailable", "database": database_status})
