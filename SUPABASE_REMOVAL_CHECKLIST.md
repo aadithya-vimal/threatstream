@@ -22,7 +22,7 @@ Baseline: `main` at `2020dc2`, synchronized with `origin/main`. `repomix-output.
 ## Required disposition
 
 - Replace active persistence with SQLAlchemy async sessions and Alembic.
-- Replace identity authentication with Clerk JWT verification and local identity mapping.
+- Replace identity authentication with hosted Neon Auth JWT verification and local identity mapping.
 - Keep authorization, tenancy, audit, and credentials application-owned.
 - Remove inactive direct-database modules rather than preserving a compatibility layer.
 - Remove the active top-level provider migration/configuration system after canonical schema extraction.

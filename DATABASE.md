@@ -21,6 +21,8 @@ The API normalizes `postgres://` and `postgresql://` into the SQLAlchemy `postgr
 | Teams | `teams`, `team_members` |
 | Security operations | `audit_events`, `integration_credentials` |
 
+Managed Neon Auth stores authentication records in the separate `neon_auth` schema. SQLAlchemy domain models do not map those tables, and Alembic autogeneration includes only the default/`public` ThreatStream schema. Never create, alter, or drop `neon_auth` objects in a ThreatStream revision.
+
 Audit events are append-only through a database trigger. Integration secrets are AES-256-GCM ciphertext; encryption keys remain outside PostgreSQL.
 
 ## Alembic
@@ -33,6 +35,8 @@ python -m alembic upgrade head
 python -m alembic current
 python -m alembic history
 ```
+
+Canonical Phase 2 revision: `20260718_0001`.
 
 Do not use application startup to create tables. Downgrading the initial migration destroys Phase 2 data and must only be performed against a confirmed disposable database.
 

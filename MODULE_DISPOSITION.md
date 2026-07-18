@@ -3,7 +3,7 @@
 ## Active
 
 - React public pages and authenticated overview.
-- Clerk-backed authentication context.
+- Neon Auth-backed authentication context and provider-neutral FastAPI principal.
 - Tenant context, workspace selection, and onboarding.
 - FastAPI tenancy routes, authorization dependencies, and error envelopes.
 - SQLAlchemy database foundation, models, repositories, and Alembic migrations.
