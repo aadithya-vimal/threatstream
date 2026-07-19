@@ -2,125 +2,19 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Icon } from './Icons';
 
-export const Sidebar = ({ collapsed = false, onToggle }) => {
-  const location = useLocation();
-
-  const navigationItems = [
-    { name: 'Overview', path: '/overview', icon: 'dashboard' },
-  ];
-
-  return (
-    <aside 
-      style={{
-        width: collapsed ? '64px' : '240px',
-        backgroundColor: 'var(--bg-secondary)',
-        borderRight: '1px solid var(--border-color)',
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        transition: 'width var(--transition-normal) ease',
-        flexShrink: 0,
-        zIndex: 40,
-        position: 'relative'
-      }}
-    >
-      {/* Top Brand Area */}
-      <div 
-        style={{ 
-          height: '60px', 
-          display: 'flex', 
-          alignItems: 'center', 
-          padding: collapsed ? '0' : '0 20px', 
-          justifyContent: collapsed ? 'center' : 'space-between',
-          borderBottom: '1px solid var(--border-color)'
-        }}
-      >
-        {!collapsed && (
-          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
-            <img src="/logo.svg" alt="ThreatStream Logo" style={{ width: '28px', height: '28px' }} />
-            <span style={{ fontWeight: 700, fontSize: '16px', color: 'var(--color-blue)', letterSpacing: '0.5px' }}>
-              THREAT<span style={{ color: 'var(--text-primary)' }}>STREAM</span>
-            </span>
-          </Link>
-        )}
-        {collapsed && (
-          <Link to="/">
-            <img src="/logo.svg" alt="ThreatStream Logo" style={{ width: '28px', height: '28px' }} />
-          </Link>
-        )}
-      </div>
-
-      {/* Only completed product surfaces belong in active navigation. */}
-      <nav style={{ flex: 1, padding: '16px 8px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        {navigationItems.map((item) => {
-          const isActive = location.pathname === item.path;
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              title={collapsed ? item.name : undefined}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '10px 12px',
-                borderRadius: '6px',
-                color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
-                backgroundColor: isActive ? 'var(--panel-bg)' : 'transparent',
-                textDecoration: 'none',
-                fontSize: '13px',
-                fontWeight: isActive ? 600 : 500,
-                borderLeft: isActive ? '3px solid var(--color-blue)' : '3px solid transparent',
-                transition: 'all var(--transition-fast) ease',
-              }}
-              className={isActive ? '' : 'sidebar-item-hover'}
-            >
-              <span style={{ color: isActive ? 'var(--color-blue)' : 'inherit', display: 'flex', alignItems: 'center' }}>
-                <Icon name={item.icon} size={18} />
-              </span>
-              {!collapsed && <span>{item.name}</span>}
-            </Link>
-          );
-        })}
-      </nav>
-
-      {!collapsed && (
-        <div style={{ margin: '0 16px 16px', padding: '12px', border: '1px solid var(--border-color)', borderRadius: '6px', backgroundColor: 'var(--bg-primary)' }}>
-          <div style={{ color: 'var(--text-primary)', fontSize: '11px', fontWeight: 700, marginBottom: '6px' }}>Repository and runtime correlation</div>
-          <div style={{ color: 'var(--text-muted)', fontSize: '10px', lineHeight: 1.5 }}>Modules appear here only after their persisted workflow and authorization controls are implemented.</div>
-        </div>
-      )}
-
-      {/* Toggle button at the bottom */}
-      <div 
-        style={{ 
-          padding: '12px', 
-          borderTop: '1px solid var(--border-color)', 
-          display: 'flex', 
-          justifyContent: collapsed ? 'center' : 'flex-end' 
-        }}
-      >
-        <button
-          onClick={onToggle}
-          style={{
-            backgroundColor: 'var(--panel-bg)',
-            border: '1px solid var(--border-color)',
-            color: 'var(--text-secondary)',
-            borderRadius: '4px',
-            padding: '6px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'all var(--transition-fast) ease'
-          }}
-          className="btn-icon-hover"
-        >
-          <Icon name={collapsed ? 'chevronRight' : 'chevronLeft'} size={14} />
-        </button>
-      </div>
-    </aside>
-  );
+const groups = [
+  { label: 'Operations', items: [{ name: 'Overview', path: '/overview', icon: 'dashboard' }, { name: 'Audit log', path: '/audit', icon: 'activity' }] },
+  { label: 'Workspace', items: [{ name: 'Teams', path: '/workspace/teams', icon: 'administration' }, { name: 'Integrations', path: '/settings/integrations', icon: 'settings2' }] }
+];
+export const Sidebar = ({ collapsed = false, mobileOpen = false, onToggle, onNavigate }) => {
+  const { pathname } = useLocation();
+  return <aside aria-label="Primary navigation" className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
+    <div className="sidebar__brand"><Link to="/" className="brand" onClick={onNavigate}><img src="/logo.svg" alt="" /><span hidden={collapsed}>THREAT<em>STREAM</em></span></Link></div>
+    <nav className="sidebar__nav">{groups.map(group => <React.Fragment key={group.label}>
+      {!collapsed && <div className="sidebar__label">{group.label}</div>}
+      {group.items.map(item => <Link key={item.path} to={item.path} onClick={onNavigate} title={collapsed ? item.name : undefined} className={`nav-item ${pathname === item.path ? 'active' : ''}`}><Icon name={item.icon} size={18} />{!collapsed && <span>{item.name}</span>}</Link>)}
+    </React.Fragment>)}</nav>
+    <div className="sidebar__footer"><button type="button" className="btn btn-secondary sidebar__toggle" onClick={onToggle} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}><Icon name={collapsed ? 'chevronRight' : 'chevronLeft'} size={15} />{!collapsed && 'Collapse'}</button></div>
+  </aside>;
 };
-
 export default Sidebar;
