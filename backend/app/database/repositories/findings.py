@@ -4,7 +4,7 @@ from uuid import UUID
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import AuditEvent, Finding, FindingActivity, FindingComment, FindingEvidence, User, Workspace, WorkspaceMember
+from app.database.models import Asset, AuditEvent, Finding, FindingActivity, FindingComment, FindingEvidence, User, Workspace, WorkspaceMember
 
 
 class FindingsRepository:
@@ -14,11 +14,12 @@ class FindingsRepository:
     async def workspace_organization_id(self, workspace_id: UUID) -> UUID | None:
         return await self.session.scalar(select(Workspace.organization_id).where(Workspace.id == workspace_id))
 
-    async def list_findings(self, workspace_id: UUID, *, page: int, page_size: int, statuses: list[str], severities: list[str], assignee_user_id: UUID | None, search: str | None, sort: str, direction: str) -> tuple[list[tuple[Finding, User | None]], int]:
+    async def list_findings(self, workspace_id: UUID, *, page: int, page_size: int, statuses: list[str], severities: list[str], assignee_user_id: UUID | None, asset_id: UUID | None, search: str | None, sort: str, direction: str) -> tuple[list[tuple[Finding, User | None, Asset | None]], int]:
         conditions = [Finding.workspace_id == workspace_id]
         if statuses: conditions.append(Finding.status.in_(statuses))
         if severities: conditions.append(Finding.severity.in_(severities))
         if assignee_user_id: conditions.append(Finding.assignee_user_id == assignee_user_id)
+        if asset_id: conditions.append(Finding.asset_id == asset_id)
         if search:
             pattern = f"%{search.strip()}%"
             conditions.append(or_(Finding.title.ilike(pattern), Finding.description.ilike(pattern), Finding.source.ilike(pattern), Finding.external_id.ilike(pattern)))
@@ -27,7 +28,7 @@ class FindingsRepository:
         order = sort_columns[sort]
         order = order.asc() if direction == "asc" else order.desc()
         total = int(await self.session.scalar(select(func.count()).select_from(Finding).where(*conditions)) or 0)
-        rows = await self.session.execute(select(Finding, User).outerjoin(User, User.id == Finding.assignee_user_id).where(*conditions).order_by(order, Finding.id.asc()).offset((page - 1) * page_size).limit(page_size))
+        rows = await self.session.execute(select(Finding, User, Asset).outerjoin(User, User.id == Finding.assignee_user_id).outerjoin(Asset, Asset.id == Finding.asset_id).where(*conditions).order_by(order, Finding.id.asc()).offset((page - 1) * page_size).limit(page_size))
         return list(rows.all()), total
 
     async def get_finding(self, workspace_id: UUID, finding_id: UUID, *, for_update: bool = False) -> Finding | None:
@@ -36,6 +37,9 @@ class FindingsRepository:
 
     async def get_assignee(self, workspace_id: UUID, user_id: UUID) -> User | None:
         return await self.session.scalar(select(User).join(WorkspaceMember, WorkspaceMember.user_id == User.id).where(WorkspaceMember.workspace_id == workspace_id, WorkspaceMember.user_id == user_id, WorkspaceMember.status == "active", User.status == "active"))
+
+    async def get_asset(self, workspace_id: UUID, asset_id: UUID) -> Asset | None:
+        return await self.session.scalar(select(Asset).where(Asset.workspace_id == workspace_id, Asset.id == asset_id))
 
     async def list_assignees(self, workspace_id: UUID) -> list[User]:
         return list((await self.session.scalars(select(User).join(WorkspaceMember, WorkspaceMember.user_id == User.id).where(WorkspaceMember.workspace_id == workspace_id, WorkspaceMember.status == "active", User.status == "active").order_by(User.display_name, User.email, User.id))).all())

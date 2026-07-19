@@ -25,12 +25,16 @@ def assignee_dict(user) -> dict | None:
     return {"id": user.id, "email": user.email, "display_name": user.display_name} if user else None
 
 
-def finding_dict(finding, assignee=None) -> dict[str, Any]:
+def asset_dict(asset) -> dict | None:
+    return {"id": asset.id, "name": asset.name, "asset_type": asset.asset_type, "canonical_identifier": asset.canonical_identifier, "is_active": asset.is_active} if asset else None
+
+
+def finding_dict(finding, assignee=None, asset=None) -> dict[str, Any]:
     return {
         "id": finding.id, "workspace_id": finding.workspace_id, "title": finding.title,
         "description": finding.description, "severity": finding.severity, "status": finding.status,
         "source": finding.source, "external_id": finding.external_id, "remediation": finding.remediation,
-        "resolution_summary": finding.resolution_summary, "assignee": assignee_dict(assignee),
+        "resolution_summary": finding.resolution_summary, "assignee": assignee_dict(assignee), "asset": asset_dict(asset),
         "version": finding.version, "created_at": finding.created_at, "updated_at": finding.updated_at,
         "acknowledged_at": finding.acknowledged_at, "started_at": finding.started_at,
         "resolved_at": finding.resolved_at, "closed_at": finding.closed_at, "reopened_at": finding.reopened_at,
@@ -62,7 +66,7 @@ class FindingsService:
 
     async def list(self, workspace_id: UUID, **filters) -> FindingPage:
         rows, total = await self.repository.list_findings(workspace_id, **filters)
-        return FindingPage.create([finding_dict(finding, assignee) for finding, assignee in rows], filters["page"], filters["page_size"], total)
+        return FindingPage.create([finding_dict(finding, assignee, asset) for finding, assignee, asset in rows], filters["page"], filters["page_size"], total)
 
     async def assignees(self, workspace_id: UUID) -> list[dict]:
         return [assignee_dict(user) for user in await self.repository.list_assignees(workspace_id)]
@@ -71,7 +75,9 @@ class FindingsService:
         finding = await self.repository.get_finding(workspace_id, finding_id)
         if finding is None: raise self._missing()
         assignee = await self.repository.get_assignee(workspace_id, finding.assignee_user_id) if finding.assignee_user_id else None
-        result = finding_dict(finding, assignee)
+        asset_id = getattr(finding, "asset_id", None)
+        asset = await self.repository.get_asset(workspace_id, asset_id) if asset_id else None
+        result = finding_dict(finding, assignee, asset)
         result["evidence"] = [{"id": row.id, "kind": row.kind, "title": row.title, "content": row.content, "created_by": row.created_by, "created_at": row.created_at} for row in await self.repository.evidence(finding.id)]
         result["comments"] = [{"id": row.id, "body": row.body, "created_by": row.created_by, "author_email": author.email if author else None, "author_name": author.display_name if author else None, "created_at": row.created_at} for row, author in await self.repository.comments(finding.id)]
         result["activity"] = [{"id": row.id, "action": row.action, "from_status": row.from_status, "to_status": row.to_status, "changes": row.changes or {}, "actor_email": actor.email if actor else None, "actor_name": actor.display_name if actor else None, "created_at": row.created_at} for row, actor in await self.repository.activity(finding.id)]
@@ -83,18 +89,21 @@ class FindingsService:
                 organization_id = await self.repository.workspace_organization_id(workspace_id)
                 if organization_id is None: raise HTTPException(status_code=404, detail="Workspace not found")
                 assignee = await self._validate_assignee(workspace_id, payload.assignee_user_id)
+                asset = await self.repository.get_asset(workspace_id, payload.asset_id) if payload.asset_id else None
+                if payload.asset_id and asset is None: raise HTTPException(status_code=422, detail="Asset must belong to the finding workspace")
                 finding = await self.repository.create_finding(
                     organization_id=organization_id, workspace_id=workspace_id, title=payload.title,
                     description=payload.description, severity=payload.severity.value, source=payload.source,
                     external_id=payload.external_id or None, remediation=payload.remediation or None,
-                    assignee_user_id=payload.assignee_user_id, created_by=self.user.user_id, updated_by=self.user.user_id,
+                    assignee_user_id=payload.assignee_user_id, asset_id=payload.asset_id, created_by=self.user.user_id, updated_by=self.user.user_id,
                 )
                 summary = {"severity": finding.severity, "status": finding.status, "source": finding.source}
                 await self.repository.add_activity(finding, self.user.user_id, "finding.created", changes=summary)
                 await self.repository.add_audit(finding, self.user.user_id, "finding.created", after_summary=summary)
+                if asset: await self.repository.add_audit(finding, self.user.user_id, "finding.asset_assigned", after_summary={"asset_id": str(asset.id), "asset_type": asset.asset_type})
         except IntegrityError as exc:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A finding with this source and external ID already exists in the workspace") from exc
-        return finding_dict(finding, assignee)
+        return finding_dict(finding, assignee, asset)
 
     async def update(self, workspace_id: UUID, finding_id: UUID, payload: FindingUpdate) -> dict:
         async with self.session.begin():
@@ -107,6 +116,12 @@ class FindingsService:
                 assignee = await self._validate_assignee(workspace_id, payload.assignee_user_id)
             elif finding.assignee_user_id:
                 assignee = await self.repository.get_assignee(workspace_id, finding.assignee_user_id)
+            asset = None
+            if "asset_id" in fields:
+                asset = await self.repository.get_asset(workspace_id, payload.asset_id) if payload.asset_id else None
+                if payload.asset_id and asset is None: raise HTTPException(status_code=422, detail="Asset must belong to the finding workspace")
+            elif getattr(finding, "asset_id", None):
+                asset = await self.repository.get_asset(workspace_id, finding.asset_id)
             before, changes = {}, {}
             for field in fields:
                 value = getattr(payload, field)
@@ -117,14 +132,18 @@ class FindingsService:
                     changes[field] = str(value) if isinstance(value, UUID) else value
                     setattr(finding, field, value or None if field in {"remediation", "resolution_summary"} else value)
             if not changes:
-                return finding_dict(finding, assignee)
-            safe_fields = {"severity", "assignee_user_id"}
+                return finding_dict(finding, assignee, asset)
+            safe_fields = {"severity", "assignee_user_id", "asset_id"}
             safe_before = {field: value if field in safe_fields else {"changed": True} for field, value in before.items()}
             safe_changes = {field: value if field in safe_fields else {"changed": True} for field, value in changes.items()}
             self.repository.touch(finding, self.user.user_id)
             await self.repository.add_activity(finding, self.user.user_id, "finding.updated", changes=safe_changes)
             await self.repository.add_audit(finding, self.user.user_id, "finding.updated", before_summary=safe_before, after_summary=safe_changes, metadata={"changed_fields": sorted(changes)})
-        return finding_dict(finding, assignee)
+            if "asset_id" in changes:
+                action="finding.asset_assigned" if payload.asset_id else "finding.asset_removed"
+                await self.repository.add_audit(finding,self.user.user_id,action,before_summary={"asset_id":before.get("asset_id")},after_summary={"asset_id":changes.get("asset_id")})
+                await self.repository.add_activity(finding,self.user.user_id,action,changes={"asset_id":changes.get("asset_id")})
+        return finding_dict(finding, assignee, asset)
 
     async def transition(self, workspace_id: UUID, finding_id: UUID, payload: FindingTransition) -> dict:
         async with self.session.begin():
@@ -149,7 +168,9 @@ class FindingsService:
             await self.repository.add_activity(finding, self.user.user_id, "finding.status_changed", from_status=previous, to_status=next_status, changes=changes)
             await self.repository.add_audit(finding, self.user.user_id, "finding.status_changed", before_summary={"status": previous}, after_summary={"status": next_status}, metadata={"has_note": bool(payload.note)})
             assignee = await self.repository.get_assignee(workspace_id, finding.assignee_user_id) if finding.assignee_user_id else None
-        return finding_dict(finding, assignee)
+            asset_id = getattr(finding, "asset_id", None)
+            asset = await self.repository.get_asset(workspace_id, asset_id) if asset_id else None
+        return finding_dict(finding, assignee, asset)
 
     async def add_comment(self, workspace_id: UUID, finding_id: UUID, payload: CommentCreate) -> dict:
         async with self.session.begin():

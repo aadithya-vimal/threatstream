@@ -4,6 +4,7 @@ from math import ceil
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from app.domains.assets.schemas import AssetCompact
 
 
 class FindingStatus(str, Enum):
@@ -38,6 +39,7 @@ class FindingCreate(BaseModel):
     external_id: str | None = Field(default=None, max_length=240)
     remediation: str | None = Field(default=None, max_length=20000)
     assignee_user_id: UUID | None = None
+    asset_id: UUID | None = None
 
     @field_validator("title", "description", "source", "external_id", "remediation")
     @classmethod
@@ -54,6 +56,7 @@ class FindingUpdate(BaseModel):
     remediation: str | None = Field(default=None, max_length=20000)
     resolution_summary: str | None = Field(default=None, max_length=10000)
     assignee_user_id: UUID | None = None
+    asset_id: UUID | None = None
 
     @field_validator("title", "description", "remediation", "resolution_summary")
     @classmethod
@@ -135,6 +138,7 @@ class FindingSummary(BaseModel):
     remediation: str | None = None
     resolution_summary: str | None = None
     assignee: AssigneeSummary | None = None
+    asset: AssetCompact | None = None
     version: int
     created_at: datetime
     updated_at: datetime

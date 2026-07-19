@@ -27,13 +27,14 @@ async def list_findings(
     finding_status: list[FindingStatus] | None = Query(default=None, alias="status"),
     severity: list[FindingSeverity] | None = Query(default=None),
     assignee_user_id: UUID | None = None, search: str | None = Query(default=None, max_length=200),
+    asset_id: UUID | None = None,
     sort: Literal["created_at", "updated_at", "title", "status", "severity"] = "updated_at",
     direction: Literal["asc", "desc"] = "desc",
 ):
     return await FindingsService(session, user).list(
         workspace_id, page=page, page_size=page_size,
         statuses=[value.value for value in finding_status or []],
-        severities=[value.value for value in severity or []], assignee_user_id=assignee_user_id,
+        severities=[value.value for value in severity or []], assignee_user_id=assignee_user_id, asset_id=asset_id,
         search=search, sort=sort, direction=direction,
     )
 
