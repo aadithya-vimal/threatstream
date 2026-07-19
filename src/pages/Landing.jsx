@@ -3,83 +3,23 @@ import { Link } from 'react-router-dom';
 import './Landing.css';
 
 const capabilities = [
-  {
-    title: 'Application context',
-    description: 'Organize repositories, components, builds, artifacts, deployments, endpoints, and owners around the software product they belong to.'
-  },
-  {
-    title: 'Scanner-neutral findings',
-    description: 'Normalize security results into one evidence-backed lifecycle instead of making teams work scanner by scanner.'
-  },
-  {
-    title: 'Code-to-runtime correlation',
-    description: 'Determine whether a finding reached an environment and whether related suspicious runtime activity was observed.'
-  },
-  {
-    title: 'Remediation verification',
-    description: 'Track the fix from source change through rescan, rebuild, redeployment, and final verification.'
-  }
+  ['01', 'Workspace boundaries', 'Keep operational security data scoped by organization, workspace, role, and explicit permission.'],
+  ['02', 'Encrypted integrations', 'Configure workspace-owned provider credentials without returning saved plaintext to the browser.'],
+  ['03', 'Traceable operations', 'Record safe, append-only audit events for sensitive workspace and credential changes.'],
+  ['04', 'Application context', 'Planned: connect repositories, findings, deployments, runtime evidence, and remediation around each application.']
 ];
-
-export const Landing = () => (
-  <div className="landing-page">
-    <header className="public-header">
-      <Link to="/" className="public-logo">
-        <img src="/logo.svg" alt="ThreatStream Logo" style={{ width: '28px', height: '28px' }} />
-        <span>THREAT<strong>STREAM</strong></span>
-      </Link>
-      <Link to="/overview" className="public-nav-btn">Open application</Link>
-    </header>
-
-    <main>
-      <section className="hero">
-        <div className="hero-content">
-          <div className="hero-badge">Open application security operations</div>
-          <h1 className="hero-title">Connect security findings to the <span>applications running them</span></h1>
-          <p className="hero-subtitle">
-            ThreatStream is being built as a self-hostable operating layer connecting repositories, scanner evidence, deployments, runtime events, ownership, remediation, and verification.
-          </p>
-          <div className="cta-group">
-            <Link to="/overview" className="cta-primary">View current platform</Link>
-            <a href="https://github.com/aadithya-vimal/threatstream" target="_blank" rel="noreferrer" className="cta-secondary">View repository</a>
-          </div>
-          <p style={{ color: 'var(--text-muted)', fontSize: '11px', marginTop: '18px' }}>
-            The repository is under active rearchitecture. Planned capabilities are not presented as available features.
-          </p>
-        </div>
-      </section>
-
-      <section className="features-section">
-        <div className="features-header">
-          <h2>The application is the security boundary</h2>
-          <p>Every finding, deployment, runtime event, owner, and remediation record must resolve to an application or be explicitly unassigned.</p>
-        </div>
-
-        <div className="features-grid">
-          {capabilities.map((capability) => (
-            <article className="feature-card" key={capability.title}>
-              <div className="feature-kicker">Target capability</div>
-              <h3 className="feature-title">{capability.title}</h3>
-              <p className="feature-description">{capability.description}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="product-statement">
-        <div>
-          <span className="product-statement-label">Product direction</span>
-          <h2>Repository and runtime correlation first.</h2>
-        </div>
-        <p>ThreatStream will integrate existing security engines. It will not pretend to be a SIEM, EDR, malware laboratory, or proprietary scanner.</p>
-      </section>
-    </main>
-
-    <footer className="landing-footer">
-      <p>ThreatStream — Application Security Operations</p>
-      <p><Link to="/terms" style={{ color: 'var(--color-blue)', textDecoration: 'none' }}>Terms and project notice</Link></p>
-    </footer>
-  </div>
-);
-
+export const Landing = () => <div className="landing-page ambient-page">
+  <header className="public-header"><Link to="/" className="brand"><img src="/logo.svg" alt="" />THREAT<em>STREAM</em></Link><nav aria-label="Public navigation"><a href="#capabilities">Platform</a><a href="#trust">Trust</a><Link to="/terms">Project notice</Link></nav><div className="public-actions"><Link className="btn btn-ghost" to="/auth/sign-in">Sign in</Link><Link className="btn btn-primary" to="/overview">Open workspace</Link></div></header>
+  <main>
+    <section className="hero">
+      <div className="hero__copy"><div className="hero__badge"><span /> Hosted application security operations</div><h1>Keep security work <span className="gradient-text">connected to the software.</span></h1><p>ThreatStream gives AppSec and DevSecOps teams a calm operational layer for workspace access, secure integrations, and traceable security workflows—without pretending planned capabilities are already live.</p><div className="hero__actions"><Link to="/overview" className="btn btn-primary">Enter ThreatStream <span aria-hidden="true">→</span></Link><a href="#capabilities" className="btn btn-secondary">Explore the platform</a></div><div className="hero__facts"><span><b>Web</b> available now</span><span><b>Desktop</b> future direction</span><span><b>Secrets</b> backend encrypted</span></div></div>
+      <div className="hero__visual" aria-label="ThreatStream application context visualization"><div className="signal-core"><img src="/logo.svg" alt="" /><strong>THREATSTREAM</strong><span>workspace control plane</span></div><div className="orbit orbit--one"><i /><i /><i /></div><div className="orbit orbit--two"><i /><i /></div><div className="signal-card signal-card--a"><span className="eyebrow">Identity</span><strong>Neon Auth</strong><small>Verified session</small></div><div className="signal-card signal-card--b"><span className="eyebrow">Boundary</span><strong>Workspace scope</strong><small>Explicit permissions</small></div><div className="signal-card signal-card--c"><span className="eyebrow">Credential</span><strong>Encrypted at rest</strong><small>Never returned</small></div></div>
+    </section>
+    <section className="capabilities" id="capabilities"><div className="section-intro"><span className="eyebrow">Operational foundation</span><h2>Built for controlled security work.</h2><p>The current hosted product focuses on trustworthy foundations. Broader application-security workflows remain clearly marked as planned.</p></div><div className="capability-grid">{capabilities.map(([number,title,description], index) => <article className={`capability-card ${index === 0 ? 'gradient-border' : ''}`} key={title}><span className="capability-card__number mono">{number}</span><h3>{title}</h3><p>{description}</p><span className={`badge ${index < 3 ? 'badge-success' : 'badge-muted'}`}>{index < 3 ? 'Available' : 'Planned'}</span></article>)}</div></section>
+    <section className="workflow-section"><div className="workflow-card panel gradient-border"><div><span className="eyebrow">Hosted web today</span><h2>Secure workspace operations from the browser.</h2><p>Manage tenant context, teams, audit history, and supported integration credentials through FastAPI. The browser never connects directly to the database.</p></div><div className="workflow-line"><span>Authenticate</span><i>→</i><span>Select workspace</span><i>→</i><span>Operate with permission</span><i>→</i><span>Audit safely</span></div></div><div className="future-card panel"><span className="eyebrow">Future desktop direction</span><h2>Deeper local DevSecOps capabilities.</h2><p>A later desktop product may add local filesystem and tooling access. No desktop packaging, local agent, or local scanning is implemented today.</p><span className="badge badge-warning">Coming later</span></div></section>
+    <section className="trust-section" id="trust"><div className="section-intro"><span className="eyebrow">Architecture and trust</span><h2>Clear boundaries. No synthetic telemetry.</h2></div><div className="trust-rail"><span>React</span><b>→</b><span>Neon Auth</span><b>→</b><span>FastAPI</span><b>→</b><span>SQLAlchemy async</span><b>→</b><span>Neon PostgreSQL</span></div></section>
+    <section className="final-cta"><span className="eyebrow">Ready when you are</span><h2>Bring order to the security workflow.</h2><p>Start with a protected workspace and connect only the providers your team authorizes.</p><Link className="btn btn-primary" to="/overview">Open the application</Link></section>
+  </main>
+  <footer className="landing-footer"><Link to="/" className="brand"><img src="/logo.svg" alt="" />THREAT<em>STREAM</em></Link><p>Application Security Operations · Active development</p><Link to="/terms">Terms and project notice</Link></footer>
+</div>;
 export default Landing;

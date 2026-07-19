@@ -6,10 +6,7 @@ export const Terms = () => (
   <div className="terms-page">
     <div className="terms-container">
       <div style={{ marginBottom: '24px' }}>
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', color: 'var(--color-blue)', fontWeight: 600, fontSize: '13px' }}>
-          <img src="/logo.svg" alt="ThreatStream Logo" style={{ width: '20px', height: '20px' }} />
-          <span>THREAT<strong>STREAM</strong></span>
-        </Link>
+        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', color: 'var(--color-blue)', fontWeight: 600, fontSize: '13px' }}><img src="/logo.svg" alt="ThreatStream Logo" style={{ width: '20px', height: '20px' }} /><span>THREAT<strong>STREAM</strong></span></Link>
       </div>
 
       <h1 className="terms-title">Project Notice</h1>

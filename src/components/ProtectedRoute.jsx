@@ -1,32 +1,12 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import LoadingState from './LoadingState';
-import Panel from './Panel';
+import { Link } from 'react-router-dom';
 
 export const ProtectedRoute = ({ children }) => {
   const { user, loading, login, signup } = useAuth();
-
-  if (loading) {
-    return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: '#0a0c10' }}><LoadingState message="Authenticating session…" /></div>;
-  }
-  if (!user) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: '#0a0c10', padding: '24px' }}>
-        <div style={{ width: '100%', maxWidth: '420px' }}>
-          <Panel title="Sign in to ThreatStream">
-            <p style={{ color: 'var(--text-secondary)', fontSize: '13px', lineHeight: 1.6, marginBottom: '20px' }}>
-              Neon Auth securely handles sign-in, account creation, recovery, and connected identity providers. ThreatStream manages workspace authorization separately.
-            </p>
-            <div style={{ display: 'grid', gap: '10px' }}>
-              <button type="button" className="btn btn-primary" onClick={login}>Sign in</button>
-              <button type="button" className="btn btn-secondary" onClick={signup}>Create account</button>
-            </div>
-          </Panel>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <div className="ambient-page" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24 }}><LoadingState message="Authenticating session…" subtext="Confirming your identity before workspace access." /></div>;
+  if (!user) return <main className="ambient-page" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24 }}><section className="panel gradient-border" style={{ width: 'min(460px, 100%)' }}><div className="panel__body" style={{ padding: 30 }}><Link to="/" className="brand"><img src="/logo.svg" alt="" />THREAT<em>STREAM</em></Link><span className="eyebrow" style={{ display: 'block', marginTop: 30 }}>Protected workspace</span><h1 style={{ margin: '8px 0 10px', fontSize: 28 }}>Sign in to continue</h1><p style={{ color: 'var(--text-secondary)', margin: '0 0 22px' }}>Neon Auth verifies your identity. ThreatStream separately enforces workspace membership and permissions.</p><div style={{ display: 'grid', gap: 10 }}><button className="btn btn-primary" onClick={login}>Sign in</button><button className="btn btn-secondary" onClick={signup}>Create account</button></div></div></section></main>;
   return children;
 };
-
 export default ProtectedRoute;
