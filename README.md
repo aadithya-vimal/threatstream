@@ -23,7 +23,7 @@ ThreatStream Cloud uses branchable Neon Auth and Neon PostgreSQL. Neon Auth auth
 ## Local setup
 
 ```powershell
-Copy-Item .env.example backend\.env
+Copy-Item backend\.env.example backend\.env
 cd backend
 python -m pip install -r requirements.txt
 if (-not $env:DATABASE_URL) { throw "DATABASE_URL is not set" }

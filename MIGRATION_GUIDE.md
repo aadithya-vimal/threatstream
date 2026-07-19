@@ -4,17 +4,18 @@ The Phase 2 schema was never deployed to the previous hosted database, so no rec
 
 ## Required local configuration
 
-Set these without sharing values in chat:
+Copy `backend/.env.example` to `backend/.env`, then set backend values without sharing them in chat:
 
 ```powershell
 $env:DATABASE_URL="<pooled PostgreSQL URL>"
 $env:DATABASE_URL_DIRECT="<direct PostgreSQL URL>"
-$env:VITE_NEON_AUTH_URL="<branch Auth URL>"
 $env:NEON_AUTH_ISSUER="<branch issuer>"
 $env:NEON_AUTH_JWKS_URL="<branch JWKS URL>"
 # Set only when the real token contains the expected audience.
 $env:NEON_AUTH_AUDIENCE=""
 ```
+
+Set `VITE_NEON_AUTH_URL` only in the root frontend `.env`; FastAPI does not read any `VITE_*` variable.
 
 ## Validation sequence
 

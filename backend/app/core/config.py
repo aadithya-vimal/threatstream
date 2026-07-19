@@ -3,19 +3,17 @@ from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIRECTORY = Path(__file__).resolve().parents[2]
-REPOSITORY_DIRECTORY = BACKEND_DIRECTORY.parent
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=(REPOSITORY_DIRECTORY / ".env", BACKEND_DIRECTORY / ".env"),
+        env_file=BACKEND_DIRECTORY / ".env",
         env_file_encoding="utf-8",
         extra="ignore",
     )
 
     API_V1_STR: str = "/api/v1"
     PROJECT_NAME: str = "ThreatStream Application Security API"
-    ENABLE_BACKGROUND_TASKS: bool = False
     CORS_ALLOW_ORIGINS: str = ""
 
     DATABASE_URL: str = ""
@@ -33,25 +31,6 @@ class Settings(BaseSettings):
 
     CREDENTIAL_ENCRYPTION_KEY: str = ""
     CREDENTIAL_KEY_VERSION: int = 1
-
-    # IOC enrichment provider keys
-    VIRUSTOTAL_API_KEY: str = ""
-    HYBRIDANALYSIS_API_KEY: str = ""
-    ABUSEIPDB_API_KEY: str = ""
-    GREYNOISE_API_KEY: str = ""
-    SHODAN_API_KEY: str = ""
-    CENSYS_API_ID: str = ""
-    CENSYS_API_SECRET: str = ""
-    OTX_API_KEY: str = ""
-    MISP_URL: str = ""
-    MISP_API_KEY: str = ""
-    OPENCTI_URL: str = ""
-    OPENCTI_API_KEY: str = ""
-    ANYRUN_API_KEY: str = ""
-
-    # Worker configuration
-    MAX_CONCURRENT_JOBS: int = 5
-    JOB_POLL_INTERVAL_SECONDS: float = 2.0
 
     @property
     def cors_allow_origins(self) -> list[str]:

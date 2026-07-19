@@ -9,6 +9,8 @@
 5. Run `python -m alembic upgrade head` from `backend`.
 6. Run `python -m alembic current` and confirm `20260718_0001`.
 
+Store backend values in `backend/.env`, using `backend/.env.example` as the complete variable reference. The root `.env` is frontend-only.
+
 ```powershell
 if (-not $env:DATABASE_URL) { throw "DATABASE_URL is not set" }
 if (-not $env:DATABASE_URL_DIRECT) { throw "DATABASE_URL_DIRECT is not set" }
