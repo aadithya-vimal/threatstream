@@ -263,6 +263,50 @@ export const api = {
       method: "POST",
       workspaceId,
     }),
+  getScanWorkerStatus: (workspaceId) =>
+    apiFetch(`/workspaces/${workspaceId}/scan-worker/status`, { workspaceId }),
+  getScanSchedules: (workspaceId, filters = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "")
+        query.set(key, String(value));
+    });
+    return apiFetch(`/workspaces/${workspaceId}/scan-schedules?${query}`, {
+      workspaceId,
+    });
+  },
+  getScanSchedule: (workspaceId, scheduleId) =>
+    apiFetch(`/workspaces/${workspaceId}/scan-schedules/${scheduleId}`, {
+      workspaceId,
+    }),
+  createScanSchedule: (workspaceId, payload) =>
+    apiFetch(`/workspaces/${workspaceId}/scan-schedules`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+      workspaceId,
+    }),
+  updateScanSchedule: (workspaceId, scheduleId, payload) =>
+    apiFetch(`/workspaces/${workspaceId}/scan-schedules/${scheduleId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+      workspaceId,
+    }),
+  enableScanSchedule: (workspaceId, scheduleId, version) =>
+    apiFetch(`/workspaces/${workspaceId}/scan-schedules/${scheduleId}/enable`, {
+      method: "POST",
+      body: JSON.stringify({ version }),
+      workspaceId,
+    }),
+  disableScanSchedule: (workspaceId, scheduleId, version) =>
+    apiFetch(
+      `/workspaces/${workspaceId}/scan-schedules/${scheduleId}/disable`,
+      { method: "POST", body: JSON.stringify({ version }), workspaceId },
+    ),
+  deleteScanSchedule: (workspaceId, scheduleId) =>
+    apiFetch(`/workspaces/${workspaceId}/scan-schedules/${scheduleId}`, {
+      method: "DELETE",
+      workspaceId,
+    }),
   health: () => fetch(`${API_BASE}/health`).then((response) => response.json()),
   readiness: () =>
     fetch(`${API_BASE}/ready`).then((response) => response.json()),

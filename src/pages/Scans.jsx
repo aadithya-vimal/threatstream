@@ -16,12 +16,15 @@ export const Scans = () => {
     if (!currentWorkspace) return;
     setError(null);
     try {
-      const [defs, profiles, jobs, assets] = await Promise.all([
-        api.getScanners(currentWorkspace.id),
-        api.getScanProfiles(currentWorkspace.id),
-        api.getScanJobs(currentWorkspace.id, { page_size: 50 }),
-        api.getAssets(currentWorkspace.id, { page_size: 100, active: true }),
-      ]);
+      const [defs, profiles, jobs, assets, worker, schedules] =
+        await Promise.all([
+          api.getScanners(currentWorkspace.id),
+          api.getScanProfiles(currentWorkspace.id),
+          api.getScanJobs(currentWorkspace.id, { page_size: 50 }),
+          api.getAssets(currentWorkspace.id, { page_size: 100, active: true }),
+          api.getScanWorkerStatus(currentWorkspace.id),
+          api.getScanSchedules(currentWorkspace.id, { page_size: 10 }),
+        ]);
       const active = defs.find((d) => d.active);
       const health = active
         ? await api.getScannerHealth(currentWorkspace.id, active.scanner_type)
@@ -32,6 +35,8 @@ export const Scans = () => {
         jobs: jobs.items,
         assets: assets.items,
         health,
+        worker,
+        schedules: schedules.items,
       });
     } catch (e) {
       setError(e);
@@ -64,6 +69,9 @@ export const Scans = () => {
           <>
             <Link className="btn btn-secondary" to="/scans/profiles">
               Manage profiles
+            </Link>
+            <Link className="btn btn-secondary" to="/scans/schedules">
+              Schedules
             </Link>
             <button className="btn btn-secondary" onClick={load}>
               Refresh
@@ -103,8 +111,27 @@ export const Scans = () => {
             <Panel title="Live summary">
               <div className="data-list">
                 <div className="data-row">
-                  <span>Active jobs</span>
-                  <strong>{activeJobs.length}</strong>
+                  <span>Worker execution</span>
+                  <strong>{scanLabel(state.worker.status)}</strong>
+                </div>
+                <div className="data-row">
+                  <span>Queued / leased jobs</span>
+                  <strong>
+                    {state.worker.queued_job_count} /{" "}
+                    {state.worker.active_lease_count}
+                  </strong>
+                </div>
+                <div className="data-row">
+                  <span>Expired leases</span>
+                  <strong>{state.worker.expired_lease_count}</strong>
+                </div>
+                <div className="data-row">
+                  <span>Last heartbeat</span>
+                  <strong>
+                    {formatScanDate(
+                      state.worker.last_observed_worker_heartbeat,
+                    )}
+                  </strong>
                 </div>
                 <div className="data-row">
                   <span>Profiles</span>
@@ -133,6 +160,36 @@ export const Scans = () => {
               </div>
             </Panel>
           </div>
+          <Panel title="Upcoming scheduled scans" style={{ marginTop: 16 }}>
+            {state.schedules.length ? (
+              <div className="data-list">
+                {state.schedules.map((schedule) => (
+                  <Link
+                    className="data-row"
+                    style={{ textDecoration: "none" }}
+                    to={`/scans/schedules/${schedule.id}`}
+                    key={schedule.id}
+                  >
+                    <div>
+                      <h3>{schedule.name}</h3>
+                      <p>
+                        {schedule.profile_name} ·{" "}
+                        {formatScanDate(schedule.next_run_at)}
+                      </p>
+                    </div>
+                    <span className="badge">
+                      {scanLabel(schedule.last_outcome || "pending")}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                title="No upcoming schedules"
+                description="Create a schedule for an enabled profile."
+              />
+            )}
+          </Panel>
           <Panel title="Recent scan jobs" style={{ marginTop: 16 }}>
             {state.jobs.length ? (
               <div className="data-list">
@@ -149,6 +206,14 @@ export const Scans = () => {
                         {scanLabel(j.scanner_type)} · {j.processed_target_count}
                         /{j.target_count} targets
                       </p>
+                      {j.next_retry_at && (
+                        <p>Retry {formatScanDate(j.next_retry_at)}</p>
+                      )}
+                      {j.stalled && (
+                        <span className="badge badge-warning">
+                          Potentially stalled
+                        </span>
+                      )}
                     </div>
                     <div>
                       <span

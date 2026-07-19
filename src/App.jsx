@@ -27,6 +27,8 @@ const Scans = lazy(() => import("./pages/Scans"));
 const ScanProfiles = lazy(() => import("./pages/ScanProfiles"));
 const ScanProfileDetail = lazy(() => import("./pages/ScanProfileDetail"));
 const ScanJobDetail = lazy(() => import("./pages/ScanJobDetail"));
+const ScanSchedules = lazy(() => import("./pages/ScanSchedules"));
+const ScanScheduleDetail = lazy(() => import("./pages/ScanScheduleDetail"));
 
 function App() {
   return (
@@ -155,6 +157,22 @@ function App() {
                     element={
                       <ProtectedRoute>
                         <ScanJobDetail />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/scans/schedules"
+                    element={
+                      <ProtectedRoute>
+                        <ScanSchedules />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/scans/schedules/:scheduleId"
+                    element={
+                      <ProtectedRoute>
+                        <ScanScheduleDetail />
                       </ProtectedRoute>
                     }
                   />

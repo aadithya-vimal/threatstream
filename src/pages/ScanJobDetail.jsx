@@ -84,13 +84,44 @@ export const ScanJobDetail = () => {
                   {job.processed_target_count}/{job.target_count} targets ·{" "}
                   {job.raw_result_count} safe raw records
                 </p>
+                <p>
+                  Attempt {job.attempt_count}/{job.max_attempts} ·{" "}
+                  {scanLabel(job.origin)} origin
+                </p>
+                {job.schedule_id && (
+                  <Link to={`/scans/schedules/${job.schedule_id}`}>
+                    Open associated schedule
+                  </Link>
+                )}
+                {job.scheduled_for && (
+                  <p>Scheduled for {formatScanDate(job.scheduled_for)}</p>
+                )}
+                {job.next_retry_at && (
+                  <div className="notice notice-info">
+                    Retry scheduled for {formatScanDate(job.next_retry_at)}.
+                  </div>
+                )}
+                {job.stalled && (
+                  <div className="notice notice-error">
+                    The worker lease expired. Recovery will retry or fail this
+                    job according to its attempt policy.
+                  </div>
+                )}
+                {job.cancellation_requested_at && (
+                  <div className="notice notice-info">
+                    Cancellation requested. The worker will stop at the next
+                    safe boundary.
+                  </div>
+                )}
                 {job.failure_message && (
                   <div className="notice notice-error">
                     {job.failure_message}
                   </div>
                 )}
                 {canManageScans(currentWorkspace.role_key) &&
-                  ["queued", "claimed", "running"].includes(job.status) && (
+                  ["queued", "claimed", "running", "processing"].includes(
+                    job.status,
+                  ) && (
                     <button className="btn btn-danger" onClick={cancel}>
                       Cancel job
                     </button>
