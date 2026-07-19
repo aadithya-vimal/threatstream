@@ -8,7 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.routes import assets, findings, integrations, tenancy
+from app.api.routes import assets, findings, integrations, scans, tenancy
 from app.core.config import settings
 from app.core.errors import UpstreamServiceError
 from app.database.engine import database_is_ready, dispose_engine
@@ -84,6 +84,7 @@ app.include_router(tenancy.router, prefix=f"{settings.API_V1_STR}/tenancy", tags
 app.include_router(integrations.router, prefix=settings.API_V1_STR, tags=["Integrations"])
 app.include_router(findings.router, prefix=settings.API_V1_STR, tags=["Findings"])
 app.include_router(assets.router, prefix=settings.API_V1_STR, tags=["Assets"])
+app.include_router(scans.router, prefix=settings.API_V1_STR, tags=["Scans"])
 
 
 @app.get("/health", tags=["Health"])
