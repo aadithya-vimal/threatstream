@@ -30,6 +30,14 @@ React routes are loaded lazily inside one responsive protected shell. Neon Auth 
 
 The overview composes existing tenant-scoped integration, team, and audit reads. Team creation uses `team:manage`; audit reads use `audit:read`. Audit responses deliberately expose a narrow safe projection and exclude before/after summaries, ciphertext, nonces, request headers, and secret payloads.
 
+## Asset inventory boundary
+
+Assets are the canonical workspace-scoped inventory for domains, subdomains, IP addresses, URLs, repositories, cloud accounts, hosts, container images, Kubernetes clusters, and custom identifiers. Type-aware normalization produces a stable identifier and PostgreSQL enforces uniqueness across `workspace_id + asset_type + normalized_identifier`. Manual creation never silently merges duplicates.
+
+Durable tags use normalized workspace records and an association table. Asset mutations use positive optimistic versions and safe field-level audit summaries. `metadata_json` accepts bounded JSON objects with limited nesting; API projections recursively redact secret-like keys and the UI renders values as text rather than HTML. Findings hold an optional `asset_id` with `SET NULL` deletion behavior, while services validate the Asset and Finding share the authoritative workspace. Assets are normally deactivated instead of deleted.
+
+Reads require `asset:read`; creation and ordinary edits require `asset:write`; ownership and activation require `asset:manage`. Organization administrators retain their existing permission bypass.
+
 ## Runtime capability model
 
 Integration metadata declares `web_supported`, `desktop_supported`, `requires_local_agent`, and `test_connection`. Runtime mode currently defaults to `web`. This is metadata only: no Electron/Tauri packaging, filesystem access, local command execution, or local agent exists.

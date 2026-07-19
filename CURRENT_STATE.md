@@ -19,6 +19,8 @@ Audit date: 2026-07-19
 | VirusTotal credential test | Constrained HTTPS request, five-second timeout, normalized safe status |
 | Findings domain | Workspace-isolated CRUD, lifecycle validation, assignment, evidence, comments, activity, audit, filtering, pagination, sorting, search, and optimistic versions |
 | Findings experience | Live list, creation, detail, editing, transition, evidence, comment, activity, loading, empty, permission, conflict, and error states |
+| Asset Inventory domain | Workspace-isolated Assets, normalization, durable tags, metadata safety, ownership, classification, activation, audit, filtering, pagination, sorting, search, and optimistic versions |
+| Asset Inventory experience | Live list, creation, detail, editing, related Findings, metadata, loading, empty, permission, conflict, and error states |
 | Schema management | Alembic only |
 | Health and readiness | Process liveness plus PostgreSQL query |
 
@@ -28,6 +30,6 @@ Backend unit/API tests and frontend tests/build pass locally. The Alembic migrat
 
 ## Product boundary
 
-The hosted web product exposes tenant infrastructure, teams, safe audit history, credential settings, and a complete manual Findings workflow. Findings may carry scanner/source identifiers, but automated application, repository, and scan ingestion remains future work. VirusTotal is the only enabled third-party credential provider; its enrichment workflow remains deferred. Application, repository, scanning, deployment, and runtime domains remain later work. No archived SOC module is registered as an active route.
+The hosted web product exposes tenant infrastructure, teams, safe audit history, credential settings, canonical Asset Inventory, and a complete manual Findings workflow. Findings can reference Assets, but automated application and scanner ingestion remains future work. VirusTotal is the only enabled third-party credential provider; its enrichment workflow remains deferred. Application, scanning, deployment, and runtime domains remain later work. No archived SOC module is registered as an active route.
 
 The future desktop product will share core UI, API, auth, authorization, and credential contracts. Desktop packaging and privileged/local capabilities have not started.

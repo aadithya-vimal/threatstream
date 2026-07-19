@@ -21,7 +21,8 @@ ThreatStream Cloud uses branchable Neon Auth and Neon PostgreSQL. Neon Auth auth
 - The operational overview uses live workspace, team, integration, and audit APIs; unavailable data is represented as an empty, loading, permission, or error state rather than a synthetic metric.
 - Workspace → Teams supports real tenant-scoped listing and creation. Operations → Audit log exposes safe append-only events to roles with `audit:read`.
 - Operations → Findings provides live workspace-scoped creation, filtering, pagination, search, assignment, optimistic editing, validated status transitions, evidence, comments, activity, and audit logging.
-- The Findings domain is active; application/repository models and automated scanner ingestion remain future work.
+- Operations → Assets provides the canonical workspace inventory with type-aware identifier normalization, durable tags, ownership, criticality, environment, safe metadata, activation, and related Findings.
+- Findings can be assigned to an active or inactive Asset and filtered by Asset. Application models and automated scanner ingestion remain future work.
 - A clean Neon deployment and real Neon Auth lifecycle still require local branch configuration before Phase 2 can be declared operational.
 
 ## Local setup
@@ -74,4 +75,4 @@ See `API.md`, `ARCHITECTURE.md`, `DATABASE.md`, and `DEPLOYMENT.md` for operatio
 
 ## Experience architecture
 
-Public, authentication, and protected routes share the ThreatStream midnight design system documented in `DESIGN_SYSTEM.md`. The protected shell exposes only routes backed by current APIs: `/overview`, `/findings`, `/findings/new`, `/findings/:findingId`, `/workspace/teams`, `/audit`, and `/settings/integrations`. Archived SOC-style screens remain unregistered because their data and actions are not part of the active backend.
+Public, authentication, and protected routes share the ThreatStream midnight design system documented in `DESIGN_SYSTEM.md`. The protected shell exposes only routes backed by current APIs: `/overview`, `/assets`, `/assets/:assetId`, `/findings`, `/findings/new`, `/findings/:findingId`, `/workspace/teams`, `/audit`, and `/settings/integrations`. Archived SOC-style screens remain unregistered because their data and actions are not part of the active backend.

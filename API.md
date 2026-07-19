@@ -4,6 +4,21 @@ FastAPI serves interactive documentation at `/docs` and its OpenAPI document at 
 
 `GET /health` is a dependency-free liveness check. `GET /ready` verifies database reachability and returns `503` when PostgreSQL is unavailable or unconfigured.
 
+## Assets
+
+Asset reads require `asset:read`; creation and ordinary edits require `asset:write`; ownership and activation require `asset:manage`. Every query is constrained by the path workspace and a supplied `X-Workspace-ID` must match it.
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET, POST | `/api/v1/workspaces/{workspace_id}/assets` | Filtered/paginated inventory or manual creation |
+| GET | `/api/v1/workspaces/{workspace_id}/assets/owners` | Active workspace ownership choices |
+| GET, PATCH | `/api/v1/workspaces/{workspace_id}/assets/{asset_id}` | Detail or optimistic edit |
+| POST | `/api/v1/workspaces/{workspace_id}/assets/{asset_id}/activate` | Reactivate an Asset |
+| POST | `/api/v1/workspaces/{workspace_id}/assets/{asset_id}/deactivate` | Soft-deactivate an Asset |
+| GET | `/api/v1/workspaces/{workspace_id}/assets/{asset_id}/findings` | Related Findings |
+
+List parameters include repeated `asset_type`, `criticality`, `environment`, and `tag` filters; `active`, `owner_user_id`, `source`, `search`, bounded pagination, sorting, and direction. Duplicate normalized identifiers return `409`; stale versions return `409`. Supported types are `domain`, `subdomain`, `ip_address`, `url`, `repository`, `cloud_account`, `host`, `container_image`, `kubernetes_cluster`, and `custom`.
+
 ## Findings
 
 All Findings paths require a Neon Auth bearer token and workspace scope. Reads require `finding:read`; creates, edits, transitions, comments, evidence changes, assignment, and deletion require `finding:triage`. The optional `X-Workspace-ID` header must match the path workspace.
@@ -18,7 +33,7 @@ All Findings paths require a Neon Auth bearer token and workspace scope. Reads r
 | POST | `/api/v1/workspaces/{workspace_id}/findings/{finding_id}/evidence` | Add text, URL, or code evidence |
 | DELETE | `/api/v1/workspaces/{workspace_id}/findings/{finding_id}/evidence/{evidence_id}` | Optimistically remove evidence |
 
-List filters support repeated `status` and `severity` parameters, `assignee_user_id`, text `search`, `page`, `page_size`, `sort`, and `direction`. Mutable requests carry the last observed positive `version`; stale versions return `409` instead of overwriting newer work.
+List filters support repeated `status` and `severity` parameters, `assignee_user_id`, `asset_id`, text `search`, `page`, `page_size`, `sort`, and `direction`. Mutable requests carry the last observed positive `version`; stale versions return `409` instead of overwriting newer work.
 
 Lifecycle values are `open`, `acknowledged`, `in_progress`, `resolved`, `closed`, and `reopened`. Resolution or direct closure requires a resolution summary, and reopening requires a note. Every transition is written to both finding activity and the workspace audit log.
 
