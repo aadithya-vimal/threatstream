@@ -46,6 +46,11 @@ export const api = {
   createWorkspace: (organizationId, payload) => apiFetch(`/tenancy/organizations/${organizationId}/workspaces`, { method: 'POST', body: JSON.stringify(payload) }),
   getTeams: (workspaceId) => apiFetch(`/tenancy/workspaces/${workspaceId}/teams`, { workspaceId }),
   createTeam: (workspaceId, payload) => apiFetch(`/tenancy/workspaces/${workspaceId}/teams`, { method: 'POST', body: JSON.stringify(payload), workspaceId }),
+  getAuditEvents: (workspaceId, limit = 100) => apiFetch(`/tenancy/workspaces/${workspaceId}/audit?limit=${limit}`, { workspaceId }),
+  getIntegrations: (workspaceId) => apiFetch(`/workspaces/${workspaceId}/integrations`, { workspaceId }),
+  saveIntegration: (workspaceId, provider, credentials) => apiFetch(`/workspaces/${workspaceId}/integrations/${provider}`, { method: 'PUT', body: JSON.stringify({ credentials }), workspaceId }),
+  testIntegration: (workspaceId, provider) => apiFetch(`/workspaces/${workspaceId}/integrations/${provider}/test`, { method: 'POST', workspaceId }),
+  deleteIntegration: (workspaceId, provider) => apiFetch(`/workspaces/${workspaceId}/integrations/${provider}`, { method: 'DELETE', workspaceId }),
   health: () => fetch(`${API_BASE}/health`).then((response) => response.json()),
   readiness: () => fetch(`${API_BASE}/ready`).then((response) => response.json())
 };
