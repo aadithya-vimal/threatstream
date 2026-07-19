@@ -19,6 +19,8 @@ vi.mock("../lib/api", () => ({
     getScannerHealth: vi.fn(),
     getScanProfiles: vi.fn(),
     getScanJobs: vi.fn(),
+    getScanWorkerStatus: vi.fn(),
+    getScanSchedules: vi.fn(),
     getAssets: vi.fn(),
     createScanProfile: vi.fn(),
     getScanJob: vi.fn(),
@@ -96,6 +98,8 @@ describe("scanner management workflows", () => {
     });
     api.getScanProfiles.mockResolvedValue([]);
     api.getScanJobs.mockResolvedValue({ items: [], total: 0 });
+    api.getScanWorkerStatus.mockResolvedValue({ status: "unavailable", active_lease_count: 0, queued_job_count: 0, expired_lease_count: 0 });
+    api.getScanSchedules.mockResolvedValue({ items: [], total: 0 });
     api.getAssets.mockResolvedValue({ items: [] });
     api.createScanProfile.mockResolvedValue({ id: "profile-1" });
     api.getScanJob.mockResolvedValue(job());
@@ -118,7 +122,7 @@ describe("scanner management workflows", () => {
         <Scans />
       </MemoryRouter>,
     );
-    expect(await screen.findByText("Unavailable")).toBeTruthy();
+    expect((await screen.findAllByText("Unavailable")).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/Install and configure/)).toBeTruthy();
   });
   it("creates a validated Nuclei profile", async () => {
@@ -169,5 +173,19 @@ describe("scanner management workflows", () => {
     await waitFor(() =>
       expect(api.cancelScanJob).toHaveBeenCalledWith("workspace-1", "job-1"),
     );
+  });
+  it("renders durable retry, stalled, degraded worker, cancellation, and schedule context", async () => {
+    api.getScanWorkerStatus.mockResolvedValue({ status: "degraded", active_lease_count: 0, queued_job_count: 1, expired_lease_count: 1 });
+    api.getScanJobs.mockResolvedValue({ items: [{ ...job("claimed"), stalled: true, next_retry_at: "2026-07-19T01:00:00Z" }], total: 1 });
+    const active = { ...job("running"), stalled: true, cancellation_requested_at: "2026-07-19T00:00:02Z", origin: "schedule", schedule_id: "schedule-1", scheduled_for: "2026-07-19T00:00:00Z", next_retry_at: "2026-07-19T01:00:00Z" };
+    api.getScanJob.mockResolvedValue(active);
+    const overview = render(<MemoryRouter><Scans /></MemoryRouter>);
+    expect(await screen.findByText("Potentially stalled")).toBeTruthy();
+    expect(screen.getByText("Degraded")).toBeTruthy();
+    overview.unmount();
+    render(<MemoryRouter initialEntries={["/scans/jobs/job-1"]}><Routes><Route path="/scans/jobs/:jobId" element={<ScanJobDetail />} /></Routes></MemoryRouter>);
+    expect(await screen.findByText(/Cancellation requested/)).toBeTruthy();
+    expect(screen.getByText("Open associated schedule").getAttribute("href")).toBe("/scans/schedules/schedule-1");
+    expect(screen.getByText(/Retry scheduled for/)).toBeTruthy();
   });
 });
