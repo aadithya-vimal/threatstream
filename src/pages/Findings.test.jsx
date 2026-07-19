@@ -9,7 +9,7 @@ import FindingForm from '../components/FindingForm';
 import { api } from '../lib/api';
 
 vi.mock('../lib/api', () => ({ api: {
-  getFindings: vi.fn(), getFinding: vi.fn(), getFindingAssignees: vi.fn(),
+  getFindings: vi.fn(), getFinding: vi.fn(), getFindingAssignees: vi.fn(), getAssets: vi.fn(),
   transitionFinding: vi.fn(), updateFinding: vi.fn(), addFindingComment: vi.fn(),
   addFindingEvidence: vi.fn(), deleteFindingEvidence: vi.fn(), deleteFinding: vi.fn()
 } }));
@@ -24,7 +24,7 @@ const finding = (overrides={}) => ({
 
 describe('Findings workflows',()=>{
   afterEach(cleanup);
-  beforeEach(()=>{vi.clearAllMocks();api.getFindings.mockResolvedValue({items:[finding()],page:1,page_size:25,total:1,pages:1});api.getFinding.mockResolvedValue(finding());api.getFindingAssignees.mockResolvedValue([]);api.transitionFinding.mockResolvedValue(finding({status:'acknowledged',version:2}));});
+  beforeEach(()=>{vi.clearAllMocks();api.getFindings.mockResolvedValue({items:[finding()],page:1,page_size:25,total:1,pages:1});api.getAssets.mockResolvedValue({items:[],page:1,page_size:100,total:0,pages:0});api.getFinding.mockResolvedValue(finding());api.getFindingAssignees.mockResolvedValue([]);api.transitionFinding.mockResolvedValue(finding({status:'acknowledged',version:2}));});
 
   it('loads live findings and sends filtering, sorting, and pagination options',async()=>{render(<MemoryRouter><Findings/></MemoryRouter>);expect(await screen.findByText('SQL injection')).toBeTruthy();await waitFor(()=>expect(api.getFindings).toHaveBeenCalledWith('workspace-1',expect.objectContaining({page:1,page_size:25,sort:'updated_at',direction:'desc'})));fireEvent.change(screen.getByLabelText('Status'),{target:{value:'open'}});await waitFor(()=>expect(api.getFindings).toHaveBeenLastCalledWith('workspace-1',expect.objectContaining({status:'open'})));});
 
