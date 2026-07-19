@@ -2,13 +2,13 @@ from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.tenancy import require_workspace_permission
 from app.core.security import AuthenticatedPrincipal
 from app.database.session import get_db_session
-from app.domains.scans.orchestrator import execute_scan_job
+from app.domains.scans.scheduler import ScheduleService
 from app.domains.scans.schemas import (
     SafeRawResult,
     ScannerDefinitionResponse,
@@ -19,6 +19,7 @@ from app.domains.scans.schemas import (
     ScanProfileSummary,
     ScanProfileUpdate,
     TargetMutation,
+    ScanScheduleCreate, ScanScheduleUpdate, ScanScheduleSummary, ScanSchedulePage, VersionPayload, WorkerStatus,
 )
 from app.domains.scans.service import ScansService
 
@@ -75,10 +76,42 @@ async def remove_target(workspace_id: UUID, profile_id: UUID, asset_id: UUID, us
 
 
 @router.post("/workspaces/{workspace_id}/scan-profiles/{profile_id}/run", response_model=ScanJobSummary, status_code=status.HTTP_202_ACCEPTED)
-async def run_profile(workspace_id: UUID, profile_id: UUID, background: BackgroundTasks, user: RunUser, session: Session):
-    job = await ScansService(session, user).queue(workspace_id, profile_id)
-    background.add_task(execute_scan_job, job["id"])
-    return job
+async def run_profile(workspace_id: UUID, profile_id: UUID, user: RunUser, session: Session):
+    return await ScansService(session, user).queue(workspace_id, profile_id)
+
+
+@router.get("/workspaces/{workspace_id}/scan-worker/status", response_model=WorkerStatus)
+async def worker_status(workspace_id: UUID, user: ReadUser, session: Session):
+    return await ScansService(session,user).worker_status(workspace_id)
+
+
+@router.get("/workspaces/{workspace_id}/scan-schedules", response_model=ScanSchedulePage)
+async def schedules(workspace_id:UUID,user:ReadUser,session:Session,page:int=Query(1,ge=1),page_size:int=Query(25,ge=1,le=100),profile_id:UUID|None=None,enabled:bool|None=None,schedule_type:Literal["interval","cron"]|None=None,next_from:datetime|None=None,next_to:datetime|None=None,search:str|None=Query(None,max_length=200),sort:Literal["next_run_at","created_at","updated_at","name"]="next_run_at",direction:Literal["asc","desc"]="asc"):
+    return await ScheduleService(session,user).list(workspace_id,page=page,page_size=page_size,profile_id=profile_id,enabled=enabled,schedule_type=schedule_type,next_from=next_from,next_to=next_to,search=search,sort=sort,direction=direction)
+
+
+@router.post("/workspaces/{workspace_id}/scan-schedules",response_model=ScanScheduleSummary,status_code=status.HTTP_201_CREATED)
+async def create_schedule(workspace_id:UUID,payload:ScanScheduleCreate,user:ManageUser,session:Session):return await ScheduleService(session,user).create(workspace_id,payload)
+
+
+@router.get("/workspaces/{workspace_id}/scan-schedules/{schedule_id}",response_model=ScanScheduleSummary)
+async def schedule(workspace_id:UUID,schedule_id:UUID,user:ReadUser,session:Session):return await ScheduleService(session,user).detail(workspace_id,schedule_id)
+
+
+@router.patch("/workspaces/{workspace_id}/scan-schedules/{schedule_id}",response_model=ScanScheduleSummary)
+async def update_schedule(workspace_id:UUID,schedule_id:UUID,payload:ScanScheduleUpdate,user:ManageUser,session:Session):return await ScheduleService(session,user).update(workspace_id,schedule_id,payload)
+
+
+@router.delete("/workspaces/{workspace_id}/scan-schedules/{schedule_id}",status_code=status.HTTP_204_NO_CONTENT)
+async def delete_schedule(workspace_id:UUID,schedule_id:UUID,user:ManageUser,session:Session):await ScheduleService(session,user).disable(workspace_id,schedule_id)
+
+
+@router.post("/workspaces/{workspace_id}/scan-schedules/{schedule_id}/enable",response_model=ScanScheduleSummary)
+async def enable_schedule(workspace_id:UUID,schedule_id:UUID,payload:VersionPayload,user:ManageUser,session:Session):return await ScheduleService(session,user).set_enabled(workspace_id,schedule_id,True,payload.version)
+
+
+@router.post("/workspaces/{workspace_id}/scan-schedules/{schedule_id}/disable",response_model=ScanScheduleSummary)
+async def disable_schedule(workspace_id:UUID,schedule_id:UUID,payload:VersionPayload,user:ManageUser,session:Session):return await ScheduleService(session,user).set_enabled(workspace_id,schedule_id,False,payload.version)
 
 
 @router.get("/workspaces/{workspace_id}/scan-jobs", response_model=ScanJobPage)
