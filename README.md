@@ -1,6 +1,6 @@
 # ThreatStream
 
-ThreatStream is an open-source Application Security Operations platform. Phase 2 provides the authenticated, tenant-aware foundation: organizations, workspaces, teams, explicit permissions, audit events, and encrypted integration credentials.
+ThreatStream is an open-source Application Security Operations platform. Its hosted web product provides browser-safe application-security workflows; a future desktop product will add deeper local DevSecOps capabilities while sharing the same auth, authorization, API contracts, and credential settings.
 
 ## Architecture
 
@@ -17,6 +17,9 @@ ThreatStream Cloud uses branchable Neon Auth and Neon PostgreSQL. Neon Auth auth
 - Neon Auth JWTs are verified using issuer-bound, cached JWKS keys and an explicit asymmetric algorithm policy.
 - External Neon Auth subjects map idempotently to local ThreatStream users without receiving tenancy permissions.
 - React accesses operational data only through FastAPI.
+- Settings → Integrations manages workspace-owned VirusTotal API credentials without `.env` edits. Saved values are encrypted and can only be replaced, tested, or deleted—not retrieved.
+- The operational overview uses live workspace, team, integration, and audit APIs; unavailable data is represented as an empty, loading, permission, or error state rather than a synthetic metric.
+- Workspace → Teams supports real tenant-scoped listing and creation. Operations → Audit log exposes safe append-only events to roles with `audit:read`.
 - Phase 3 has not started.
 - A clean Neon deployment and real Neon Auth lifecycle still require local branch configuration before Phase 2 can be declared operational.
 
@@ -46,6 +49,13 @@ Generate a credential-encryption key without printing production secrets:
 python -c "import base64,secrets; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())"
 ```
 
+`DATABASE_URL`, Neon Auth configuration, `CREDENTIAL_ENCRYPTION_KEY`, CORS, and pool settings are deployment secrets and are never user-editable. Provider credentials are workspace-owned and entered through Integrations. No deployment-level provider fallback is used: the precedence rule is workspace credential, then not configured.
+
+## Product modes
+
+- **ThreatStream Web** is hosted and browser-based. It uses backend APIs, provides surface-level AppSec/security workflows, and never executes local commands or accesses local files.
+- **ThreatStream Desktop** is a future Windows, macOS, and Linux application for deeper local security operations. Packaging, local agents, filesystem access, and tool execution are not implemented.
+
 ## Verification
 
 ```powershell
@@ -59,4 +69,8 @@ npm test
 npm run build
 ```
 
-See `DATABASE.md`, `DEPLOYMENT.md`, and `NEON_AUTH_MIGRATION_REPORT.md` for operational details.
+See `API.md`, `ARCHITECTURE.md`, `DATABASE.md`, and `DEPLOYMENT.md` for operational details.
+
+## Experience architecture
+
+Public, authentication, and protected routes share the ThreatStream midnight design system documented in `DESIGN_SYSTEM.md`. The protected shell exposes only routes backed by current APIs: `/overview`, `/workspace/teams`, `/audit`, and `/settings/integrations`. Archived SOC-style screens remain unregistered because their data and actions are not part of the active backend.
