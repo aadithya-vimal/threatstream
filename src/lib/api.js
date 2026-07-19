@@ -69,6 +69,20 @@ export const api = {
   addFindingComment: (workspaceId, findingId, version, body) => apiFetch(`/workspaces/${workspaceId}/findings/${findingId}/comments`, { method: 'POST', body: JSON.stringify({ version, body }), workspaceId }),
   addFindingEvidence: (workspaceId, findingId, payload) => apiFetch(`/workspaces/${workspaceId}/findings/${findingId}/evidence`, { method: 'POST', body: JSON.stringify(payload), workspaceId }),
   deleteFindingEvidence: (workspaceId, findingId, evidenceId, version) => apiFetch(`/workspaces/${workspaceId}/findings/${findingId}/evidence/${evidenceId}`, { method: 'DELETE', body: JSON.stringify({ version }), workspaceId }),
+  getAssets: (workspaceId, filters = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === '') return;
+      if (Array.isArray(value)) value.forEach(item => query.append(key, item)); else query.set(key, String(value));
+    });
+    return apiFetch(`/workspaces/${workspaceId}/assets?${query}`, { workspaceId });
+  },
+  getAsset: (workspaceId, assetId) => apiFetch(`/workspaces/${workspaceId}/assets/${assetId}`, { workspaceId }),
+  getAssetOwners: (workspaceId) => apiFetch(`/workspaces/${workspaceId}/assets/owners`, { workspaceId }),
+  createAsset: (workspaceId, payload) => apiFetch(`/workspaces/${workspaceId}/assets`, { method: 'POST', body: JSON.stringify(payload), workspaceId }),
+  updateAsset: (workspaceId, assetId, payload) => apiFetch(`/workspaces/${workspaceId}/assets/${assetId}`, { method: 'PATCH', body: JSON.stringify(payload), workspaceId }),
+  activateAsset: (workspaceId, assetId, version) => apiFetch(`/workspaces/${workspaceId}/assets/${assetId}/activate`, { method: 'POST', body: JSON.stringify({ version }), workspaceId }),
+  deactivateAsset: (workspaceId, assetId, version) => apiFetch(`/workspaces/${workspaceId}/assets/${assetId}/deactivate`, { method: 'POST', body: JSON.stringify({ version }), workspaceId }),
   health: () => fetch(`${API_BASE}/health`).then((response) => response.json()),
   readiness: () => fetch(`${API_BASE}/ready`).then((response) => response.json())
 };

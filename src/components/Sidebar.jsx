@@ -4,7 +4,7 @@ import { Icon } from './Icons';
 import Brand from './Brand';
 
 const groups = [
-  { label: 'Operations', items: [{ name: 'Overview', path: '/overview', icon: 'dashboard' }, { name: 'Findings', path: '/findings', icon: 'vulnerabilities' }, { name: 'Audit log', path: '/audit', icon: 'activity' }] },
+  { label: 'Operations', items: [{ name: 'Overview', path: '/overview', icon: 'dashboard' }, { name: 'Assets', path: '/assets', icon: 'assets' }, { name: 'Findings', path: '/findings', icon: 'vulnerabilities' }, { name: 'Audit log', path: '/audit', icon: 'activity' }] },
   { label: 'Workspace', items: [{ name: 'Teams', path: '/workspace/teams', icon: 'administration' }, { name: 'Integrations', path: '/settings/integrations', icon: 'settings2' }] }
 ];
 export const Sidebar = ({ collapsed = false, mobileOpen = false, onToggle, onNavigate }) => {

@@ -16,6 +16,8 @@ const Audit = lazy(() => import('./pages/Audit'));
 const Findings = lazy(() => import('./pages/Findings'));
 const FindingCreate = lazy(() => import('./pages/FindingCreate'));
 const FindingDetail = lazy(() => import('./pages/FindingDetail'));
+const Assets = lazy(() => import('./pages/Assets'));
+const AssetDetail = lazy(() => import('./pages/AssetDetail'));
 
 function App() {
   return (
@@ -47,6 +49,8 @@ function App() {
             <Route path="/findings" element={<ProtectedRoute><Findings /></ProtectedRoute>} />
             <Route path="/findings/new" element={<ProtectedRoute><FindingCreate /></ProtectedRoute>} />
             <Route path="/findings/:findingId" element={<ProtectedRoute><FindingDetail /></ProtectedRoute>} />
+            <Route path="/assets" element={<ProtectedRoute><Assets /></ProtectedRoute>} />
+            <Route path="/assets/:assetId" element={<ProtectedRoute><AssetDetail /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/overview" replace />} />
           </Routes></Suspense>
         </div>
