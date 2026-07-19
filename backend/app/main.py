@@ -8,7 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.routes import integrations, tenancy
+from app.api.routes import findings, integrations, tenancy
 from app.core.config import settings
 from app.core.errors import UpstreamServiceError
 from app.database.engine import database_is_ready, dispose_engine
@@ -82,6 +82,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 app.include_router(tenancy.router, prefix=f"{settings.API_V1_STR}/tenancy", tags=["Tenancy"])
 app.include_router(integrations.router, prefix=settings.API_V1_STR, tags=["Integrations"])
+app.include_router(findings.router, prefix=settings.API_V1_STR, tags=["Findings"])
 
 
 @app.get("/health", tags=["Health"])
