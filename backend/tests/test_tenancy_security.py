@@ -3,6 +3,7 @@ import base64
 import os
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
+from types import SimpleNamespace
 
 import pytest
 import jwt
@@ -117,7 +118,9 @@ def test_legacy_product_routes_are_not_registered():
     assert "/api/v1/plugins/" not in paths
     assert "/api/v1/telemetry/events" not in paths
     assert "/api/v1/tenancy/context" in paths
-    assert "/api/v1/tenancy/workspaces/{workspace_id}/credentials/{provider_key}" in paths
+    assert "/api/v1/tenancy/workspaces/{workspace_id}/audit" in paths
+    assert "/api/v1/workspaces/{workspace_id}/integrations/{provider_id}" in paths
+    assert "/api/v1/tenancy/workspaces/{workspace_id}/credentials/{provider_key}" not in paths
 
 
 def test_credentials_are_encrypted_with_workspace_bound_aad(monkeypatch):
@@ -166,3 +169,23 @@ def test_tenancy_context_attaches_membership_roles():
     context = asyncio.run(service.context())
     assert context["organizations"][0]["id"] == organization.id
     assert context["workspaces"][0]["role_key"] == "application_security_engineer"
+
+
+def test_audit_service_returns_safe_workspace_event_fields():
+    workspace_id = uuid4()
+    event = SimpleNamespace(
+        id=uuid4(), workspace_id=workspace_id, action="team.created", target_type="team",
+        target_id=uuid4(), result="success", event_metadata={"source": "api"}, created_at=datetime.now(UTC),
+    )
+    class FakeRepository:
+        async def list_audit_events(self, requested_workspace, limit):
+            assert requested_workspace == workspace_id
+            assert limit == 25
+            return [(event, "operator@example.test")]
+    service = TenancyService(object(), principal())
+    service.repository = FakeRepository()
+    result = asyncio.run(service.list_audit_events(workspace_id, 25))
+    assert result[0]["actor_email"] == "operator@example.test"
+    assert result[0]["metadata"] == {"source": "api"}
+    assert "before_summary" not in result[0]
+    assert "after_summary" not in result[0]
