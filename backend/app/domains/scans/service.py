@@ -4,13 +4,16 @@ from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import AuthenticatedPrincipal
+from app.core.config import settings
 from app.database.repositories import ScansRepository
 from app.domains.scans.adapters import scanner_registry
 from app.domains.scans.schemas import ScanJobPage,ScanProfileCreate,ScanProfileUpdate
 
 def profile_dict(row,count=0,targets=None):return {"id":row.id,"workspace_id":row.workspace_id,"name":row.name,"description":row.description,"scanner_type":row.scanner_type,"configuration_json":row.configuration_json,"is_enabled":row.is_enabled,"version":row.version,"target_count":count,"target_asset_ids":[item[0].asset_id for item in targets or []],"targets":[target_dict(link,asset) for link,asset in targets or []],"created_at":row.created_at,"updated_at":row.updated_at}
 def target_dict(row,asset=None):return {"id":getattr(row,"id",None),"asset_id":row.asset_id,"asset_name":getattr(asset,"name",None),"asset_type":getattr(row,"asset_type",getattr(asset,"asset_type",None)),"normalized_target":getattr(row,"normalized_target",getattr(asset,"normalized_identifier",None)),"execution_status":getattr(row,"execution_status",None),"started_at":getattr(row,"started_at",None),"completed_at":getattr(row,"completed_at",None),"error_summary":getattr(row,"error_summary",None),"result_count":getattr(row,"result_count",0)}
-def job_dict(row,profile_name=None,email=None,targets=None):return {"id":row.id,"workspace_id":row.workspace_id,"profile_id":row.profile_id,"profile_name":profile_name,"scanner_type":row.scanner_type,"status":row.status,"requested_by":row.requested_by,"requested_by_email":email,"started_at":row.started_at,"completed_at":row.completed_at,"cancelled_at":row.cancelled_at,"failure_code":row.failure_code,"failure_message":row.failure_message,"target_count":row.target_count,"processed_target_count":row.processed_target_count,"findings_created_count":row.findings_created_count,"findings_updated_count":row.findings_updated_count,"findings_reopened_count":row.findings_reopened_count,"findings_unchanged_count":row.findings_unchanged_count,"raw_result_count":row.raw_result_count,"version":row.version,"created_at":row.created_at,"updated_at":row.updated_at,"targets":targets or []}
+def job_dict(row,profile_name=None,email=None,targets=None):
+ now=datetime.now(UTC);lease=getattr(row,"lease_expires_at",None)
+ return {"id":row.id,"workspace_id":row.workspace_id,"profile_id":row.profile_id,"profile_name":profile_name,"scanner_type":row.scanner_type,"status":row.status,"requested_by":row.requested_by,"requested_by_email":email,"started_at":row.started_at,"completed_at":row.completed_at,"cancelled_at":row.cancelled_at,"failure_code":row.failure_code,"failure_message":row.failure_message,"target_count":row.target_count,"processed_target_count":row.processed_target_count,"findings_created_count":row.findings_created_count,"findings_updated_count":row.findings_updated_count,"findings_reopened_count":row.findings_reopened_count,"findings_unchanged_count":row.findings_unchanged_count,"raw_result_count":row.raw_result_count,"version":row.version,"created_at":row.created_at,"updated_at":row.updated_at,"targets":targets or [],"attempt_count":getattr(row,"attempt_count",0),"max_attempts":getattr(row,"max_attempts",3),"next_retry_at":getattr(row,"next_retry_at",None),"last_failure_code":getattr(row,"last_failure_code",None),"last_failure_summary":getattr(row,"last_failure_summary",None),"cancellation_requested_at":getattr(row,"cancellation_requested_at",None),"last_heartbeat_at":getattr(row,"heartbeat_at",None),"lease_expires_at":lease,"stalled":bool(row.status in {"claimed","running","processing"} and lease and lease<=now),"origin":getattr(row,"origin","manual"),"schedule_id":getattr(row,"schedule_id",None),"scheduled_for":getattr(row,"scheduled_for",None)}
 
 class ScansService:
  def __init__(self,session:AsyncSession,user:AuthenticatedPrincipal):self.session=session;self.user=user;self.repo=ScansRepository(session)
@@ -85,7 +88,7 @@ class ScansService:
     if await self.repo.active_job(w,p):raise HTTPException(409,"This profile already has an active scan job")
     targets=await self.repo.profile_targets(w,p)
     if not targets:raise HTTPException(422,"Scan profile has no targets")
-    job,_=await self.repo.create_job(profile,self.user.user_id,targets);await self.repo.add_audit(job,self.user.user_id,"scan_job.queued","scan_job",{"scanner_type":job.scanner_type,"target_count":job.target_count})
+    job,_=await self.repo.create_job(profile,self.user.user_id,targets,max_attempts=settings.SCAN_JOB_MAX_ATTEMPTS);await self.repo.add_audit(job,self.user.user_id,"scan_job.queued","scan_job",{"scanner_type":job.scanner_type,"target_count":job.target_count})
   except IntegrityError as exc:raise HTTPException(409,"This profile already has an active scan job") from exc
   return job_dict(job)
  async def jobs(self,w,**filters):
@@ -101,6 +104,10 @@ class ScansService:
   async with self.session.begin():
    row=await self.repo.job(w,j,True)
    if not row:raise HTTPException(404,"Scan job not found")
-   if row.status not in {"queued","claimed","running"}:raise HTTPException(409,"This scan job can no longer be cancelled")
-   row.status="cancelled";row.cancelled_at=datetime.now(UTC);row.version+=1;await self.repo.add_audit(row,self.user.user_id,"scan_job.cancelled","scan_job",{"preserved_results":row.raw_result_count})
-  await scanner_registry.resolve(row.scanner_type).cancel(row.id);return job_dict(row)
+   if row.status=="cancelled":return job_dict(row)
+   if row.status in {"completed","failed"}:raise HTTPException(409,"This scan job can no longer be cancelled")
+   if row.status=="queued":row.status="cancelled";row.cancelled_at=datetime.now(UTC);row.version+=1;await self.repo.add_audit(row,self.user.user_id,"scan_job.cancelled","scan_job",{"preserved_results":row.raw_result_count})
+   else:
+    if not row.cancellation_requested_at:row.cancellation_requested_at=datetime.now(UTC);row.version+=1;await self.repo.add_audit(row,self.user.user_id,"scan_job.cancellation_requested","scan_job",{"status":row.status})
+  return job_dict(row)
+ async def worker_status(self,w):return await self.repo.worker_status(w)
