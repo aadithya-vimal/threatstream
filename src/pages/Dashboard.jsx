@@ -1,187 +1,36 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import DashboardLayout from '../layouts/DashboardLayout';
 import Panel from '../components/Panel';
 import SectionHeader from '../components/SectionHeader';
+import LoadingState from '../components/LoadingState';
 import { useTenancy } from '../contexts/TenancyContext';
+import { api } from '../lib/api';
 
-const foundations = [
-  ['Authenticated web application', 'Available', 'React, Vite, and Neon Auth provide the protected application shell.'],
-  ['Tenant authorization', 'Available', 'Organizations, workspaces, teams, backend permissions, RLS boundaries, and audit foundations are implemented.'],
-  ['Background execution concepts', 'Experimental', 'Jobs and plugins exist in the legacy archive but are not active API capabilities.'],
-  ['Repository-to-runtime workflow', 'Planned', 'Applications, GitHub, normalized findings, deployments, runtime events, remediation, and verification are next.']
-];
+const slugify = value => value.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+const formatDate = value => new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'short'}).format(new Date(value));
 
-const workflow = [
-  'Connect a repository to an application',
-  'Run versioned scanners in a dedicated worker',
-  'Normalize and deduplicate findings',
-  'Map a commit or artifact to a deployment',
-  'Ingest an authenticated runtime event',
-  'Correlate evidence and assign remediation',
-  'Rescan, redeploy, and verify the fix'
-];
-
-const statusStyle = {
-  Available: { color: 'var(--color-low)', background: 'var(--color-low-bg)' },
-  Experimental: { color: 'var(--color-medium)', background: 'var(--color-medium-bg)' },
-  Planned: { color: 'var(--text-secondary)', background: 'var(--bg-primary)' }
+const Onboarding = () => {
+  const { createOrganization } = useTenancy();
+  const [organizationName,setOrganizationName] = useState(''); const [workspaceName,setWorkspaceName] = useState(''); const [pending,setPending] = useState(false); const [error,setError] = useState(null);
+  const submit = async event => { event.preventDefault(); setPending(true); setError(null); try { await createOrganization({name:organizationName,slug:slugify(organizationName),workspace_name:workspaceName,workspace_slug:slugify(workspaceName)}); } catch (e) { setError(e); } finally { setPending(false); } };
+  return <Panel title="Establish your tenant boundary" hint="Create the organization and first workspace atomically. Your account becomes its administrator." className="gradient-border"><form onSubmit={submit} className="stack"><div className="content-grid" style={{margin:0}}><label className="field">Organization name<input className="input" required minLength={2} maxLength={120} value={organizationName} onChange={e=>setOrganizationName(e.target.value)} placeholder="Example Company" /></label><label className="field">First workspace<input className="input" required minLength={2} maxLength={120} value={workspaceName} onChange={e=>setWorkspaceName(e.target.value)} placeholder="Product Security" /></label></div>{error&&<div className="notice notice-error" role="alert">{error.message}{error.correlationId&&<span className="mono"> · {error.correlationId}</span>}</div>}<div><button className="btn btn-primary" disabled={pending}>{pending?'Creating workspace…':'Create secure workspace'}</button></div></form></Panel>;
 };
 
-const inputStyle = {
-  background: 'var(--bg-primary)',
-  border: '1px solid var(--border-color)',
-  borderRadius: '5px',
-  color: 'var(--text-primary)',
-  fontFamily: 'inherit',
-  fontSize: '12px',
-  padding: '10px 12px',
-  width: '100%'
+export const Dashboard = () => {
+  const { organizations,currentOrganization,currentWorkspace,loading:tenantLoading,error:tenantError,refresh } = useTenancy();
+  const [data,setData] = useState({integrations:[],teams:[],audit:[]}); const [loading,setLoading] = useState(false); const [partialErrors,setPartialErrors] = useState([]);
+  useEffect(()=>{ let active=true; if(!currentWorkspace){setData({integrations:[],teams:[],audit:[]});return;} setLoading(true); Promise.allSettled([api.getIntegrations(currentWorkspace.id),api.getTeams(currentWorkspace.id),api.getAuditEvents(currentWorkspace.id,6)]).then(results=>{if(!active)return; const keys=['integrations','teams','audit']; const next={integrations:[],teams:[],audit:[]}; const errors=[]; results.forEach((result,i)=>{if(result.status==='fulfilled')next[keys[i]]=result.value;else errors.push(result.reason);}); setData(next);setPartialErrors(errors);setLoading(false);}); return()=>{active=false};},[currentWorkspace?.id]);
+  if(tenantLoading) return <DashboardLayout><LoadingState message="Loading workspace context…" /></DashboardLayout>;
+  if(tenantError) return <DashboardLayout><SectionHeader title="Workspace unavailable" description="ThreatStream could not load your authorized tenant context." /><div className="notice notice-error" role="alert"><strong>{tenantError.message}</strong>{tenantError.correlationId&&<div className="mono">Correlation: {tenantError.correlationId}</div>}<button className="btn btn-secondary" onClick={refresh} style={{marginTop:12}}>Retry</button></div></DashboardLayout>;
+  if(organizations.length===0) return <DashboardLayout><SectionHeader title="Create your ThreatStream workspace" description="Start with a governed tenant boundary before connecting security providers." eyebrow="Onboarding" /><Onboarding /></DashboardLayout>;
+  const configured=data.integrations.filter(item=>item.configured); const healthy=configured.filter(item=>item.status==='connected');
+  return <DashboardLayout><SectionHeader title="Operational overview" description={`Live state for ${currentWorkspace?.name || 'your selected workspace'}. Empty values reflect the current backend—no synthetic telemetry.`} actions={<Link className="btn btn-primary" to="/settings/integrations">Manage integrations</Link>} />
+    {partialErrors.length>0&&<div className="notice notice-info" style={{marginBottom:16}}>Some sections are hidden because your role does not include their read permission, or the service is temporarily unavailable.</div>}
+    {loading?<LoadingState message="Loading live workspace state…" />:<>
+      <div className="metric-grid"><article className="panel metric gradient-border"><div className="metric__label">Active workspace</div><div className="metric__value" style={{fontSize:22}}>{currentWorkspace?.name}</div><div className="metric__note">{currentOrganization?.name} · {currentWorkspace?.role_key?.replaceAll('_',' ')}</div></article><article className="panel metric"><div className="metric__label">Configured integrations</div><div className="metric__value">{configured.length}</div><div className="metric__note">{healthy.length} tested connected</div></article><article className="panel metric"><div className="metric__label">Workspace teams</div><div className="metric__value">{data.teams.length}</div><div className="metric__note">Persisted team boundaries</div></article><article className="panel metric"><div className="metric__label">Recent audit events</div><div className="metric__value">{data.audit.length}</div><div className="metric__note">Latest authorized results</div></article></div>
+      <div className="content-grid"><Panel title="Integration posture" hint="Provider configuration and last known safe status from the backend.">{data.integrations.length?<div className="data-list">{data.integrations.map(item=><div className="data-row" key={item.provider}><div><h3>{item.display_name}</h3><p>{item.masked_hint ? `Credential ${item.masked_hint}` : 'No credential stored'}</p></div><span className={`badge ${item.status==='connected'?'badge-success':item.configured?'badge-warning':'badge-muted'}`}>{item.status.replaceAll('_',' ')}</span></div>)}</div>:<p className="muted">No supported providers were returned for this workspace.</p>}</Panel><Panel title="Workspace control" hint="Current authorization scope used for every request."><div className="stack"><div className="data-row"><div><h3>Organization</h3><p>{currentOrganization?.name}</p></div><span className="badge badge-info">Scoped</span></div><div className="data-row"><div><h3>Workspace role</h3><p>{currentWorkspace?.role_key?.replaceAll('_',' ')}</p></div><span className="badge badge-success">Active</span></div></div></Panel></div>
+      <Panel title="Recent activity" hint="Append-only workspace audit events. Secret values and encrypted payloads are never shown." style={{marginTop:16}}>{data.audit.length?<div className="data-list">{data.audit.map(event=><div className="data-row" key={event.id}><div><h3>{event.action.replaceAll('.',' · ')}</h3><p>{event.actor_email||'System actor'} · {event.target_type}</p></div><div style={{textAlign:'right'}}><span className={`badge ${event.result==='success'?'badge-success':'badge-danger'}`}>{event.result}</span><p className="mono" style={{marginTop:5}}>{formatDate(event.created_at)}</p></div></div>)}</div>:<p className="muted">No audit events are available for this workspace.</p>}</Panel>
+    </>}</DashboardLayout>;
 };
-
-const slugify = (value) => value
-  .toLowerCase()
-  .trim()
-  .replace(/[^a-z0-9]+/g, '-')
-  .replace(/^-|-$/g, '');
-
-const WorkspaceContextPanel = () => {
-  const {
-    organizations,
-    currentOrganization,
-    currentWorkspace,
-    loading,
-    error,
-    refresh,
-    createOrganization
-  } = useTenancy();
-  const [organizationName, setOrganizationName] = useState('');
-  const [workspaceName, setWorkspaceName] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState(null);
-
-  if (loading) {
-    return <Panel title="Workspace context"><p style={{ color: 'var(--text-secondary)', fontSize: '12px', margin: 0 }}>Loading tenant context…</p></Panel>;
-  }
-
-  if (error) {
-    return (
-      <Panel title="Workspace context">
-        <div style={{ borderLeft: '3px solid var(--color-critical)', paddingLeft: '12px' }}>
-          <strong style={{ color: 'var(--text-primary)', fontSize: '12px' }}>Tenant context unavailable</strong>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '11px', lineHeight: 1.5, margin: '6px 0 10px' }}>{error.message}</p>
-          {error.correlationId && <p style={{ color: 'var(--text-muted)', fontSize: '10px', margin: '0 0 10px' }}>Correlation ID: {error.correlationId}</p>}
-          <button onClick={refresh} style={{ background: 'var(--color-blue)', border: 0, borderRadius: '4px', color: '#fff', cursor: 'pointer', fontSize: '11px', padding: '7px 12px' }}>Retry</button>
-        </div>
-      </Panel>
-    );
-  }
-
-  if (organizations.length === 0) {
-    const handleSubmit = async (event) => {
-      event.preventDefault();
-      setSubmitting(true);
-      setSubmitError(null);
-      try {
-        await createOrganization({
-          name: organizationName,
-          slug: slugify(organizationName),
-          workspace_name: workspaceName,
-          workspace_slug: slugify(workspaceName)
-        });
-      } catch (requestError) {
-        setSubmitError(requestError);
-      } finally {
-        setSubmitting(false);
-      }
-    };
-
-    return (
-      <Panel title="Create your tenant boundary" hint="The first organization and workspace are created atomically with administrator membership and an audit event.">
-        <p style={{ color: 'var(--text-secondary)', fontSize: '12px', lineHeight: 1.55, margin: '0 0 16px' }}>
-          ThreatStream requires an organization and workspace before operational data can be created.
-        </p>
-        <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '10px', alignItems: 'end' }}>
-          <label style={{ color: 'var(--text-muted)', display: 'grid', fontSize: '10px', gap: '6px', textTransform: 'uppercase' }}>
-            Organization
-            <input required minLength={2} maxLength={120} value={organizationName} onChange={(event) => setOrganizationName(event.target.value)} placeholder="Example Company" style={inputStyle} />
-          </label>
-          <label style={{ color: 'var(--text-muted)', display: 'grid', fontSize: '10px', gap: '6px', textTransform: 'uppercase' }}>
-            First workspace
-            <input required minLength={2} maxLength={120} value={workspaceName} onChange={(event) => setWorkspaceName(event.target.value)} placeholder="Product Security" style={inputStyle} />
-          </label>
-          <button disabled={submitting} type="submit" style={{ background: 'var(--color-blue)', border: 0, borderRadius: '5px', color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer', fontSize: '11px', fontWeight: 700, opacity: submitting ? 0.6 : 1, padding: '11px 16px' }}>
-            {submitting ? 'Creating…' : 'Create'}
-          </button>
-        </form>
-        {submitError && (
-          <p style={{ color: 'var(--color-critical)', fontSize: '11px', margin: '12px 0 0' }}>
-            {submitError.message}{submitError.correlationId ? ` — ${submitError.correlationId}` : ''}
-          </p>
-        )}
-      </Panel>
-    );
-  }
-
-  return (
-    <Panel title="Workspace context" hint="This selection scopes all subsequent application-security records and permission checks.">
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px' }}>
-        {[
-          ['Organization', currentOrganization?.name || 'Unavailable'],
-          ['Workspace', currentWorkspace?.name || 'Unavailable'],
-          ['Role', currentWorkspace?.role_key?.replaceAll('_', ' ') || 'Unavailable']
-        ].map(([label, value]) => (
-          <div key={label} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '5px', padding: '12px' }}>
-            <div style={{ color: 'var(--text-muted)', fontSize: '9px', marginBottom: '6px', textTransform: 'uppercase' }}>{label}</div>
-            <div style={{ color: 'var(--text-primary)', fontSize: '12px', fontWeight: 700, textTransform: label === 'Role' ? 'capitalize' : 'none' }}>{value}</div>
-          </div>
-        ))}
-      </div>
-    </Panel>
-  );
-};
-
-export const Dashboard = () => (
-  <DashboardLayout>
-    <SectionHeader
-      title="Application Security Operations"
-      description="Connect code-security findings, deployments, runtime evidence, ownership, remediation, and verification around the applications your team operates."
-    />
-
-    <div style={{ marginTop: '20px' }}><WorkspaceContextPanel /></div>
-
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(300px, 0.8fr)', gap: '20px', marginTop: '20px' }}>
-      <Panel title="Current foundation" hint="Verified repository capabilities and their implementation status.">
-        <div style={{ display: 'grid', gap: '12px' }}>
-          {foundations.map(([name, status, detail]) => (
-            <div key={name} style={{ border: '1px solid var(--border-color)', borderRadius: '6px', padding: '14px', background: 'var(--bg-primary)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '7px' }}>
-                <strong style={{ fontSize: '13px', color: 'var(--text-primary)' }}>{name}</strong>
-                <span style={{ ...statusStyle[status], border: '1px solid var(--border-color)', borderRadius: '999px', fontSize: '9px', fontWeight: 700, letterSpacing: '0.05em', padding: '3px 8px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{status}</span>
-              </div>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '12px', lineHeight: 1.55, margin: 0 }}>{detail}</p>
-            </div>
-          ))}
-        </div>
-      </Panel>
-
-      <Panel title="First complete workflow" hint="The vertical slice ThreatStream must prove before adding broader integrations.">
-        <ol style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '10px' }}>
-          {workflow.map((step, index) => (
-            <li key={step} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', color: 'var(--text-secondary)', fontSize: '12px', lineHeight: 1.45 }}>
-              <span style={{ width: '22px', height: '22px', flex: '0 0 22px', borderRadius: '50%', background: 'var(--color-blue-bg)', border: '1px solid rgba(59, 130, 246, 0.25)', color: 'var(--color-blue)', display: 'grid', placeItems: 'center', fontSize: '10px', fontWeight: 700 }}>{index + 1}</span>
-              <span style={{ paddingTop: '2px' }}>{step}</span>
-            </li>
-          ))}
-        </ol>
-      </Panel>
-    </div>
-
-    <Panel title="Next milestone: application model" hint="Applications and components become the parent objects for repositories, findings, deployments, runtime events, and remediation." style={{ marginTop: '20px' }}>
-      <p style={{ color: 'var(--text-secondary)', fontSize: '12px', lineHeight: 1.6, margin: 0 }}>
-        Phase 3 introduces applications, components, ownership, persisted relationships, and the application security timeline within the selected workspace.
-      </p>
-    </Panel>
-  </DashboardLayout>
-);
-
 export default Dashboard;
