@@ -8,10 +8,16 @@ from app.database.models.tenancy import (
     FindingActivity,
     FindingComment,
     FindingEvidence,
+    FindingOccurrence,
     IntegrationCredential,
     Organization,
     OrganizationMember,
     Permission,
+    RawScanResult,
+    ScanJob,
+    ScanJobTarget,
+    ScanProfile,
+    ScanProfileTarget,
     Team,
     TeamMember,
     User,
@@ -22,7 +28,7 @@ from app.database.models.tenancy import (
 )
 
 __all__ = [
-    "Asset", "AssetTag", "AssetTagLink", "AuditEvent", "ExternalIdentity", "Finding", "FindingActivity", "FindingComment", "FindingEvidence", "IntegrationCredential", "Organization",
+    "Asset", "AssetTag", "AssetTagLink", "AuditEvent", "ExternalIdentity", "Finding", "FindingActivity", "FindingComment", "FindingEvidence", "FindingOccurrence", "IntegrationCredential", "Organization", "RawScanResult", "ScanJob", "ScanJobTarget", "ScanProfile", "ScanProfileTarget",
     "OrganizationMember", "Permission", "Team", "TeamMember", "User", "Workspace",
     "WorkspaceMember", "WorkspaceRole", "WorkspaceRolePermission",
 ]

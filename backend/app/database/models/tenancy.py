@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import INET, JSONB, UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -244,15 +244,49 @@ class AssetTagLink(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
+class ScanProfile(Base):
+    __tablename__ = "scan_profiles"
+    __table_args__ = (UniqueConstraint("workspace_id", "name"), CheckConstraint("scanner_type IN ('nuclei')", name="scanner_type"), CheckConstraint("version > 0", name="version"), Index("ix_scan_profiles_workspace_scanner", "workspace_id", "scanner_type"))
+    id: Mapped[UUID] = uuid_column(); workspace_id: Mapped[UUID] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True); organization_id: Mapped[UUID] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
+    name: Mapped[str] = mapped_column(String(160), nullable=False); description: Mapped[str | None] = mapped_column(Text); scanner_type: Mapped[str] = mapped_column(String(32), nullable=False); configuration_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict, server_default="{}"); is_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true"); version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False); updated_by: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False); created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now()); updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class ScanProfileTarget(Base):
+    __tablename__ = "scan_profile_targets"
+    profile_id: Mapped[UUID] = mapped_column(ForeignKey("scan_profiles.id", ondelete="CASCADE"), primary_key=True); asset_id: Mapped[UUID] = mapped_column(ForeignKey("assets.id", ondelete="CASCADE"), primary_key=True); workspace_id: Mapped[UUID] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True); created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False); created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class ScanJob(Base):
+    __tablename__ = "scan_jobs"
+    __table_args__ = (CheckConstraint("status IN ('queued','claimed','running','processing','completed','failed','cancelled')", name="status"), CheckConstraint("scanner_type IN ('nuclei')", name="scanner_type"), CheckConstraint("version > 0", name="version"), Index("ix_scan_jobs_workspace_status_created", "workspace_id", "status", "created_at"), Index("ix_scan_jobs_profile_created", "profile_id", "created_at"), Index("ix_scan_jobs_scanner_type", "scanner_type"), Index("uq_scan_jobs_active_profile", "profile_id", unique=True, postgresql_where=text("status IN ('queued','claimed','running','processing')")))
+    id: Mapped[UUID] = uuid_column(); workspace_id: Mapped[UUID] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True); organization_id: Mapped[UUID] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False); profile_id: Mapped[UUID] = mapped_column(ForeignKey("scan_profiles.id", ondelete="RESTRICT"), nullable=False, index=True); scanner_type: Mapped[str] = mapped_column(String(32), nullable=False); status: Mapped[str] = mapped_column(String(24), nullable=False, default="queued", server_default="queued")
+    requested_by: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False); claimed_by: Mapped[str | None] = mapped_column(String(160)); started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True)); completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True)); cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True)); failure_code: Mapped[str | None] = mapped_column(String(80)); failure_message: Mapped[str | None] = mapped_column(String(500))
+    target_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0"); processed_target_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0"); findings_created_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0"); findings_updated_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0"); findings_reopened_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0"); findings_unchanged_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0"); raw_result_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0"); version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1"); created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now()); updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class ScanJobTarget(Base):
+    __tablename__ = "scan_job_targets"
+    __table_args__ = (UniqueConstraint("job_id", "asset_id"), CheckConstraint("execution_status IN ('pending','running','completed','failed','cancelled')", name="execution_status"), Index("ix_scan_job_targets_job_status", "job_id", "execution_status"))
+    id: Mapped[UUID] = uuid_column(); job_id: Mapped[UUID] = mapped_column(ForeignKey("scan_jobs.id", ondelete="CASCADE"), nullable=False, index=True); asset_id: Mapped[UUID] = mapped_column(ForeignKey("assets.id", ondelete="RESTRICT"), nullable=False, index=True); workspace_id: Mapped[UUID] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False); normalized_target: Mapped[str] = mapped_column(String(1000), nullable=False); asset_type: Mapped[str] = mapped_column(String(32), nullable=False); execution_status: Mapped[str] = mapped_column(String(24), nullable=False, default="pending", server_default="pending"); started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True)); completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True)); error_summary: Mapped[str | None] = mapped_column(String(500)); result_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+
+
+class RawScanResult(Base):
+    __tablename__ = "raw_scan_results"
+    __table_args__ = (UniqueConstraint("job_target_id", "payload_hash"), CheckConstraint("processing_status IN ('pending','processed','failed')", name="processing_status"), Index("ix_raw_scan_results_job_processing", "job_id", "processing_status"))
+    id: Mapped[UUID] = uuid_column(); job_id: Mapped[UUID] = mapped_column(ForeignKey("scan_jobs.id", ondelete="CASCADE"), nullable=False, index=True); job_target_id: Mapped[UUID] = mapped_column(ForeignKey("scan_job_targets.id", ondelete="CASCADE"), nullable=False, index=True); scanner_type: Mapped[str] = mapped_column(String(32), nullable=False); adapter_version: Mapped[str] = mapped_column(String(40), nullable=False); parser_version: Mapped[str] = mapped_column(String(40), nullable=False); payload_json: Mapped[dict] = mapped_column(JSONB, nullable=False); payload_hash: Mapped[str] = mapped_column(String(64), nullable=False); received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now()); processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True)); processing_status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending", server_default="pending"); processing_error: Mapped[str | None] = mapped_column(String(500))
+
+
 class Finding(Base):
     __tablename__ = "findings"
     __table_args__ = (
-        UniqueConstraint("workspace_id", "source", "external_id"),
         CheckConstraint("status IN ('open', 'acknowledged', 'in_progress', 'resolved', 'closed', 'reopened')", name="status"),
         CheckConstraint("severity IN ('critical', 'high', 'medium', 'low', 'informational')", name="severity"),
         CheckConstraint("version > 0", name="version"),
         Index("ix_findings_workspace_updated", "workspace_id", "updated_at"),
         Index("ix_findings_workspace_status_severity", "workspace_id", "status", "severity"),
+        Index("uq_findings_workspace_source_external_manual", "workspace_id", "source", "external_id", unique=True, postgresql_where=text("scanner_fingerprint IS NULL AND external_id IS NOT NULL")),
+        Index("uq_findings_workspace_scanner_fingerprint", "workspace_id", "scanner_fingerprint", unique=True, postgresql_where=text("scanner_fingerprint IS NOT NULL")),
     )
     id: Mapped[UUID] = uuid_column()
     organization_id: Mapped[UUID] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
@@ -267,6 +301,12 @@ class Finding(Base):
     resolution_summary: Mapped[str | None] = mapped_column(Text)
     assignee_user_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
     asset_id: Mapped[UUID | None] = mapped_column(ForeignKey("assets.id", ondelete="SET NULL"), index=True)
+    scanner_fingerprint: Mapped[str | None] = mapped_column(String(64))
+    scanner_type: Mapped[str | None] = mapped_column(String(32))
+    first_detected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_detected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    occurrence_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    scanner_metadata: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict, server_default="{}")
     version: Mapped[int] = mapped_column(Integer, default=1, server_default="1", nullable=False)
     created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
     updated_by: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
@@ -317,3 +357,9 @@ class FindingActivity(Base):
     to_status: Mapped[str | None] = mapped_column(String(24))
     changes: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class FindingOccurrence(Base):
+    __tablename__ = "finding_occurrences"
+    __table_args__ = (Index("ix_finding_occurrences_finding_detected", "finding_id", "detected_at"),)
+    id: Mapped[UUID] = uuid_column(); finding_id: Mapped[UUID] = mapped_column(ForeignKey("findings.id", ondelete="CASCADE"), nullable=False, index=True); job_id: Mapped[UUID] = mapped_column(ForeignKey("scan_jobs.id", ondelete="RESTRICT"), nullable=False, index=True); job_target_id: Mapped[UUID] = mapped_column(ForeignKey("scan_job_targets.id", ondelete="RESTRICT"), nullable=False); raw_result_id: Mapped[UUID] = mapped_column(ForeignKey("raw_scan_results.id", ondelete="RESTRICT"), nullable=False); scanner_type: Mapped[str] = mapped_column(String(32), nullable=False); detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now()); severity: Mapped[str] = mapped_column(String(20), nullable=False); matched_location: Mapped[str | None] = mapped_column(String(1000)); evidence_summary: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict, server_default="{}"); metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict, server_default="{}")
