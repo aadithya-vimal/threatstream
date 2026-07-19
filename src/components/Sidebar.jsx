@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Icon } from './Icons';
+import Brand from './Brand';
 
 const groups = [
   { label: 'Operations', items: [{ name: 'Overview', path: '/overview', icon: 'dashboard' }, { name: 'Audit log', path: '/audit', icon: 'activity' }] },
@@ -9,7 +10,7 @@ const groups = [
 export const Sidebar = ({ collapsed = false, mobileOpen = false, onToggle, onNavigate }) => {
   const { pathname } = useLocation();
   return <aside aria-label="Primary navigation" className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
-    <div className="sidebar__brand"><Link to="/" className="brand" onClick={onNavigate}><img src="/logo.svg" alt="" /><span hidden={collapsed}>THREAT<em>STREAM</em></span></Link></div>
+    <div className="sidebar__brand"><Brand compact={collapsed} onClick={onNavigate} /></div>
     <nav className="sidebar__nav">{groups.map(group => <React.Fragment key={group.label}>
       {!collapsed && <div className="sidebar__label">{group.label}</div>}
       {group.items.map(item => <Link key={item.path} to={item.path} onClick={onNavigate} title={collapsed ? item.name : undefined} className={`nav-item ${pathname === item.path ? 'active' : ''}`}><Icon name={item.icon} size={18} />{!collapsed && <span>{item.name}</span>}</Link>)}
