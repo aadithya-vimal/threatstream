@@ -485,6 +485,56 @@ export const FindingDetail = () => {
               )}
             </Panel>
           </div>
+          {finding.scanner_type && (
+            <Panel
+              title="Scanner detection history"
+              hint="Safe occurrence summaries; raw scanner payloads are not exposed."
+              style={{ marginTop: 16 }}
+            >
+              <div className="data-row">
+                <div>
+                  <h3>
+                    {statusLabel(finding.scanner_type)} ·{" "}
+                    {finding.scanner_reference}
+                  </h3>
+                  <p>
+                    First detected{" "}
+                    {formatFindingDate(finding.first_detected_at)} · Last
+                    detected {formatFindingDate(finding.last_detected_at)} ·{" "}
+                    {finding.occurrence_count} occurrence
+                    {finding.occurrence_count === 1 ? "" : "s"}
+                  </p>
+                </div>
+              </div>
+              {finding.occurrences?.length ? (
+                <div className="data-list">
+                  {finding.occurrences.map((item) => (
+                    <Link
+                      className="data-row"
+                      style={{ textDecoration: "none" }}
+                      to={`/scans/jobs/${item.job_id}`}
+                      key={item.id}
+                    >
+                      <div>
+                        <h3>{statusLabel(item.severity)} detection</h3>
+                        <p>
+                          {item.matched_location || "Matched location withheld"}
+                        </p>
+                      </div>
+                      <span className="mono muted">
+                        {formatFindingDate(item.detected_at)}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  title="No scan occurrences"
+                  description="Occurrence history will appear after scanner ingestion."
+                />
+              )}
+            </Panel>
+          )}
           <Panel
             title="Activity history"
             hint="Newest first; status changes are also written to the workspace audit log."

@@ -311,6 +311,58 @@ export const AssetDetail = () => {
             </Panel>
           </div>
           <Panel
+            title="Scan coverage"
+            hint="Profiles and recent jobs targeting this Asset."
+            style={{ marginTop: 16 }}
+          >
+            <p>
+              Last scanned:{" "}
+              {asset.last_scanned_at
+                ? formatAssetDate(asset.last_scanned_at)
+                : "Never"}
+            </p>
+            {asset.scan_profiles?.length ? (
+              <div className="data-list">
+                {asset.scan_profiles.map((profile) => (
+                  <Link
+                    className="data-row"
+                    style={{ textDecoration: "none" }}
+                    key={profile.id}
+                    to={`/scans/profiles/${profile.id}`}
+                  >
+                    <div>
+                      <h3>{profile.name}</h3>
+                      <p>
+                        {profile.scanner_type} ·{" "}
+                        {profile.is_enabled ? "Enabled" : "Disabled"}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                title="No scan profiles"
+                description="This Asset is not assigned to a scan profile."
+              />
+            )}
+            {asset.recent_scan_jobs?.length ? (
+              <div className="data-list" style={{ marginTop: 16 }}>
+                {asset.recent_scan_jobs.map((job) => (
+                  <Link
+                    className="data-row"
+                    style={{ textDecoration: "none" }}
+                    key={job.id}
+                    to={`/scans/jobs/${job.id}`}
+                  >
+                    <span>{job.scanner_type}</span>
+                    <span className="badge">{job.status}</span>
+                  </Link>
+                ))}
+              </div>
+            ) : null}
+          </Panel>
+          <Panel
             title="Asset activity"
             hint="Safe workspace audit actions for this Asset; newest first."
             style={{ marginTop: 16 }}
