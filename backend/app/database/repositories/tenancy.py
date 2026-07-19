@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import (
     AuditEvent, Organization, OrganizationMember, Team, TeamMember,
-    Workspace, WorkspaceMember, WorkspaceRolePermission,
+    User, Workspace, WorkspaceMember, WorkspaceRolePermission,
 )
 
 
@@ -84,6 +84,16 @@ class TenancyRepository:
 
     async def list_teams(self, workspace_id: UUID) -> list[Team]:
         return list((await self.session.scalars(select(Team).where(Team.workspace_id == workspace_id).order_by(Team.name).limit(200))).all())
+
+    async def list_audit_events(self, workspace_id: UUID, limit: int = 100) -> list[tuple[AuditEvent, str | None]]:
+        rows = await self.session.execute(
+            select(AuditEvent, User.email)
+            .outerjoin(User, User.id == AuditEvent.actor_id)
+            .where(AuditEvent.workspace_id == workspace_id)
+            .order_by(AuditEvent.created_at.desc())
+            .limit(limit)
+        )
+        return list(rows.all())
 
     async def create_team(self, workspace_id: UUID, organization_id: UUID, user_id: UUID, name: str, slug: str, description: str | None) -> Team:
         team = Team(organization_id=organization_id, workspace_id=workspace_id, name=name.strip(), slug=slug.lower(), description=description, created_by=user_id)

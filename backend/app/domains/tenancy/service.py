@@ -44,6 +44,19 @@ class TenancyService:
     async def list_teams(self, workspace_id: UUID) -> list[dict[str, Any]]:
         return [team_dict(row) for row in await self.repository.list_teams(workspace_id)]
 
+    async def list_audit_events(self, workspace_id: UUID, limit: int = 100) -> list[dict[str, Any]]:
+        return [{
+            "id": event.id,
+            "workspace_id": event.workspace_id,
+            "actor_email": actor_email,
+            "action": event.action,
+            "target_type": event.target_type,
+            "target_id": event.target_id,
+            "result": event.result,
+            "metadata": event.event_metadata or {},
+            "created_at": event.created_at,
+        } for event, actor_email in await self.repository.list_audit_events(workspace_id, limit)]
+
     async def create_team(self, workspace_id: UUID, payload: TeamCreate) -> dict[str, Any]:
         async with self.session.begin():
             organization_id = await self.repository.workspace_organization_id(workspace_id)

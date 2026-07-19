@@ -60,6 +60,18 @@ class TenancyContextResponse(BaseModel):
     workspaces: list[WorkspaceSummary]
 
 
+class AuditEventSummary(BaseModel):
+    id: UUID
+    workspace_id: UUID | None = None
+    actor_email: str | None = None
+    action: str
+    target_type: str
+    target_id: UUID | None = None
+    result: str
+    metadata: dict = Field(default_factory=dict)
+    created_at: datetime
+
+
 class OrganizationBootstrapResponse(BaseModel):
     organization: OrganizationSummary
     workspace: WorkspaceSummary

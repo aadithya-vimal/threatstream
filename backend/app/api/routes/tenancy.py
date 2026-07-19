@@ -1,12 +1,12 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.tenancy import require_organization_administrator, require_workspace_permission
 from app.core.security import AuthenticatedPrincipal, get_current_user
 from app.domains.tenancy.schemas import (
-    OrganizationBootstrapResponse,
+    AuditEventSummary, OrganizationBootstrapResponse,
     OrganizationCreate,
     TeamCreate,
     TeamSummary,
@@ -61,3 +61,13 @@ async def create_team(
     session: AsyncSession = Depends(get_db_session),
 ):
     return await TenancyService(session, user).create_team(workspace_id, payload)
+
+
+@router.get("/workspaces/{workspace_id}/audit", response_model=list[AuditEventSummary])
+async def list_audit_events(
+    workspace_id: UUID,
+    limit: int = Query(default=100, ge=1, le=200),
+    user: AuthenticatedPrincipal = Depends(require_workspace_permission("audit:read")),
+    session: AsyncSession = Depends(get_db_session),
+):
+    return await TenancyService(session, user).list_audit_events(workspace_id, limit)
