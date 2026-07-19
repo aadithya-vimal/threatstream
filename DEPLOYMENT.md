@@ -7,7 +7,7 @@
 3. Copy the direct connection URL into `DATABASE_URL_DIRECT`.
 4. Confirm variable presence without echoing values.
 5. Run `python -m alembic upgrade head` from `backend`.
-6. Run `python -m alembic current` and confirm `20260719_0002`.
+6. Run `python -m alembic current` and confirm `20260719_0006`.
 
 Store backend values in `backend/.env`, using `backend/.env.example` as the complete variable reference. The root `.env` is frontend-only.
 
@@ -36,6 +36,18 @@ Do not paste values into chat, expose backend Auth configuration through Vite, e
 - `GET /health` verifies API process liveness and does not require dependencies.
 - `GET /ready` executes a safe PostgreSQL query and returns `503` when unavailable.
 - Responses never expose connection strings or raw database exceptions.
+
+## Scan worker
+
+Run the API and at least one independent durable worker process from `backend`:
+
+```powershell
+python -m app.workers.scan_worker
+```
+
+The same command applies on Linux and macOS after activating the backend environment. The worker uses PostgreSQL row locks and expiring leases; it does not require Redis or a broker. Configure poll, lease, heartbeat, recovery, retry, concurrency, and shutdown-grace values with the documented `SCAN_WORKER_*` settings. Keep heartbeat below half the lease duration. Termination stops new claims, allows the active task its bounded grace period, and leaves interrupted work recoverable after lease expiry.
+
+Horizontal workers are safe because claims and due schedules use `FOR UPDATE SKIP LOCKED`, but current execution is intentionally one job per worker process. Monitor the permission-protected workspace worker-status endpoint; `/health` remains a process-liveness check and does not fail merely because no worker is active.
 
 ## Secret management
 

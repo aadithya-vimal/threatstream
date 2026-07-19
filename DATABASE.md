@@ -42,7 +42,7 @@ python -m alembic current
 python -m alembic history
 ```
 
-Current revision: `20260719_0004`. Asset Inventory and the optional Finding relationship require `20260719_0004`; it follows Findings revision `20260719_0003` without modifying the managed Neon Auth schema.
+Current revision: `20260719_0006`. Durable scan execution and schedules require `20260719_0006`; it follows the scanner foundation revision `20260719_0005` without modifying the managed Neon Auth schema. Lease columns live on `scan_jobs`; `scan_schedules` stores timezone-aware recurrence and outcome state. Uniqueness constraints protect raw-result ingestion, schedule occurrences, and active profile execution.
 
 Do not use application startup to create tables. Downgrading the initial migration destroys Phase 2 data and must only be performed against a confirmed disposable database.
 

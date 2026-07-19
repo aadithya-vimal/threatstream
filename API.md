@@ -79,5 +79,10 @@ Successful responses include an `X-Correlation-ID` header. Errors use a stable `
 | GET | `/api/v1/workspaces/{workspace_id}/scan-jobs/{job_id}` | `scan:read` |
 | POST | `/api/v1/workspaces/{workspace_id}/scan-jobs/{job_id}/cancel` | `scan:manage` |
 | GET | `/api/v1/workspaces/{workspace_id}/scan-jobs/{job_id}/results` | `scan:read` |
+| GET | `/api/v1/workspaces/{workspace_id}/scan-worker/status` | `scan:read` |
+| GET/POST | `/api/v1/workspaces/{workspace_id}/scan-schedules` | `scan:read` / `scan:manage` |
+| GET/PATCH/DELETE | `/api/v1/workspaces/{workspace_id}/scan-schedules/{schedule_id}` | `scan:read` / `scan:manage` |
+| POST | `/api/v1/workspaces/{workspace_id}/scan-schedules/{schedule_id}/enable` | `scan:manage` |
+| POST | `/api/v1/workspaces/{workspace_id}/scan-schedules/{schedule_id}/disable` | `scan:manage` |
 
-Job listing supports bounded pagination plus status, scanner, profile, Asset, requester, date, search, and sort filters. The results route exposes hashes and safe summaries only—not raw payload JSON, stderr, local paths, or command lines. A run returns `202`; unavailable scanners return `503`, and a duplicate active profile run returns `409`.
+Job listing supports bounded pagination plus status, scanner, profile, Asset, requester, date, search, and sort filters. The results route exposes hashes and safe summaries only—not raw payload JSON, stderr, local paths, command lines, claim tokens, or worker identifiers. A run returns `202` after committing queue state; unavailable scanners return `503`, and a duplicate active profile run returns `409`. Schedule mutations use optimistic versions and return `409` for stale writes.

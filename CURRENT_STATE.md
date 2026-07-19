@@ -21,14 +21,15 @@ Audit date: 2026-07-19
 | Findings experience | Live list, creation, detail, editing, transition, evidence, comment, activity, loading, empty, permission, conflict, and error states |
 | Asset Inventory domain | Workspace-isolated Assets, normalization, durable tags, metadata safety, ownership, classification, activation, audit, filtering, pagination, sorting, search, and optimistic versions |
 | Asset Inventory experience | Live list, creation, detail, editing, related Findings, metadata, loading, empty, permission, conflict, and error states |
-| Scanner framework | Profiles, durable targets, transactional jobs, cancellation, safe raw results, Nuclei adapter, Finding deduplication/reopening, and occurrences |
-| Scanner experience | Live overview, profiles, target selection, runtime availability, jobs, polling, cancellation, and safe result summaries |
+| Scanner framework | Profiles, durable targets, PostgreSQL-leased worker jobs, heartbeat, cancellation, bounded retry/recovery, safe raw results, Nuclei adapter, Finding deduplication/reopening, and occurrences |
+| Scheduled scans | Workspace schedules, interval and five-field cron validation, IANA timezones, misfire policy, exactly-once occurrences, active-profile conflict handling, and audit |
+| Scanner experience | Live overview, worker state, profiles, schedules, target selection, runtime availability, jobs, retry/stall context, polling, cancellation, and safe result summaries |
 | Schema management | Alembic only |
 | Health and readiness | Process liveness plus PostgreSQL query |
 
 ## Verification state
 
-Backend unit/API tests and frontend tests/build pass locally. The Alembic migration renders valid PostgreSQL SQL offline and excludes the managed `neon_auth` schema. A clean Neon migration, real Auth lifecycle, isolated database integration tests, onboarding smoke test, and persistence checks remain blocked until rotated database credentials and branch-specific Neon Auth values are configured locally.
+Backend unit/API tests and frontend tests/build pass locally. Revision `20260719_0006` is applied to the approved Neon development branch, has one head, renders valid PostgreSQL SQL offline, and excludes the managed `neon_auth` schema. Disposable live worker, lease recovery, idempotency, schedule dispatch, audit, and cleanup checks pass with a fake adapter. Real Auth lifecycle and Nuclei execution still require their separately configured runtimes.
 
 ## Product boundary
 

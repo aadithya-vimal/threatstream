@@ -20,14 +20,16 @@ Audit date: 2026-07-19
 | `/scans/profiles` | Functional | Live Nuclei profile creation and management |
 | `/scans/profiles/:profileId` | Functional | Safe options, target management, availability, and run workflow |
 | `/scans/jobs/:jobId` | Functional | Bounded polling, target progress, cancellation, and safe results |
+| `/scans/schedules` | Functional | Live schedule list, validated interval/cron creation, timezone preview, and empty/error states |
+| `/scans/schedules/:scheduleId` | Functional | Live schedule detail, editing, enable/disable, outcomes, and linked jobs |
 
 ## Audit disposition
 
 - Fully functional: authentication bridge, protected routing, tenant context, workspace selection, organization bootstrap, integration list/save/test/delete, team list/create, audit read, Asset Inventory, Findings CRUD and triage, health and readiness.
-- Partially functional: teams do not yet expose membership mutation; scanner execution uses an in-process background task pending a durable worker queue.
+- Partially functional: teams do not yet expose membership mutation.
 - UI-only placeholder: none in active navigation.
 - Broken: none found in active route validation.
-- Missing: application entities, deployments, runtime events, member management, scheduled scans, multi-scanner activation, and audit pagination beyond the bounded recent-event read. Repository identifiers are supported as Assets but repository connections remain future work.
+- Missing: application entities, deployments, runtime events, member management, multi-scanner activation, and audit pagination beyond the bounded recent-event read. Repository identifiers are supported as Assets but repository connections remain future work.
 - Out of scope: archived SOC screens, scanner wrappers, local execution, desktop packaging, Electron, and Tauri.
 
 The dormant legacy pages under `src/pages` remain unregistered. They are not presented as product functionality because they depend on removed endpoints, static arrays, browser alerts, or simulated actions.
