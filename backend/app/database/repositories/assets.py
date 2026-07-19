@@ -4,7 +4,7 @@ from uuid import UUID
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import Asset, AssetTag, AssetTagLink, AuditEvent, Finding, User, Workspace, WorkspaceMember
+from app.database.models import Asset, AssetTag, AssetTagLink, AuditEvent, Finding, ScanJob, ScanJobTarget, ScanProfile, ScanProfileTarget, User, Workspace, WorkspaceMember
 
 
 class AssetsRepository:
@@ -76,6 +76,12 @@ class AssetsRepository:
     async def activity(self, workspace_id: UUID, asset_id: UUID):
         rows=await self.session.execute(select(AuditEvent,User.email).outerjoin(User,User.id==AuditEvent.actor_id).where(AuditEvent.workspace_id==workspace_id,AuditEvent.target_type=="asset",AuditEvent.target_id==asset_id).order_by(AuditEvent.created_at.desc()).limit(100))
         return list(rows.all())
+
+    async def scan_profiles(self, workspace_id: UUID, asset_id: UUID):
+        return list((await self.session.scalars(select(ScanProfile).join(ScanProfileTarget, ScanProfileTarget.profile_id == ScanProfile.id).where(ScanProfile.workspace_id == workspace_id, ScanProfileTarget.asset_id == asset_id).order_by(ScanProfile.name))).all())
+
+    async def recent_scan_jobs(self, workspace_id: UUID, asset_id: UUID):
+        return list((await self.session.scalars(select(ScanJob).join(ScanJobTarget, ScanJobTarget.job_id == ScanJob.id).where(ScanJob.workspace_id == workspace_id, ScanJobTarget.asset_id == asset_id).order_by(ScanJob.created_at.desc()).limit(25))).all())
 
     async def add_audit(self, asset: Asset, actor_id: UUID, action: str, *, before=None, after=None, metadata=None):
         self.session.add(AuditEvent(organization_id=asset.organization_id,workspace_id=asset.workspace_id,actor_id=actor_id,action=action,target_type="asset",target_id=asset.id,before_summary=before,after_summary=after,event_metadata=metadata or {}))

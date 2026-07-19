@@ -52,7 +52,12 @@ class AssetsService:
         owner=await self.repository.owner(workspace_id,row.owner_user_id) if row.owner_user_id else None
         findings=await self.repository.related_findings(workspace_id,asset_id)
         activity=await self.repository.activity(workspace_id,asset_id)
+        profiles=await self.repository.scan_profiles(workspace_id,asset_id)
+        jobs=await self.repository.recent_scan_jobs(workspace_id,asset_id)
         result=await self._dict(row,owner,len(findings)); result["related_findings"]=[{"id":f.id,"title":f.title,"severity":f.severity,"status":f.status,"updated_at":f.updated_at} for f in findings];result["activity"]=[{"id":event.id,"action":event.action,"actor_email":actor_email,"created_at":event.created_at} for event,actor_email in activity]
+        result["scan_profiles"]=[{"id":p.id,"name":p.name,"scanner_type":p.scanner_type,"is_enabled":p.is_enabled} for p in profiles]
+        result["recent_scan_jobs"]=[{"id":j.id,"profile_id":j.profile_id,"scanner_type":j.scanner_type,"status":j.status,"created_at":j.created_at,"completed_at":j.completed_at} for j in jobs]
+        result["last_scanned_at"]=next((j.completed_at for j in jobs if j.completed_at),None)
         return result
 
     async def create(self,workspace_id:UUID,payload:AssetCreate):

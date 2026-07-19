@@ -4,7 +4,7 @@ from uuid import UUID
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import Asset, AuditEvent, Finding, FindingActivity, FindingComment, FindingEvidence, User, Workspace, WorkspaceMember
+from app.database.models import Asset, AuditEvent, Finding, FindingActivity, FindingComment, FindingEvidence, FindingOccurrence, User, Workspace, WorkspaceMember
 
 
 class FindingsRepository:
@@ -34,6 +34,12 @@ class FindingsRepository:
     async def get_finding(self, workspace_id: UUID, finding_id: UUID, *, for_update: bool = False) -> Finding | None:
         query = select(Finding).where(Finding.workspace_id == workspace_id, Finding.id == finding_id)
         return await self.session.scalar(query.with_for_update() if for_update else query)
+
+    async def occurrences(self, finding_id: UUID, limit: int = 100) -> list[FindingOccurrence]:
+        return list((await self.session.scalars(
+            select(FindingOccurrence).where(FindingOccurrence.finding_id == finding_id)
+            .order_by(FindingOccurrence.detected_at.desc()).limit(limit)
+        )).all())
 
     async def get_assignee(self, workspace_id: UUID, user_id: UUID) -> User | None:
         return await self.session.scalar(select(User).join(WorkspaceMember, WorkspaceMember.user_id == User.id).where(WorkspaceMember.workspace_id == workspace_id, WorkspaceMember.user_id == user_id, WorkspaceMember.status == "active", User.status == "active"))

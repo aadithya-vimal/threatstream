@@ -147,6 +147,21 @@ class FindingSummary(BaseModel):
     resolved_at: datetime | None = None
     closed_at: datetime | None = None
     reopened_at: datetime | None = None
+    scanner_type: str | None = None
+    scanner_reference: str | None = None
+    first_detected_at: datetime | None = None
+    last_detected_at: datetime | None = None
+    occurrence_count: int = 0
+
+
+class FindingOccurrenceSummary(BaseModel):
+    id: UUID
+    job_id: UUID
+    scanner_type: str
+    detected_at: datetime
+    severity: FindingSeverity
+    matched_location: str | None = None
+    evidence_summary: dict = Field(default_factory=dict)
 
 
 class EvidenceSummary(BaseModel):
@@ -182,6 +197,7 @@ class FindingDetail(FindingSummary):
     evidence: list[EvidenceSummary] = Field(default_factory=list)
     comments: list[CommentSummary] = Field(default_factory=list)
     activity: list[ActivitySummary] = Field(default_factory=list)
+    occurrences: list[FindingOccurrenceSummary] = Field(default_factory=list)
 
 
 class FindingPage(BaseModel):

@@ -102,9 +102,20 @@ class AssetActivity(BaseModel):
     id: UUID; action: str; actor_email: str | None = None; created_at: datetime
 
 
+class AssetScanProfile(BaseModel):
+    id: UUID; name: str; scanner_type: str; is_enabled: bool
+
+
+class AssetScanJob(BaseModel):
+    id: UUID; profile_id: UUID; scanner_type: str; status: str; created_at: datetime; completed_at: datetime | None = None
+
+
 class AssetDetail(AssetSummary):
     related_findings: list[RelatedFinding] = Field(default_factory=list)
     activity: list[AssetActivity] = Field(default_factory=list)
+    scan_profiles: list[AssetScanProfile] = Field(default_factory=list)
+    recent_scan_jobs: list[AssetScanJob] = Field(default_factory=list)
+    last_scanned_at: datetime | None = None
 
 
 class AssetPage(BaseModel):

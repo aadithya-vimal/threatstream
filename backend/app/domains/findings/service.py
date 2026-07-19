@@ -38,6 +38,11 @@ def finding_dict(finding, assignee=None, asset=None) -> dict[str, Any]:
         "version": finding.version, "created_at": finding.created_at, "updated_at": finding.updated_at,
         "acknowledged_at": finding.acknowledged_at, "started_at": finding.started_at,
         "resolved_at": finding.resolved_at, "closed_at": finding.closed_at, "reopened_at": finding.reopened_at,
+        "scanner_type": getattr(finding, "scanner_type", None),
+        "scanner_reference": finding.scanner_fingerprint[:12] if getattr(finding, "scanner_fingerprint", None) else None,
+        "first_detected_at": getattr(finding, "first_detected_at", None),
+        "last_detected_at": getattr(finding, "last_detected_at", None),
+        "occurrence_count": getattr(finding, "occurrence_count", 0),
     }
 
 
@@ -81,6 +86,7 @@ class FindingsService:
         result["evidence"] = [{"id": row.id, "kind": row.kind, "title": row.title, "content": row.content, "created_by": row.created_by, "created_at": row.created_at} for row in await self.repository.evidence(finding.id)]
         result["comments"] = [{"id": row.id, "body": row.body, "created_by": row.created_by, "author_email": author.email if author else None, "author_name": author.display_name if author else None, "created_at": row.created_at} for row, author in await self.repository.comments(finding.id)]
         result["activity"] = [{"id": row.id, "action": row.action, "from_status": row.from_status, "to_status": row.to_status, "changes": row.changes or {}, "actor_email": actor.email if actor else None, "actor_name": actor.display_name if actor else None, "created_at": row.created_at} for row, actor in await self.repository.activity(finding.id)]
+        result["occurrences"] = [{"id": row.id, "job_id": row.job_id, "scanner_type": row.scanner_type, "detected_at": row.detected_at, "severity": row.severity, "matched_location": row.matched_location, "evidence_summary": row.evidence_summary or {}} for row in await self.repository.occurrences(finding.id)]
         return result
 
     async def create(self, workspace_id: UUID, payload: FindingCreate) -> dict:
