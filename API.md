@@ -4,6 +4,24 @@ FastAPI serves interactive documentation at `/docs` and its OpenAPI document at 
 
 `GET /health` is a dependency-free liveness check. `GET /ready` verifies database reachability and returns `503` when PostgreSQL is unavailable or unconfigured.
 
+## Findings
+
+All Findings paths require a Neon Auth bearer token and workspace scope. Reads require `finding:read`; creates, edits, transitions, comments, evidence changes, assignment, and deletion require `finding:triage`. The optional `X-Workspace-ID` header must match the path workspace.
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET, POST | `/api/v1/workspaces/{workspace_id}/findings` | Filtered/paginated list or create a finding |
+| GET | `/api/v1/workspaces/{workspace_id}/findings/assignees` | Active workspace members eligible for assignment |
+| GET, PATCH, DELETE | `/api/v1/workspaces/{workspace_id}/findings/{finding_id}` | Detail, optimistic edit, or optimistic deletion |
+| POST | `/api/v1/workspaces/{workspace_id}/findings/{finding_id}/transitions` | Perform a validated lifecycle transition |
+| POST | `/api/v1/workspaces/{workspace_id}/findings/{finding_id}/comments` | Add durable triage context |
+| POST | `/api/v1/workspaces/{workspace_id}/findings/{finding_id}/evidence` | Add text, URL, or code evidence |
+| DELETE | `/api/v1/workspaces/{workspace_id}/findings/{finding_id}/evidence/{evidence_id}` | Optimistically remove evidence |
+
+List filters support repeated `status` and `severity` parameters, `assignee_user_id`, text `search`, `page`, `page_size`, `sort`, and `direction`. Mutable requests carry the last observed positive `version`; stale versions return `409` instead of overwriting newer work.
+
+Lifecycle values are `open`, `acknowledged`, `in_progress`, `resolved`, `closed`, and `reopened`. Resolution or direct closure requires a resolution summary, and reopening requires a note. Every transition is written to both finding activity and the workspace audit log.
+
 ## Integration credentials
 
 All paths require a Neon Auth bearer token. `{workspace_id}` is authoritative; when `X-Workspace-ID` is supplied it must match. List and detail require `workspace:read`. Mutations require `integration:manage`.
