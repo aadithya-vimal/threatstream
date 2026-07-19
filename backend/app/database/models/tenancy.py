@@ -189,6 +189,61 @@ class IntegrationCredential(Base):
     rotated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
+class Asset(Base):
+    __tablename__ = "assets"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "asset_type", "normalized_identifier"),
+        CheckConstraint("asset_type IN ('domain', 'subdomain', 'ip_address', 'url', 'repository', 'cloud_account', 'host', 'container_image', 'kubernetes_cluster', 'custom')", name="asset_type"),
+        CheckConstraint("criticality IN ('critical', 'high', 'medium', 'low', 'unclassified')", name="criticality"),
+        CheckConstraint("environment IN ('production', 'staging', 'development', 'testing', 'internal', 'external', 'unknown')", name="environment"),
+        CheckConstraint("version > 0", name="version"),
+        Index("ix_assets_workspace_updated", "workspace_id", "updated_at"),
+        Index("ix_assets_workspace_type_active", "workspace_id", "asset_type", "is_active"),
+    )
+    id: Mapped[UUID] = uuid_column()
+    workspace_id: Mapped[UUID] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True)
+    organization_id: Mapped[UUID] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
+    name: Mapped[str] = mapped_column(String(240), nullable=False)
+    asset_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    canonical_identifier: Mapped[str] = mapped_column(String(1000), nullable=False)
+    normalized_identifier: Mapped[str] = mapped_column(String(1000), nullable=False)
+    environment: Mapped[str] = mapped_column(String(24), nullable=False, default="unknown", server_default="unknown")
+    criticality: Mapped[str] = mapped_column(String(20), nullable=False, default="unclassified", server_default="unclassified")
+    owner_user_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    description: Mapped[str | None] = mapped_column(Text)
+    source: Mapped[str] = mapped_column(String(120), nullable=False, default="manual", server_default="manual")
+    external_id: Mapped[str | None] = mapped_column(String(240))
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict, server_default="{}")
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    updated_by: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class AssetTag(Base):
+    __tablename__ = "asset_tags"
+    __table_args__ = (UniqueConstraint("workspace_id", "normalized_name"),)
+    id: Mapped[UUID] = uuid_column()
+    organization_id: Mapped[UUID] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
+    workspace_id: Mapped[UUID] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True)
+    display_name: Mapped[str] = mapped_column(String(80), nullable=False)
+    normalized_name: Mapped[str] = mapped_column(String(80), nullable=False)
+    created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class AssetTagLink(Base):
+    __tablename__ = "asset_tag_links"
+    asset_id: Mapped[UUID] = mapped_column(ForeignKey("assets.id", ondelete="CASCADE"), primary_key=True)
+    tag_id: Mapped[UUID] = mapped_column(ForeignKey("asset_tags.id", ondelete="CASCADE"), primary_key=True)
+    created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
 class Finding(Base):
     __tablename__ = "findings"
     __table_args__ = (
@@ -211,6 +266,7 @@ class Finding(Base):
     remediation: Mapped[str | None] = mapped_column(Text)
     resolution_summary: Mapped[str | None] = mapped_column(Text)
     assignee_user_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    asset_id: Mapped[UUID | None] = mapped_column(ForeignKey("assets.id", ondelete="SET NULL"), index=True)
     version: Mapped[int] = mapped_column(Integer, default=1, server_default="1", nullable=False)
     created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
     updated_by: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
