@@ -51,6 +51,24 @@ export const api = {
   saveIntegration: (workspaceId, provider, credentials) => apiFetch(`/workspaces/${workspaceId}/integrations/${provider}`, { method: 'PUT', body: JSON.stringify({ credentials }), workspaceId }),
   testIntegration: (workspaceId, provider) => apiFetch(`/workspaces/${workspaceId}/integrations/${provider}/test`, { method: 'POST', workspaceId }),
   deleteIntegration: (workspaceId, provider) => apiFetch(`/workspaces/${workspaceId}/integrations/${provider}`, { method: 'DELETE', workspaceId }),
+  getFindings: (workspaceId, filters = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === '') return;
+      if (Array.isArray(value)) value.forEach(item => query.append(key, item));
+      else query.set(key, String(value));
+    });
+    return apiFetch(`/workspaces/${workspaceId}/findings?${query}`, { workspaceId });
+  },
+  getFinding: (workspaceId, findingId) => apiFetch(`/workspaces/${workspaceId}/findings/${findingId}`, { workspaceId }),
+  getFindingAssignees: (workspaceId) => apiFetch(`/workspaces/${workspaceId}/findings/assignees`, { workspaceId }),
+  createFinding: (workspaceId, payload) => apiFetch(`/workspaces/${workspaceId}/findings`, { method: 'POST', body: JSON.stringify(payload), workspaceId }),
+  updateFinding: (workspaceId, findingId, payload) => apiFetch(`/workspaces/${workspaceId}/findings/${findingId}`, { method: 'PATCH', body: JSON.stringify(payload), workspaceId }),
+  transitionFinding: (workspaceId, findingId, payload) => apiFetch(`/workspaces/${workspaceId}/findings/${findingId}/transitions`, { method: 'POST', body: JSON.stringify(payload), workspaceId }),
+  deleteFinding: (workspaceId, findingId, version) => apiFetch(`/workspaces/${workspaceId}/findings/${findingId}`, { method: 'DELETE', body: JSON.stringify({ version }), workspaceId }),
+  addFindingComment: (workspaceId, findingId, version, body) => apiFetch(`/workspaces/${workspaceId}/findings/${findingId}/comments`, { method: 'POST', body: JSON.stringify({ version, body }), workspaceId }),
+  addFindingEvidence: (workspaceId, findingId, payload) => apiFetch(`/workspaces/${workspaceId}/findings/${findingId}/evidence`, { method: 'POST', body: JSON.stringify(payload), workspaceId }),
+  deleteFindingEvidence: (workspaceId, findingId, evidenceId, version) => apiFetch(`/workspaces/${workspaceId}/findings/${findingId}/evidence/${evidenceId}`, { method: 'DELETE', body: JSON.stringify({ version }), workspaceId }),
   health: () => fetch(`${API_BASE}/health`).then((response) => response.json()),
   readiness: () => fetch(`${API_BASE}/ready`).then((response) => response.json())
 };

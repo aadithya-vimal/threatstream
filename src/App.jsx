@@ -13,6 +13,9 @@ const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Integrations = lazy(() => import('./pages/Integrations'));
 const Teams = lazy(() => import('./pages/Teams'));
 const Audit = lazy(() => import('./pages/Audit'));
+const Findings = lazy(() => import('./pages/Findings'));
+const FindingCreate = lazy(() => import('./pages/FindingCreate'));
+const FindingDetail = lazy(() => import('./pages/FindingDetail'));
 
 function App() {
   return (
@@ -41,6 +44,9 @@ function App() {
             } />
             <Route path="/workspace/teams" element={<ProtectedRoute><Teams /></ProtectedRoute>} />
             <Route path="/audit" element={<ProtectedRoute><Audit /></ProtectedRoute>} />
+            <Route path="/findings" element={<ProtectedRoute><Findings /></ProtectedRoute>} />
+            <Route path="/findings/new" element={<ProtectedRoute><FindingCreate /></ProtectedRoute>} />
+            <Route path="/findings/:findingId" element={<ProtectedRoute><FindingDetail /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/overview" replace />} />
           </Routes></Suspense>
         </div>
