@@ -1,11 +1,11 @@
 <#
 .SYNOPSIS
-Starts the ThreatStream backend and frontend development servers.
+Starts the ThreatStream backend, frontend, and durable scan worker.
 
 .DESCRIPTION
 Run this script from any directory. It resolves the repository relative to the
 script, opens each server in its own interactive PowerShell window, and does not
-read, print, rewrite, or stop any process or environment configuration.
+print or rewrite environment configuration or stop existing processes.
 
 .PARAMETER NoBrowser
 Do not open the local frontend URL after starting the servers.
@@ -51,9 +51,16 @@ $activateLiteral = ConvertTo-PowerShellLiteral $activate
 
 $backendCommand = "Set-Location -LiteralPath $backendLiteral; if (Test-Path -LiteralPath $activateLiteral) { & $activateLiteral }; python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000"
 $frontendCommand = "Set-Location -LiteralPath $repositoryLiteral; npm run dev -- --host 127.0.0.1 --port 5173"
+$workerCommand = "Set-Location -LiteralPath $backendLiteral; if (Test-Path -LiteralPath $activateLiteral) { & $activateLiteral }; python -m app.workers.scan_worker"
 
 Start-Process -FilePath 'powershell.exe' -WorkingDirectory $backend -ArgumentList @('-NoExit', '-NoProfile', '-Command', $backendCommand)
 Start-Process -FilePath 'powershell.exe' -WorkingDirectory $repository -ArgumentList @('-NoExit', '-NoProfile', '-Command', $frontendCommand)
+$existingWorker = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like '*python -m app.workers.scan_worker*' }
+if ($existingWorker) {
+    Write-Warning 'A ThreatStream scan worker already appears to be running; no duplicate worker was started.'
+} else {
+    Start-Process -FilePath 'powershell.exe' -WorkingDirectory $backend -ArgumentList @('-NoExit', '-NoProfile', '-Command', $workerCommand)
+}
 
 if (-not $NoBrowser) {
     Start-Process 'http://127.0.0.1:5173'
