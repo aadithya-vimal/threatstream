@@ -7,14 +7,14 @@
 3. Copy the direct connection URL into `DATABASE_URL_DIRECT`.
 4. Confirm variable presence without echoing values.
 5. Run `python -m alembic upgrade head` from `backend`.
-6. Run `python -m alembic current` and confirm `20260718_0001`.
+6. Run `python -m alembic current` and confirm `20260719_0002`.
 
 Store backend values in `backend/.env`, using `backend/.env.example` as the complete variable reference. The root `.env` is frontend-only.
 
 ```powershell
 if (-not $env:DATABASE_URL) { throw "DATABASE_URL is not set" }
 if (-not $env:DATABASE_URL_DIRECT) { throw "DATABASE_URL_DIRECT is not set" }
-cd C:\Users\aadit\OneDrive\Desktop\threatstream\backend
+Set-Location .\backend
 python -m alembic upgrade head
 python -m alembic current
 ```
@@ -36,6 +36,16 @@ Do not paste values into chat, expose backend Auth configuration through Vite, e
 - `GET /health` verifies API process liveness and does not require dependencies.
 - `GET /ready` executes a safe PostgreSQL query and returns `503` when unavailable.
 - Responses never expose connection strings or raw database exceptions.
+
+## Secret management
+
+Deployment infrastructure remains environment-managed: database URLs, Neon Auth verification, CORS, pooling, `CREDENTIAL_ENCRYPTION_KEY`, and `CREDENTIAL_KEY_VERSION`. Keep the 32-byte credential key in the deployment secret manager and retain old key material until an intentional rotation/migration procedure exists.
+
+User/workspace provider keys must not be added to frontend variables or backend `.env`. Users enter them in Settings → Integrations; the backend encrypts them before persistence and never returns plaintext. There is no deployment-level provider fallback. If a workspace credential is absent, the integration is not configured.
+
+VirusTotal connection testing sends the key only as an `x-apikey` header to the fixed `https://www.virustotal.com` test endpoint, uses a five-second timeout, disables redirects, and exposes only normalized status. No custom provider URL is currently supported, so an SSRF-capable URL input does not exist.
+
+ThreatStream Web has no local filesystem or command-execution capability. ThreatStream Desktop packaging and local-agent behavior remain future work.
 
 ## Self-hosting
 
