@@ -41,3 +41,9 @@ Reads require `asset:read`; creation and ordinary edits require `asset:write`; o
 ## Runtime capability model
 
 Integration metadata declares `web_supported`, `desktop_supported`, `requires_local_agent`, and `test_connection`. Runtime mode currently defaults to `web`. This is metadata only: no Electron/Tauri packaging, filesystem access, local command execution, or local agent exists.
+
+## Scanner boundary
+
+The generic scan service resolves typed adapters through a registry and knows nothing about Nuclei command flags or output. Profiles own validated configuration and durable Asset membership; jobs own immutable target snapshots. A `FOR UPDATE SKIP LOCKED` claim prevents duplicate workers, while a partial unique job index prevents multiple active jobs for one profile.
+
+The Nuclei adapter builds subprocess argument arrays from an allowlist, captures stdout/stderr separately, applies bounded time and output, parses JSONL, and redacts secret-like keys. Raw records are immutable except processing state and are never returned directly. Normalized occurrences connect jobs to canonical Findings; fingerprint uniqueness provides idempotent cross-run ingestion. Execution is in-process today and may be moved behind a durable worker without changing the job or adapter contracts.

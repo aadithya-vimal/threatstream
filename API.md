@@ -64,3 +64,20 @@ The backend rejects unknown providers, unexpected fields, and invalid formats. A
 Test results are normalized to `connected`, `invalid_credentials`, `unreachable`, `rate_limited`, `provider_error`, or `configuration_error`. Unconfigured integrations use `not_configured`; newly saved credentials use `untested`. Provider bodies, headers, internal exceptions, and secrets are never returned.
 
 Successful responses include an `X-Correlation-ID` header. Errors use a stable `error` envelope containing `code`, `message`, and `correlation_id`; clients should not depend on internal exception text.
+
+## Scanner routes
+
+| Method | Path | Permission |
+|---|---|---|
+| GET | `/api/v1/workspaces/{workspace_id}/scanners` | `scan:read` |
+| GET | `/api/v1/workspaces/{workspace_id}/scanners/{scanner_type}/health` | `scan:read` |
+| GET/POST | `/api/v1/workspaces/{workspace_id}/scan-profiles` | `scan:read` / `scan:manage` |
+| GET/PATCH/DELETE | `/api/v1/workspaces/{workspace_id}/scan-profiles/{profile_id}` | `scan:read` / `scan:manage` |
+| POST/DELETE | `/api/v1/workspaces/{workspace_id}/scan-profiles/{profile_id}/targets[/{asset_id}]` | `scan:manage` |
+| POST | `/api/v1/workspaces/{workspace_id}/scan-profiles/{profile_id}/run` | `scan:run` |
+| GET | `/api/v1/workspaces/{workspace_id}/scan-jobs` | `scan:read` |
+| GET | `/api/v1/workspaces/{workspace_id}/scan-jobs/{job_id}` | `scan:read` |
+| POST | `/api/v1/workspaces/{workspace_id}/scan-jobs/{job_id}/cancel` | `scan:manage` |
+| GET | `/api/v1/workspaces/{workspace_id}/scan-jobs/{job_id}/results` | `scan:read` |
+
+Job listing supports bounded pagination plus status, scanner, profile, Asset, requester, date, search, and sort filters. The results route exposes hashes and safe summaries only—not raw payload JSON, stderr, local paths, or command lines. A run returns `202`; unavailable scanners return `503`, and a duplicate active profile run returns `409`.

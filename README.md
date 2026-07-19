@@ -73,6 +73,14 @@ npm run build
 
 See `API.md`, `ARCHITECTURE.md`, `DATABASE.md`, and `DEPLOYMENT.md` for operational details.
 
+## Scanner execution
+
+ThreatStream now provides workspace-scoped scan profiles and jobs at `/scans`, with Nuclei as the first active adapter. Profiles accept only validated severity, tag, excluded-tag, template-ID, rate, timeout, retry, and concurrency options. Targets must be active, supported Assets in the same workspace. The backend invokes Nuclei with an argument array, never a shell, applies time/output bounds, sanitizes errors, redacts secret-like fields, and returns only safe result summaries.
+
+Jobs move through `queued → claimed → running → processing → completed|failed`, can be cancelled before processing, and snapshot their targets. Repeated Nuclei detections use a SHA-256 fingerprint scoped by workspace, scanner, Asset, template, matcher, matched location, and discriminator. Active Findings are updated without replacing analyst comments, assignment, or resolution context; resolved or closed Findings reopen and retain occurrence history. Absence in one scan does not auto-resolve a Finding.
+
+Nuclei is optional. When its CLI is unavailable, health reports that state, profile management remains functional, and run requests are blocked safely. Execution currently uses FastAPI background tasks; the transactional claim model is designed for a future durable worker queue. Only scan Assets and systems you are explicitly authorized to test.
+
 ## Experience architecture
 
 Public, authentication, and protected routes share the ThreatStream midnight design system documented in `DESIGN_SYSTEM.md`. The protected shell exposes only routes backed by current APIs: `/overview`, `/assets`, `/assets/:assetId`, `/findings`, `/findings/new`, `/findings/:findingId`, `/workspace/teams`, `/audit`, and `/settings/integrations`. Archived SOC-style screens remain unregistered because their data and actions are not part of the active backend.

@@ -16,14 +16,18 @@ Audit date: 2026-07-19
 | `/findings/new` | Functional for triage roles | Workspace-scoped creation API |
 | `/findings/:findingId` | Functional | Live detail, edit, lifecycle, evidence, comments, and activity APIs |
 | `/settings/integrations` | Functional | Provider registry and encrypted credential lifecycle APIs |
+| `/scans` | Functional | Live capability health, active/recent jobs, profiles, and Asset coverage |
+| `/scans/profiles` | Functional | Live Nuclei profile creation and management |
+| `/scans/profiles/:profileId` | Functional | Safe options, target management, availability, and run workflow |
+| `/scans/jobs/:jobId` | Functional | Bounded polling, target progress, cancellation, and safe results |
 
 ## Audit disposition
 
 - Fully functional: authentication bridge, protected routing, tenant context, workspace selection, organization bootstrap, integration list/save/test/delete, team list/create, audit read, Asset Inventory, Findings CRUD and triage, health and readiness.
-- Partially functional: teams do not yet expose membership mutation; dashboard has no application-derived finding metrics because application and scanner ingestion domains do not yet exist.
+- Partially functional: teams do not yet expose membership mutation; scanner execution uses an in-process background task pending a durable worker queue.
 - UI-only placeholder: none in active navigation.
 - Broken: none found in active route validation.
-- Missing: application entities, automated scans and scanner ingestion, deployments, runtime events, member management, and audit pagination beyond the bounded recent-event read. Repository identifiers are supported as Assets but repository connections remain future work.
+- Missing: application entities, deployments, runtime events, member management, scheduled scans, multi-scanner activation, and audit pagination beyond the bounded recent-event read. Repository identifiers are supported as Assets but repository connections remain future work.
 - Out of scope: archived SOC screens, scanner wrappers, local execution, desktop packaging, Electron, and Tauri.
 
 The dormant legacy pages under `src/pages` remain unregistered. They are not presented as product functionality because they depend on removed endpoints, static arrays, browser alerts, or simulated actions.
