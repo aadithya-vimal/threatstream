@@ -1,5 +1,6 @@
 import base64
 import os
+from binascii import Error as Base64Error
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
@@ -37,12 +38,25 @@ class CredentialCipher:
 
     def decrypt(self, ciphertext: str, nonce: str, workspace_id: str, provider_key: str) -> str:
         associated_data = f"{workspace_id}:{provider_key}".encode("utf-8")
-        plaintext = self.cipher.decrypt(
-            base64.urlsafe_b64decode(nonce.encode("ascii")),
-            base64.urlsafe_b64decode(ciphertext.encode("ascii")),
-            associated_data,
-        )
-        return plaintext.decode("utf-8")
+        try:
+            plaintext = self.cipher.decrypt(
+                base64.urlsafe_b64decode(nonce.encode("ascii")),
+                base64.urlsafe_b64decode(ciphertext.encode("ascii")),
+                associated_data,
+            )
+            return plaintext.decode("utf-8")
+        except (ValueError, UnicodeError, Base64Error) as exc:
+            raise UpstreamServiceError(
+                "The credential could not be decrypted. Replace it in Settings.",
+                status_code=409,
+                code="credential_decryption_failed",
+            ) from exc
+        except Exception as exc:
+            raise UpstreamServiceError(
+                "The credential could not be decrypted. Replace it in Settings.",
+                status_code=409,
+                code="credential_decryption_failed",
+            ) from exc
 
 
 def secret_hint(secret: str) -> str:

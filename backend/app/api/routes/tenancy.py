@@ -1,15 +1,12 @@
-from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Path, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.tenancy import require_organization_administrator, require_workspace_permission
 from app.core.security import AuthenticatedPrincipal, get_current_user
 from app.domains.tenancy.schemas import (
     OrganizationBootstrapResponse,
-    CredentialMetadata,
-    CredentialWrite,
     OrganizationCreate,
     TeamCreate,
     TeamSummary,
@@ -21,7 +18,6 @@ from app.domains.tenancy.service import TenancyService
 from app.database.session import get_db_session
 
 router = APIRouter()
-ProviderKey = Annotated[str, Path(min_length=2, max_length=80, pattern=r"^[a-z0-9]+(?:[_-][a-z0-9]+)*$")]
 
 
 @router.get("/context", response_model=TenancyContextResponse)
@@ -65,34 +61,3 @@ async def create_team(
     session: AsyncSession = Depends(get_db_session),
 ):
     return await TenancyService(session, user).create_team(workspace_id, payload)
-
-
-@router.get("/workspaces/{workspace_id}/credentials", response_model=list[CredentialMetadata])
-async def list_credential_metadata(
-    workspace_id: UUID,
-    user: AuthenticatedPrincipal = Depends(require_workspace_permission("integration:manage")),
-    session: AsyncSession = Depends(get_db_session),
-):
-    return await TenancyService(session, user).list_credential_metadata(workspace_id)
-
-
-@router.put("/workspaces/{workspace_id}/credentials/{provider_key}", response_model=CredentialMetadata)
-async def store_credential(
-    workspace_id: UUID,
-    provider_key: ProviderKey,
-    payload: CredentialWrite,
-    user: AuthenticatedPrincipal = Depends(require_workspace_permission("integration:manage")),
-    session: AsyncSession = Depends(get_db_session),
-):
-    return await TenancyService(session, user).store_credential(workspace_id, provider_key, payload)
-
-
-@router.delete("/workspaces/{workspace_id}/credentials/{provider_key}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_credential(
-    workspace_id: UUID,
-    provider_key: ProviderKey,
-    user: AuthenticatedPrincipal = Depends(require_workspace_permission("integration:manage")),
-    session: AsyncSession = Depends(get_db_session),
-):
-    await TenancyService(session, user).delete_credential(workspace_id, provider_key)
-    return None

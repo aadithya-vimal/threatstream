@@ -11,6 +11,9 @@ from app.database.session import get_db_session
 
 def require_workspace_permission(permission: str) -> Callable:
     async def dependency(request: Request, workspace_id: UUID, user: AuthenticatedPrincipal = Depends(get_current_user), session: AsyncSession = Depends(get_db_session, use_cache=False)) -> AuthenticatedPrincipal:
+        supplied_workspace = request.headers.get("X-Workspace-ID")
+        if supplied_workspace and supplied_workspace != str(workspace_id):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Workspace scope mismatch")
         if not await TenancyRepository(session).has_workspace_permission(workspace_id, user.user_id, permission):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Workspace permission denied")
         request.state.workspace_id = workspace_id

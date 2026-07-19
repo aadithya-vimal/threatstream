@@ -28,17 +28,6 @@ class TeamCreate(BaseModel):
     description: str | None = Field(default=None, max_length=1000)
 
 
-class CredentialWrite(BaseModel):
-    secret: str = Field(min_length=1, max_length=16384)
-
-
-class CredentialMetadata(BaseModel):
-    provider_key: str
-    secret_hint: str
-    key_version: int
-    rotated_at: datetime
-
-
 class OrganizationSummary(BaseModel):
     id: UUID
     name: str

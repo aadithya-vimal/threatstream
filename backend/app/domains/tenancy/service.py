@@ -4,11 +4,9 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
-from app.core.credentials import CredentialCipher, secret_hint
 from app.core.security import AuthenticatedPrincipal
 from app.database.repositories import TenancyRepository
-from app.domains.tenancy.schemas import CredentialWrite, OrganizationCreate, TeamCreate, WorkspaceCreate
+from app.domains.tenancy.schemas import OrganizationCreate, TeamCreate, WorkspaceCreate
 
 
 def organization_dict(row) -> dict[str, Any]:
@@ -53,23 +51,3 @@ class TenancyService:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
             team = await self.repository.create_team(workspace_id, organization_id, self.user.user_id, payload.name, payload.slug, payload.description)
         return team_dict(team)
-
-    async def list_credential_metadata(self, workspace_id: UUID) -> list[dict[str, Any]]:
-        return [{"provider_key": row.provider_key, "secret_hint": row.secret_hint, "key_version": row.key_version, "rotated_at": row.rotated_at} for row in await self.repository.credential_metadata(workspace_id)]
-
-    async def store_credential(self, workspace_id: UUID, provider_key: str, payload: CredentialWrite) -> dict[str, Any]:
-        normalized_provider = provider_key.lower()
-        ciphertext, nonce = CredentialCipher().encrypt(payload.secret, str(workspace_id), normalized_provider)
-        async with self.session.begin():
-            organization_id = await self.repository.workspace_organization_id(workspace_id)
-            if organization_id is None:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
-            row = await self.repository.upsert_credential(workspace_id=workspace_id, organization_id=organization_id, user_id=self.user.user_id, provider_key=normalized_provider, ciphertext=ciphertext, nonce=nonce, hint=secret_hint(payload.secret), key_version=settings.CREDENTIAL_KEY_VERSION)
-        return {"provider_key": row.provider_key, "secret_hint": row.secret_hint, "key_version": row.key_version, "rotated_at": row.rotated_at}
-
-    async def delete_credential(self, workspace_id: UUID, provider_key: str) -> bool:
-        async with self.session.begin():
-            organization_id = await self.repository.workspace_organization_id(workspace_id)
-            if organization_id is None:
-                return False
-            return await self.repository.delete_credential(workspace_id, organization_id, self.user.user_id, provider_key.lower())

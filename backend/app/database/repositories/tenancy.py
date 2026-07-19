@@ -1,11 +1,10 @@
-from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import and_, delete, exists, or_, select
+from sqlalchemy import and_, exists, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import (
-    AuditEvent, IntegrationCredential, Organization, OrganizationMember, Team, TeamMember,
+    AuditEvent, Organization, OrganizationMember, Team, TeamMember,
     Workspace, WorkspaceMember, WorkspaceRolePermission,
 )
 
@@ -93,29 +92,3 @@ class TenancyRepository:
         self.session.add(TeamMember(team_id=team.id, user_id=user_id, role_key="lead"))
         await self.add_audit(organization_id=organization_id, workspace_id=workspace_id, actor_id=user_id, action="team.created", target_type="team", target_id=team.id, after_summary={"name": team.name, "slug": team.slug})
         return team
-
-    async def credential_metadata(self, workspace_id: UUID) -> list[IntegrationCredential]:
-        return list((await self.session.scalars(select(IntegrationCredential).where(IntegrationCredential.workspace_id == workspace_id).order_by(IntegrationCredential.provider_key).limit(200))).all())
-
-    async def upsert_credential(self, *, workspace_id: UUID, organization_id: UUID, user_id: UUID, provider_key: str, ciphertext: str, nonce: str, hint: str, key_version: int) -> IntegrationCredential:
-        credential = await self.session.scalar(select(IntegrationCredential).where(IntegrationCredential.workspace_id == workspace_id, IntegrationCredential.provider_key == provider_key).with_for_update())
-        if credential is None:
-            credential = IntegrationCredential(organization_id=organization_id, workspace_id=workspace_id, provider_key=provider_key, secret_ciphertext=ciphertext, secret_nonce=nonce, secret_hint=hint, key_version=key_version, created_by=user_id)
-            self.session.add(credential)
-        else:
-            credential.secret_ciphertext = ciphertext
-            credential.secret_nonce = nonce
-            credential.secret_hint = hint
-            credential.key_version = key_version
-            credential.created_by = user_id
-            credential.rotated_at = datetime.now(UTC)
-        await self.session.flush()
-        await self.add_audit(organization_id=organization_id, workspace_id=workspace_id, actor_id=user_id, action="integration.credential_rotated", target_type="integration_credential", target_id=credential.id, after_summary={"provider_key": provider_key, "secret_hint": hint, "key_version": key_version})
-        return credential
-
-    async def delete_credential(self, workspace_id: UUID, organization_id: UUID, user_id: UUID, provider_key: str) -> bool:
-        credential_id = await self.session.scalar(delete(IntegrationCredential).where(IntegrationCredential.workspace_id == workspace_id, IntegrationCredential.provider_key == provider_key).returning(IntegrationCredential.id))
-        if credential_id is None:
-            return False
-        await self.add_audit(organization_id=organization_id, workspace_id=workspace_id, actor_id=user_id, action="integration.credential_removed", target_type="integration_credential", target_id=credential_id, after_summary={"provider_key": provider_key})
-        return True
