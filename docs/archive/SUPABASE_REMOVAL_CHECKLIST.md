@@ -1,3 +1,7 @@
+> Historical record. Not authoritative for current product behavior or setup instructions.
+>
+> See the [current documentation index](../README.md).
+
 # Supabase Removal Checklist
 
 Baseline: `main` at `2020dc2`, synchronized with `origin/main`. `repomix-output.xml` is untracked and must remain untouched.

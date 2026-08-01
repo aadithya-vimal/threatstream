@@ -1,3 +1,7 @@
+> Historical record. Not authoritative for current product behavior or setup instructions.
+>
+> See the [current documentation index](../README.md).
+
 # Integrations Matrix
 
 Phase 2 stores and tests integration credentials securely but does not perform enrichment or ingest provider data.

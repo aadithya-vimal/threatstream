@@ -1,3 +1,7 @@
+> Historical record. Not authoritative for current product behavior or setup instructions.
+>
+> See the [current documentation index](../README.md).
+
 # Infrastructure Migration Guide
 
 The Phase 2 schema was never deployed to the previous hosted database, so no record export/import is expected. Alembic revision `20260718_0001` is the canonical initial Phase 2 schema.

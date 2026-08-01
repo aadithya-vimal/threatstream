@@ -1,3 +1,7 @@
+> Historical record. Not authoritative for current product behavior or setup instructions.
+>
+> See the [current documentation index](../README.md).
+
 # Neon Auth Migration Checklist
 
 Starting commit: `e7bf8a3`

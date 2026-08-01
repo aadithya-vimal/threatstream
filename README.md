@@ -1,88 +1,60 @@
 # ThreatStream
 
-ThreatStream is an open-source Application Security Operations platform. Its hosted web product provides browser-safe application-security workflows; a future desktop product will add deeper local DevSecOps capabilities while sharing the same auth, authorization, API contracts, and credential settings.
+ThreatStream is one cybersecurity platform with two deliberately separated surfaces: a public experience for real, attributed threat observations and an authenticated vulnerability-discovery SaaS for repositories, code changes, and authorized public targets.
+
+## Current maturity
+
+ThreatStream is under active development and is **not production-ready**. The current tree contains test-covered tenancy, Assets, Findings, integrations, scan profiles/jobs/schedules, a durable worker, and one active Nuclei adapter. Real browser authentication is currently blocked, real Nuclei execution is unverified, and the public monitor, GitHub integration, Application/Repository domains, and production operations remain planned. See [`docs/STATUS.md`](docs/STATUS.md) for evidence-based state.
+
+## Product surfaces
+
+- **Public Threat Intelligence:** planned Global Monitor, globe, live observation feed, trends, source health, methodology, and limitations using real attributed sources only.
+- **Authenticated Vulnerability Discovery SaaS:** workspace-scoped Applications, repositories, pull requests, commits, authorized targets, scans, unified Findings, occurrences, triage, teams, permissions, and audit history.
+
+Automated remediation is deferred.
 
 ## Architecture
 
-```text
-React → Neon Auth → FastAPI → SQLAlchemy async → Neon PostgreSQL
-```
+The React/Vite frontend calls a FastAPI trust boundary. FastAPI enforces identity, tenancy, and permissions and persists customer data in PostgreSQL through async SQLAlchemy. Scan jobs are claimed by a separate durable worker using PostgreSQL leases. The typed adapter registry under `backend/app/domains/scans/adapters` is the sole scanner interface; Nuclei is the only active adapter. The future public-intelligence data plane must remain isolated from all customer data.
 
-ThreatStream Cloud uses branchable Neon Auth and Neon PostgreSQL. Neon Auth authenticates identity; ThreatStream owns local users, tenancy, roles, permissions, and audit history. The browser never accesses PostgreSQL or the Neon Data API.
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
-## Current status
+## Local quick start
 
-- SQLAlchemy 2.0 async data access and `asyncpg` are active.
-- Alembic is the only schema-management system.
-- Neon Auth JWTs are verified using issuer-bound, cached JWKS keys and an explicit asymmetric algorithm policy.
-- External Neon Auth subjects map idempotently to local ThreatStream users without receiving tenancy permissions.
-- React accesses operational data only through FastAPI.
-- Settings → Integrations manages workspace-owned VirusTotal API credentials without `.env` edits. Saved values are encrypted and can only be replaced, tested, or deleted—not retrieved.
-- The operational overview uses live workspace, team, integration, and audit APIs; unavailable data is represented as an empty, loading, permission, or error state rather than a synthetic metric.
-- Workspace → Teams supports real tenant-scoped listing and creation. Operations → Audit log exposes safe append-only events to roles with `audit:read`.
-- Operations → Findings provides live workspace-scoped creation, filtering, pagination, search, assignment, optimistic editing, validated status transitions, evidence, comments, activity, and audit logging.
-- Operations → Assets provides the canonical workspace inventory with type-aware identifier normalization, durable tags, ownership, criticality, environment, safe metadata, activation, and related Findings.
-- Findings can be assigned to an active or inactive Asset and filtered by Asset. Application models and automated scanner ingestion remain future work.
-- A clean Neon deployment and real Neon Auth lifecycle still require local branch configuration before Phase 2 can be declared operational.
-
-## Local setup
+Prerequisites: Node.js/npm, Python, PostgreSQL-compatible development credentials, and configured Neon Auth values. Never use production credentials locally.
 
 ```powershell
-Copy-Item backend\.env.example backend\.env
-cd backend
-python -m pip install -r requirements.txt
-if (-not $env:DATABASE_URL) { throw "DATABASE_URL is not set" }
-python -m alembic upgrade head
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
-```
-
-In a second terminal:
-
-```powershell
-cd C:\Users\aadit\OneDrive\Desktop\threatstream
 npm install
-if (-not $env:VITE_NEON_AUTH_URL) { throw "VITE_NEON_AUTH_URL is not set" }
-npm run dev
+python -m pip install -r backend/requirements.txt
+Copy-Item .env.example .env
+Copy-Item backend/.env.example backend/.env
+.\scripts\threatstream.ps1
 ```
 
-Generate a credential-encryption key without printing production secrets:
+The required processes are:
 
-```powershell
-python -c "import base64,secrets; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())"
-```
+- Vite frontend on `127.0.0.1:5173`;
+- FastAPI API on `127.0.0.1:8000`;
+- PostgreSQL-backed scan worker from `backend`.
 
-`DATABASE_URL`, Neon Auth configuration, `CREDENTIAL_ENCRYPTION_KEY`, CORS, and pool settings are deployment secrets and are never user-editable. Provider credentials are workspace-owned and entered through Integrations. No deployment-level provider fallback is used: the precedence rule is workspace credential, then not configured.
+The launcher does not prove readiness and the current auth path is not browser-accepted. Full commands and safe setup notes are in [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md).
 
-## Product modes
+## Documentation
 
-- **ThreatStream Web** is hosted and browser-based. It uses backend APIs, provides surface-level AppSec/security workflows, and never executes local commands or accesses local files.
-- **ThreatStream Desktop** is a future Windows, macOS, and Linux application for deeper local security operations. Packaging, local agents, filesystem access, and tool execution are not implemented.
+- [Product contract](docs/PRODUCT.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Development](docs/DEVELOPMENT.md)
+- [Deployment](docs/DEPLOYMENT.md)
+- [API](docs/API.md)
+- [Repository audit](docs/REPOSITORY_AUDIT.md)
+- [Execution status](docs/STATUS.md)
+- [Master execution plan](docs/THREATSTREAM_SAAS_MASTER_PLAN.md)
+- [Historical archive](docs/archive/)
 
-## Verification
+## Security and authorization
 
-```powershell
-cd backend
-$env:PYTEST_DISABLE_PLUGIN_AUTOLOAD='1'
-python -m pytest -q
-python -m alembic current
+Scan only repositories and systems you own or are explicitly authorized to test. Never commit `.env` files, tokens, keys, scan outputs, source checkouts, logs, caches, databases, or `repomix-output.xml`. Repository code is data and must never be executed by scanners. Detected secret values must never be persisted or displayed.
 
-cd ..
-npm test
-npm run build
-```
+## Release status
 
-See `API.md`, `ARCHITECTURE.md`, `DATABASE.md`, and `DEPLOYMENT.md` for operational details.
-
-## Scanner execution
-
-ThreatStream now provides workspace-scoped scan profiles and jobs at `/scans`, with Nuclei as the first active adapter. Profiles accept only validated severity, tag, excluded-tag, template-ID, rate, timeout, retry, and concurrency options. Targets must be active, supported Assets in the same workspace. The backend invokes Nuclei with an argument array, never a shell, applies time/output bounds, sanitizes errors, redacts secret-like fields, and returns only safe result summaries.
-
-Jobs move through `queued → claimed → running → processing → completed|failed`, can be cancelled durably, and snapshot their targets. The API only commits queue state; `python -m app.workers.scan_worker` claims eligible jobs using PostgreSQL `FOR UPDATE SKIP LOCKED`, renews expiring leases, recovers interrupted attempts, and applies bounded retry backoff. Repeated Nuclei detections use a SHA-256 fingerprint scoped by workspace, scanner, Asset, template, matcher, matched location, and discriminator. Active Findings are updated without replacing analyst comments, assignment, or resolution context; resolved or closed Findings reopen and retain occurrence history. Absence in one scan does not auto-resolve a Finding.
-
-Schedules support validated intervals of at least 15 minutes or five-field cron expressions, IANA timezones, enable/disable lifecycle, optimistic versions, and explicit `skip` or `run_once` misfire behavior. The worker advances occurrences transactionally, avoids concurrent profile jobs, and enforces one job per schedule occurrence.
-
-Nuclei is optional. When its CLI is unavailable, health reports that state, profile and schedule management remain functional, and manual run requests are blocked safely. Start all local processes with `scripts/threatstream.ps1`, or run the API, frontend, and worker independently. Only scan Assets and systems you are explicitly authorized to test.
-
-## Experience architecture
-
-Public, authentication, and protected routes share the ThreatStream midnight design system documented in `DESIGN_SYSTEM.md`. The protected shell exposes only routes backed by current APIs: `/overview`, `/assets`, `/assets/:assetId`, `/findings`, `/findings/new`, `/findings/:findingId`, `/workspace/teams`, `/audit`, and `/settings/integrations`. Archived SOC-style screens remain unregistered because their data and actions are not part of the active backend.
+Phase 0 establishes repository truth and removes obsolete product surfaces. The exact next task and release blockers are maintained only in [`docs/STATUS.md`](docs/STATUS.md). Documentation, tests, or a successful build do not by themselves prove browser or production functionality.

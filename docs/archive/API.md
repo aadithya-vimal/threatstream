@@ -1,3 +1,7 @@
+> Historical record. Not authoritative for current product behavior or setup instructions.
+>
+> See the [current documentation index](../README.md).
+
 # API usage guide
 
 FastAPI serves interactive documentation at `/docs` and its OpenAPI document at `/api/v1/openapi.json`. Use those generated resources as the schema authority; this guide records the application-specific access and safety conventions that clients must preserve.

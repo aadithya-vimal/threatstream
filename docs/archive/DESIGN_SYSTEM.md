@@ -1,3 +1,7 @@
+> Historical record. Not authoritative for current product behavior or setup instructions.
+>
+> See the [current documentation index](../README.md).
+
 # ThreatStream design system
 
 ThreatStream uses a calm enterprise-security visual language derived from midnight navy surfaces, thin luminous borders, restrained cyan interaction color, limited violet/coral ambient accents, system typography, and softly translucent glass surfaces. The system is centralized in `src/index.css`; route components consume semantic variables and shared classes instead of defining independent palettes.

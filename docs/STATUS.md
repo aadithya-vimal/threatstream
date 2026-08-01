@@ -6,10 +6,10 @@ Repository-wide instructions are in [`AGENTS.md`](../AGENTS.md).
 
 ## Current state
 
-- Current task: `TS-004 — Remove the obsolete backend plugin architecture`
+- Current task: `TS-005 — Consolidate documentation`
 - Status: `complete`
-- Exact next task: `TS-005`
-- Completed task IDs: `TS-000`, `TS-001`, `TS-002`, `TS-003`, `TS-004`
+- Exact next task: `TS-006`
+- Completed task IDs: `TS-000`, `TS-001`, `TS-002`, `TS-003`, `TS-004`, `TS-005`
 - Blocked task IDs: none
 - Baseline commit: `600a1636e4257986467c6ecea9b6eb300d1a252b`
 - TS-000 documentation commit: `22bbb85b2e44b03b69dce367291a0d77a5da69c0` (original, amended locally with this final ledger update)
@@ -26,8 +26,8 @@ Repository-wide instructions are in [`AGENTS.md`](../AGENTS.md).
 |---|---|---|---|---|---|
 | TS-002 | complete | `e369d56330ac456dabd5cadce079f96cc2b0fb7d` | product contract and naming search; `git diff --check` | none | TS-003 |
 | TS-003 | complete | `a2d1e765090f7e3b2af53be7cfe15181cfbb7d35` | 34 frontend tests; production build; reference search; `git diff --check` | none | TS-004 |
-| TS-004 | complete | current TS-004 commit | compileall; 101 backend tests with global plugin autoload disabled; reference search | unrelated global pytest plugin failure documented | TS-005 |
-| TS-005 | not_started | — | — | — | — |
+| TS-004 | complete | `a85e4a72558ba5376bd8d9db43cfbc1c257c1953` | compileall; 101 backend tests with global plugin autoload disabled; reference search | unrelated global pytest plugin failure documented | TS-005 |
+| TS-005 | complete | current TS-005 commit | archive-header, contradiction, link/path, and `git diff --check` review | none | TS-006 |
 | TS-006 | not_started | — | — | — | — |
 | TS-007 | not_started | — | — | — | — |
 
@@ -141,7 +141,8 @@ Repository-wide instructions are in [`AGENTS.md`](../AGENTS.md).
 | TS-002 | complete |
 | TS-003 | complete |
 | TS-004 | complete |
-| TS-005, TS-006, TS-007 | not_started |
+| TS-005 | complete |
+| TS-006, TS-007 | not_started |
 | TS-010, TS-011, TS-012, TS-013, TS-014, TS-015, TS-016, TS-017, TS-018 | not_started |
 | TS-020, TS-021, TS-022, TS-023, TS-024, TS-025, TS-026, TS-027 | not_started |
 | TS-030, TS-031, TS-032, TS-033, TS-034, TS-035, TS-036, TS-037, TS-038 | not_started |
@@ -446,3 +447,64 @@ Ending commit: current TS-004 commit (`git rev-parse HEAD`)
 ### Next task
 
 TS-005
+
+## TS-005 — Consolidate documentation
+
+Status: complete
+Started: 2026-08-01T13:00:00Z
+Completed: 2026-08-01T13:04:46.6526827Z
+Starting commit: `a85e4a72558ba5376bd8d9db43cfbc1c257c1953`
+Ending commit: current TS-005 commit (`git rev-parse HEAD`)
+
+### Implemented
+
+- Moved 17 superseded root reports, migration/checklist documents, and competing architecture/status documents into `docs/archive/`.
+- Added the required non-authoritative warning and current-index link to every archived Markdown file.
+- Rewrote the root README as a concise two-surface product entry point with honest maturity, architecture, setup, security, documentation, and release-state guidance.
+- Created current `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, `docs/DEPLOYMENT.md`, `docs/API.md`, and `docs/README.md`.
+- Reconciled current revision, route, scanner, auth, worker, public-monitor, GitHub, and deployment claims with the product contract and evidence ledger.
+
+### Files changed
+
+- `README.md`
+- Current documentation under `docs/`
+- 17 root Markdown files moved to `docs/archive/`
+- `docs/STATUS.md` and `docs/REPOSITORY_AUDIT.md`
+
+### Database
+
+- Migration: none
+- Target: not accessed
+- Result: current docs identify repository head `20260719_0006` and live state as unverified
+
+### Validation
+
+- Command: archive first-line validation
+- Result: passed for all 17 archived Markdown files
+- Command: root/current documentation inventory
+- Result: root retains only `README.md` and `AGENTS.md`; current docs have one product, status, architecture, development, deployment, and API path
+- Command: contradiction search and manual classification
+- Result: current matches are honest limitations/current revision; conflicting claims remain only in clearly archived records or audit history
+- Command: relative link/path review
+- Result: current index and changed links resolve by repository path inspection
+- Command: `git diff --check`
+- Result: passed
+
+### Browser verification
+
+- Journey: none
+- Result: not run and not claimed
+
+### Security review
+
+- Historical security and migration lessons were preserved rather than deleted.
+- README and current setup guidance prohibit committing secrets and unauthorized scanning.
+
+### Known limitations
+
+- Link validation was manual; no dedicated Markdown link checker is installed.
+- Historical documents intentionally retain obsolete terms and claims behind explicit archive warnings.
+
+### Next task
+
+TS-006

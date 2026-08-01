@@ -260,6 +260,8 @@ Missing: browser E2E sign-in/session restoration/authenticated requests/onboardi
 
 ## 16. Documentation contradictions
 
+TS-005 resolved the active-document contradictions below by moving all 17 superseded root documents into `docs/archive/` with non-authoritative headers and creating current `PRODUCT`, `ARCHITECTURE`, `DEVELOPMENT`, `DEPLOYMENT`, `API`, status, audit, and documentation-index files. The table remains as historical evidence of the TS-001 baseline.
+
 Ten contradiction groups were verified.
 
 | Document(s) | Claim | Authority | Contradiction | Disposition |
@@ -275,7 +277,7 @@ Ten contradiction groups were verified.
 | `ARCHITECTURE.md` vs `TARGET_ARCHITECTURE.md` | Current and target architecture both appear current | No | Competing architecture descriptions | Merge into current document |
 | `DEPLOYMENT.md` / `PHASE_2_REPORT.md` | Setup/delivery claims | No | Mix documented procedures with unverified deployment acceptance | Move |
 
-Other root reports/checklists (`NEON_CLERK_MIGRATION_REPORT.md`, `SUPABASE_REMOVAL_CHECKLIST.md`, `MIGRATION_PLAN.md`, `INTEGRATIONS_MATRIX.md`, `DATABASE.md`, `API.md`, `DESIGN_SYSTEM.md`) contain useful history/reference but are not authoritative under `AGENTS.md`; TS-005 should archive or merge them deliberately.
+Other root reports/checklists (`NEON_CLERK_MIGRATION_REPORT.md`, `SUPABASE_REMOVAL_CHECKLIST.md`, `MIGRATION_PLAN.md`, `INTEGRATIONS_MATRIX.md`, `DATABASE.md`, `API.md`, `DESIGN_SYSTEM.md`) contained useful history/reference but were not authoritative under `AGENTS.md`; TS-005 archived them and replaced active guidance where required.
 
 ## 17. Environment contract
 

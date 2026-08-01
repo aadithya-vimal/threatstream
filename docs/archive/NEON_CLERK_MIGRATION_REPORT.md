@@ -1,3 +1,7 @@
+> Historical record. Not authoritative for current product behavior or setup instructions.
+>
+> See the [current documentation index](../README.md).
+
 # Superseded Neon and Clerk Migration Report
 
 This historical report described the intermediate Clerk architecture delivered from commit `2020dc2` through `e7bf8a3`.
