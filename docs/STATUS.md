@@ -6,10 +6,10 @@ Repository-wide instructions are in [`AGENTS.md`](../AGENTS.md).
 
 ## Current state
 
-- Current task: `TS-005 — Consolidate documentation`
+- Current task: `TS-006 — Normalize repository structure`
 - Status: `complete`
-- Exact next task: `TS-006`
-- Completed task IDs: `TS-000`, `TS-001`, `TS-002`, `TS-003`, `TS-004`, `TS-005`
+- Exact next task: `TS-007`
+- Completed task IDs: `TS-000`, `TS-001`, `TS-002`, `TS-003`, `TS-004`, `TS-005`, `TS-006`
 - Blocked task IDs: none
 - Baseline commit: `600a1636e4257986467c6ecea9b6eb300d1a252b`
 - TS-000 documentation commit: `22bbb85b2e44b03b69dce367291a0d77a5da69c0` (original, amended locally with this final ledger update)
@@ -27,8 +27,8 @@ Repository-wide instructions are in [`AGENTS.md`](../AGENTS.md).
 | TS-002 | complete | `e369d56330ac456dabd5cadce079f96cc2b0fb7d` | product contract and naming search; `git diff --check` | none | TS-003 |
 | TS-003 | complete | `a2d1e765090f7e3b2af53be7cfe15181cfbb7d35` | 34 frontend tests; production build; reference search; `git diff --check` | none | TS-004 |
 | TS-004 | complete | `a85e4a72558ba5376bd8d9db43cfbc1c257c1953` | compileall; 101 backend tests with global plugin autoload disabled; reference search | unrelated global pytest plugin failure documented | TS-005 |
-| TS-005 | complete | current TS-005 commit | archive-header, contradiction, link/path, and `git diff --check` review | none | TS-006 |
-| TS-006 | not_started | — | — | — | — |
+| TS-005 | complete | `e21a676cb095d20bf0e80d96cf8a4b255316a214` | archive-header, contradiction, link/path, and `git diff --check` review | none | TS-006 |
+| TS-006 | complete | current TS-006 commit | frontend and backend tests; production build; compileall; import and Alembic checks; `git diff --check` | none | TS-007 |
 | TS-007 | not_started | — | — | — | — |
 
 ### TS-001 audit counts

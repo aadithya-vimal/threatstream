@@ -11,24 +11,24 @@ import { TenancyProvider } from "./contexts/TenancyContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
-const Landing = lazy(() => import("./pages/Landing"));
-const Terms = lazy(() => import("./pages/Terms"));
-const AuthPage = lazy(() => import("./pages/AuthPage"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Integrations = lazy(() => import("./pages/Integrations"));
-const Teams = lazy(() => import("./pages/Teams"));
-const Audit = lazy(() => import("./pages/Audit"));
-const Findings = lazy(() => import("./pages/Findings"));
-const FindingCreate = lazy(() => import("./pages/FindingCreate"));
-const FindingDetail = lazy(() => import("./pages/FindingDetail"));
-const Assets = lazy(() => import("./pages/Assets"));
-const AssetDetail = lazy(() => import("./pages/AssetDetail"));
-const Scans = lazy(() => import("./pages/Scans"));
-const ScanProfiles = lazy(() => import("./pages/ScanProfiles"));
-const ScanProfileDetail = lazy(() => import("./pages/ScanProfileDetail"));
-const ScanJobDetail = lazy(() => import("./pages/ScanJobDetail"));
-const ScanSchedules = lazy(() => import("./pages/ScanSchedules"));
-const ScanScheduleDetail = lazy(() => import("./pages/ScanScheduleDetail"));
+const Landing = lazy(() => import("./features/public/Landing"));
+const Terms = lazy(() => import("./features/public/Terms"));
+const AuthPage = lazy(() => import("./features/auth/AuthPage"));
+const Dashboard = lazy(() => import("./features/overview/Dashboard"));
+const Integrations = lazy(() => import("./features/integrations/Integrations"));
+const Teams = lazy(() => import("./features/teams/Teams"));
+const Audit = lazy(() => import("./features/audit/Audit"));
+const Findings = lazy(() => import("./features/findings/Findings"));
+const FindingCreate = lazy(() => import("./features/findings/FindingCreate"));
+const FindingDetail = lazy(() => import("./features/findings/FindingDetail"));
+const Assets = lazy(() => import("./features/assets/Assets"));
+const AssetDetail = lazy(() => import("./features/assets/AssetDetail"));
+const Scans = lazy(() => import("./features/scans/Scans"));
+const ScanProfiles = lazy(() => import("./features/scans/ScanProfiles"));
+const ScanProfileDetail = lazy(() => import("./features/scans/ScanProfileDetail"));
+const ScanJobDetail = lazy(() => import("./features/scans/ScanJobDetail"));
+const ScanSchedules = lazy(() => import("./features/scans/ScanSchedules"));
+const ScanScheduleDetail = lazy(() => import("./features/scans/ScanScheduleDetail"));
 
 function App() {
   return (

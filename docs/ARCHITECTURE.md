@@ -18,7 +18,9 @@ PostgreSQL-leased scan worker
        └─ Nuclei adapter (only active adapter; real binary unverified)
 ```
 
-The API registers routes from `backend/app/api/routes`. Domain logic lives under `backend/app/domains`, persistence under `backend/app/database`, and the worker under `backend/app/workers`. The obsolete `backend/app/plugins` runtime was removed in TS-004.
+The API registers routes from `backend/app/api/routes`. Domain logic lives under `backend/app/domains`, persistence under `backend/app/database`, and the worker under `backend/app/workers`. The obsolete `backend/app/plugins` runtime was removed in TS-004. The only Python package root is `backend/app`; the retired root-level compatibility alias was removed in TS-006.
+
+Frontend route components are grouped under `src/features` by product capability (`public`, `auth`, `overview`, `teams`, `audit`, `integrations`, `assets`, `findings`, and `scans`). Cross-feature UI remains under `src/components`, shared browser state under `src/contexts`, layouts under `src/layouts`, and API/domain helpers under `src/lib`.
 
 ## Trust boundaries
 
@@ -31,7 +33,7 @@ The API registers routes from `backend/app/api/routes`. Domain logic lives under
 
 ## Target authorized shape
 
-The target adds Application, Repository, GitHub, notifications, and public-intelligence domains. Customer Workspace data and public threat observations must use separate modules, tables, routes, permissions, and workers. Public queries must never join customer Assets, repositories, Findings, jobs, results, credentials, or audit events.
+The target adds Application, Repository, GitHub, notifications, and public-intelligence domains. Reserved package boundaries now exist under `backend/app/domains`, but contain no implementation. Customer Workspace data and public threat observations must use separate modules, tables, routes, permissions, and workers. Public queries must never join customer Assets, repositories, Findings, jobs, results, credentials, or audit events.
 
 ## Current limitations
 

@@ -15,7 +15,7 @@ Automated remediation is deferred.
 
 ## Architecture
 
-The React/Vite frontend calls a FastAPI trust boundary. FastAPI enforces identity, tenancy, and permissions and persists customer data in PostgreSQL through async SQLAlchemy. Scan jobs are claimed by a separate durable worker using PostgreSQL leases. The typed adapter registry under `backend/app/domains/scans/adapters` is the sole scanner interface; Nuclei is the only active adapter. The future public-intelligence data plane must remain isolated from all customer data.
+The React/Vite frontend groups route components by capability under `src/features` and calls a FastAPI trust boundary rooted at `backend/app`. FastAPI enforces identity, tenancy, and permissions and persists customer data in PostgreSQL through async SQLAlchemy. Scan jobs are claimed by a separate durable worker using PostgreSQL leases. The typed adapter registry under `backend/app/domains/scans/adapters` is the sole scanner interface; Nuclei is the only active adapter. The future public-intelligence data plane must remain isolated from all customer data.
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 

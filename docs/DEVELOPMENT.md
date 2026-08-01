@@ -4,7 +4,9 @@
 
 - Frontend commands run from the repository root.
 - Backend, Alembic, API, and worker commands run from `backend`.
-- The root `app/` alias is not the documented backend source root.
+- `backend/app` is the sole Python package root; run Python commands from `backend`.
+
+Frontend route components live in capability folders under `src/features`. Shared components, contexts, layouts, and helpers remain in their corresponding top-level `src` directories.
 
 ## Environment
 
