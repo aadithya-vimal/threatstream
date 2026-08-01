@@ -6,10 +6,10 @@ Repository-wide instructions are in [`AGENTS.md`](../AGENTS.md).
 
 ## Current state
 
-- Current task: `TS-000 — Initialize the execution ledger`
+- Current task: `TS-001 — Produce a repository reality audit`
 - Status: `complete`
-- Exact next task: `TS-001`
-- Completed task IDs: `TS-000`
+- Exact next task: `TS-002`
+- Completed task IDs: `TS-000`, `TS-001`
 - Blocked task IDs: none
 - Baseline commit: `600a1636e4257986467c6ecea9b6eb300d1a252b`
 - TS-000 documentation commit: `22bbb85b2e44b03b69dce367291a0d77a5da69c0` (original, amended locally with this final ledger update)
@@ -18,6 +18,20 @@ Repository-wide instructions are in [`AGENTS.md`](../AGENTS.md).
 - Current test counts: not established by TS-000
 - Browser acceptance state: unverified
 - Deployment state: unverified
+- TS-001 audit: [`docs/REPOSITORY_AUDIT.md`](REPOSITORY_AUDIT.md)
+
+### TS-001 audit counts
+
+- Active frontend route entries: 20 (18 concrete, one compatibility redirect, one wildcard redirect)
+- Unregistered frontend page components: 8
+- Backend HTTP routes: 53
+- Active domains: 5 (`tenancy`, `assets`, `findings`, `integrations`, `scans`; audit is cross-cutting within tenancy/services)
+- Alembic migrations: 6
+- Active scanner adapters: 1 (Nuclei)
+- Present legacy plugin implementations: 14 (11 module classes plus 3 inline manager classes)
+- Test files: 19
+- Documentation contradiction groups: 10
+- Safe deletion candidates for later tasks: 15
 
 ## Baseline captured 2026-08-01
 
@@ -102,14 +116,18 @@ Repository-wide instructions are in [`AGENTS.md`](../AGENTS.md).
 - The preserved implementation changes have not been validated, accepted, or reviewed as product work.
 - Dependency declarations are constraints in several cases, not proof of installed runtime versions. Installed-package verification belongs in the repository audit.
 - Browser functionality, deployment state, test totals, and a live database revision have not been verified.
-- No TS-001 implementation has started.
+- The known repeated Neon Auth JWT endpoint `404` remains a browser-auth blocker; component and JWT tests do not prove resolution.
+- Real Nuclei, production worker, live database, deployment, backup, observability, and browser journeys remain unverified.
+- The obsolete plugin manager is unreachable from the active app, imports missing modules, and contains simulated/fabricated behavior; it is not accepted product work.
+- No TS-002 implementation has started.
 
 ## Task ledger
 
 | Task | Status |
 |---|---|
 | TS-000 | complete |
-| TS-001, TS-002, TS-003, TS-004, TS-005, TS-006, TS-007 | not_started |
+| TS-001 | complete |
+| TS-002, TS-003, TS-004, TS-005, TS-006, TS-007 | not_started |
 | TS-010, TS-011, TS-012, TS-013, TS-014, TS-015, TS-016, TS-017, TS-018 | not_started |
 | TS-020, TS-021, TS-022, TS-023, TS-024, TS-025, TS-026, TS-027 | not_started |
 | TS-030, TS-031, TS-032, TS-033, TS-034, TS-035, TS-036, TS-037, TS-038 | not_started |
@@ -182,3 +200,63 @@ Ending commit: current amended TS-000 commit (`git rev-parse HEAD`); original do
 ### Next task
 
 TS-001
+
+## TS-001 — Produce a repository reality audit
+
+Status: complete
+Started: 2026-08-01T10:59:33.1584166Z
+Completed: 2026-08-01T12:41:00.3765301Z
+Starting commit: `df91af4e6f9eeffb67abe21bd41aa09870b2ac7c`
+Ending commit: current TS-001 commit (`git rev-parse HEAD`)
+
+### Implemented
+
+- Created [`docs/REPOSITORY_AUDIT.md`](REPOSITORY_AUDIT.md) with the required 25-section structure and evidence appendix.
+- Classified every top-level source directory and major module with an approved disposition and verification label.
+- Mapped 20 frontend route entries, 8 unregistered pages, 53 backend routes, 5 active domains, 6 migrations, one active scanner adapter, 14 present legacy plugin implementations, and 19 test files.
+- Documented the broken browser-auth boundary, mocked-test limitations, migration/documentation contradictions, duplicate scanner systems, deployment gaps, ignored artifacts, and 15 evidence-backed later deletion candidates.
+- Inspected `stash@{0}` by metadata only and left it preserved and unapplied.
+
+### Files changed
+
+- `docs/REPOSITORY_AUDIT.md`
+- `docs/STATUS.md`
+
+### Database
+
+- Migration: none
+- Target: not accessed
+- Result: repository metadata shows a linear six-revision chain with the single head `20260719_0006`; live state remains unverified
+
+### Validation
+
+- Command: `git status --short`, `git diff --name-only`
+- Result: only `docs/REPOSITORY_AUDIT.md` and `docs/STATUS.md` changed
+- Command: `git diff --check`
+- Result: passed
+- Command: route/import/package/migration/reference inventories listed in the audit appendix
+- Result: acceptance inventory completed with repository evidence
+- Command: `git stash list`, `git stash show --name-status stash@{0}`, `git stash show --stat stash@{0}`
+- Result: preservation stash remains intact and unapplied at `58ad455967296c59aa648022451bb804d2bac3ad`
+
+### Browser verification
+
+- Journey: none; documentation-only audit
+- Result: not run; protected browser functionality is not claimed and the recorded JWT endpoint `404` remains blocking
+
+### Security review
+
+- No environment values, secret contents, raw scan outputs, stash patch, or full process command lines were recorded.
+- No database connection, external scan, migration, dependency update, stash mutation, or implementation change occurred.
+- Legacy fabricated/simulated plugin behavior is explicitly classified as unreachable and unsafe, not accepted product functionality.
+
+### Known limitations
+
+- Runtime conclusions are limited to repository evidence and existing test boundaries.
+- The live database, real Neon Auth, real Nuclei execution, durable worker deployment, and browser journeys remain unverified.
+- Stashed pre-TS-001 implementation content has not been reviewed or accepted.
+- TS-002 has not started.
+
+### Next task
+
+TS-002
