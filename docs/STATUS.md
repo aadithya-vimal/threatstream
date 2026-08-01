@@ -5,10 +5,10 @@ This is the authoritative evidence ledger for the execution sequence in
 
 ## Current state
 
-- Current task: `TS-013 — Repair the authenticated application shell`
-- Task status: `complete`
+- Current task: `TS-014 — Verify and repair existing core workflows`
+- Task status: `live browser acceptance blocked`
 - Phase 0 gate: `complete` after the final validation recorded below
-- Exact next task: `TS-014 — Verify and repair existing core workflows`
+- Exact next task: `TS-014 live core-workflow and scanner-health acceptance`
 - TS-010 implementation: complete
 - Leading release blocker: Phase 1 backend and workflow acceptance remains incomplete; authentication is no longer the leading blocker
 - Browser acceptance: real sign-in, session restoration, tenancy resolution, and protected navigation verified for TS-010
@@ -103,7 +103,7 @@ Evidence labels are intentionally independent. A component test using mocks is u
 | TS-011 | complete | current TS-011 commit | real browser/API acceptance; public JWKS metadata; JWT/JWKS/identity/tenancy tests; full backend suite | none | TS-012 |
 | TS-012 | complete | current TS-012 commit | 55 frontend tests; production build; focused bootstrap/identity/tenancy tests | none | TS-013 |
 | TS-013 | complete | current TS-013 commit | 13 frontend test files / 64 tests; production build; route/data-loader review | none | TS-014 |
-| TS-014 | not_started | — | — | — | — |
+| TS-014 | live_acceptance_blocked | — | automated domain/component coverage remains passing | browser runtime unavailable; no reusable credential/session | TS-014 |
 | TS-015 | not_started | — | — | — | — |
 | TS-016 | not_started | — | — | — | — |
 | TS-017 | not_started | — | — | — | — |
@@ -150,6 +150,13 @@ Evidence labels are intentionally independent. A component test using mocks is u
 - The API client performs one forced refresh after a 401 and triggers sign-out only when the retried authenticated request is also 401. HTTP 400, 403, 404, 409, 422, 429, 500, and 503 remain typed application errors and do not clear authentication.
 - All retained feature data loaders were reviewed and key their workspace-scoped loads to `currentWorkspace.id`, causing workspace switches to reload rather than reuse another workspace's data.
 - Direct-route import/build coverage passes. Full real-browser route-by-route acceptance remains assigned to TS-015.
+
+### TS-014 blocker
+
+- TS-014 requires real browser operations backed by the configured development database: persistence across refresh for Teams, Assets, Findings, Integrations, Audit, and truthful Scans behavior.
+- The supplied acceptance establishes that the application generally loads, but does not enumerate the required create/edit/transition/comment/evidence/audit persistence checks. Automated tests cannot substitute for that evidence.
+- Scanner-health before-fix browser status was not observable because the browser suppressed the response. A controlled reproduction established the failing class as HTTP 500 without a CORS header. After the repair, automated authenticated-route coverage returns HTTP 200 with `available: false` when Nuclei is absent and includes CORS; live browser re-verification is still pending.
+- No TS-014 product capability is marked browser verified from mocked tests. TS-015 and later tasks have not started.
 
 ## Phase 0 gate evidence
 
