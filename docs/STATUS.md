@@ -5,10 +5,10 @@ This is the authoritative evidence ledger for the execution sequence in
 
 ## Current state
 
-- Current task: `TS-010 — Stabilize Neon Auth client integration`
+- Current task: `TS-011 — Align FastAPI JWT validation with real Neon tokens`
 - Task status: `complete`
 - Phase 0 gate: `complete` after the final validation recorded below
-- Exact next task: `TS-011 — Align FastAPI JWT validation with real Neon tokens`
+- Exact next task: `TS-012 — Make tenancy onboarding operational`
 - TS-010 implementation: complete
 - Leading release blocker: Phase 1 backend and workflow acceptance remains incomplete; authentication is no longer the leading blocker
 - Browser acceptance: real sign-in, session restoration, tenancy resolution, and protected navigation verified for TS-010
@@ -100,7 +100,7 @@ Evidence labels are intentionally independent. A component test using mocks is u
 | Task | Status | Commit | Validation | Blocker | Next task |
 |---|---|---|---|---|---|
 | TS-010 | complete | `f85207afb9cd9e38283571e5464e4c8553cb4227` plus closure evidence commit | 12 frontend test files / 48 tests; production build; real sign-in, refresh persistence, tenancy, protected navigation; no bogus JWT loop | none | TS-011 |
-| TS-011 | not_started | — | — | none | — |
+| TS-011 | complete | current TS-011 commit | real browser/API acceptance; public JWKS metadata; JWT/JWKS/identity/tenancy tests; full backend suite | none | TS-012 |
 | TS-012 | not_started | — | — | — | — |
 | TS-013 | not_started | — | — | — | — |
 | TS-014 | not_started | — | — | — | — |
@@ -127,6 +127,14 @@ Evidence labels are intentionally independent. A component test using mocks is u
 - CORS is now the outermost user middleware around a sanitized application exception boundary. Both intentional local origins are supported without wildcard credentials.
 - Scanner health now reports `configured` and `binary_detected` truthfully. Missing Nuclei remains a normal HTTP 200 unavailable result; unexpected health failures are sanitized and cannot expose subprocess details.
 - Focused evidence covers both loopback origins, preflight, authenticated unavailable state, internal failure, CORS error headers, unauthorized access, and wrong-workspace denial. Live browser re-verification remains required before marking the Scans surface browser verified.
+
+### TS-011 evidence and stash review
+
+- Real sign-in reached tenancy and protected API-backed routes, proving the issued token passed the existing required signature, issuer, expiry, subject, algorithm, and `kid` checks. No token, cookie, or authorization header was printed or persisted.
+- Safe public metadata check: issuer and JWKS share the configured Neon Auth host; JWKS path is `/neondb/auth/.well-known/jwks.json`; one signing key was published with a `kid` and `EdDSA`. Audience validation remains deliberately disabled because `NEON_AUTH_AUDIENCE` is empty for this branch contract.
+- Backend validation now enforces a fixed asymmetric algorithm ceiling (`EdDSA`, `RS256`, `ES256`) in addition to the environment allowlist, so configuration cannot accidentally enable a symmetric JWT algorithm.
+- Tests cover valid signature, invalid signature, wrong issuer/audience, optional absent audience, expiry, future `nbf`, missing subject, missing `kid`, symmetric algorithm rejection, unknown-key refresh, JWKS timeout, idempotent provider-neutral identity mapping, and no tenancy auto-grant.
+- Stash `backend/app/core/security.py`: rejected in full. It logged unverified token claims and detailed decode errors, violating token secrecy and verified-claims-only rules. No stashed security code was restored. The stash remains intact.
 
 ## Phase 0 gate evidence
 

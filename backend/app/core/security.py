@@ -18,6 +18,7 @@ from app.database.models import ExternalIdentity, User
 from app.database.session import get_db_session
 
 security_scheme = HTTPBearer(auto_error=False)
+ALLOWED_ASYMMETRIC_JWT_ALGORITHMS = frozenset({"EdDSA", "RS256", "ES256"})
 
 
 @dataclass(frozen=True)
@@ -69,7 +70,7 @@ async def decode_neon_auth_token(token: str) -> dict[str, Any]:
     try:
         header = jwt.get_unverified_header(token)
         algorithm = header.get("alg")
-        if algorithm not in settings.neon_auth_jwt_algorithms or not header.get("kid"):
+        if algorithm not in ALLOWED_ASYMMETRIC_JWT_ALGORITHMS or algorithm not in settings.neon_auth_jwt_algorithms or not header.get("kid"):
             raise InvalidTokenError("Unsupported token")
         key_data = await neon_auth_jwks.get_key(header["kid"])
         if key_data.get("alg") and key_data["alg"] != algorithm:
