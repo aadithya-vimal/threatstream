@@ -6,12 +6,12 @@ This is the authoritative evidence ledger for the execution sequence in
 ## Current state
 
 - Current task: `TS-010 — Stabilize Neon Auth client integration`
-- Task status: `implementation complete; live browser acceptance blocked`
+- Task status: `complete`
 - Phase 0 gate: `complete` after the final validation recorded below
-- Exact next task: `TS-010 live browser acceptance`, then `TS-011`
-- TS-010 implementation: not started
-- Leading release blocker: real browser sign-in and session restoration have not been accepted; protected browser workflows therefore remain blocked
-- Browser acceptance: no active workflow is browser verified
+- Exact next task: `TS-011 — Align FastAPI JWT validation with real Neon tokens`
+- TS-010 implementation: complete
+- Leading release blocker: Phase 1 backend and workflow acceptance remains incomplete; authentication is no longer the leading blocker
+- Browser acceptance: real sign-in, session restoration, tenancy resolution, and protected navigation verified for TS-010
 - Production acceptance: no capability is production verified
 - Repository Alembic head: `20260719_0006`; no live database was contacted in Phase 0
 
@@ -30,10 +30,10 @@ Evidence labels are intentionally independent. A component test using mocks is u
 | Sources | Public | Not routed | Planned source-health API | Source metadata and freshness | None | None | No | No | Planned | No implementation | TS-081 |
 | Methodology | Public | Not routed | None planned for static page | Documented source classes and limitations | None | None | No | No | Planned | No implementation | TS-086 |
 | Sign-up | Authentication | `/auth/sign-up` through `/auth/:path` | Neon Auth / identity resolution | External identity provider | `src/contexts/AuthContext.test.jsx` (mocked) | `backend/tests/test_neon_auth_security.py` | No | No | Partially verified | Correct SDK boundary is tested; real sign-up still requires browser acceptance | TS-010 |
-| Sign-in | Authentication | `/auth/sign-in` through `/auth/:path` | Neon Auth / identity resolution | External identity provider | `src/contexts/AuthContext.test.jsx` and `src/lib/neonAuth.test.js` (mocked) | Configured `/get-session` returned 200 unauthenticated | No | No | Partially verified | Browser sign-in unavailable in this execution environment | TS-010 |
-| Session restoration | Authentication | `AuthProvider` application entry | Bearer JWT verification | External identity provider | Auth state, retry, deduplication, and refresh tests | `backend/tests/test_identity_resolution.py` | No | No | Partially verified | Real browser refresh persistence not accepted | TS-010 |
+| Sign-in | Authentication | `/auth/sign-in` through `/auth/:path` | Neon Auth / identity resolution | External identity provider | `src/contexts/AuthContext.test.jsx` and `src/lib/neonAuth.test.js` (mocked) | Configured `/get-session` returned 200 unauthenticated | Yes | No | Verified | Production verification remains outstanding | None |
+| Session restoration | Authentication | `AuthProvider` application entry | Bearer JWT verification | External identity provider | Auth state, retry, deduplication, and refresh tests | `backend/tests/test_identity_resolution.py` | Yes | No | Verified | Production verification remains outstanding | None |
 | Sign-out | Authentication | Authenticated shell action | Neon Auth client | External identity provider | `src/contexts/AuthContext.test.jsx` (mocked) | None | No | No | Test-only | Mocked client only | TS-010 |
-| Protected routing | Authentication | All private routes via `ProtectedRoute` | Identity plus Workspace context | Auth and API state | `src/contexts/AuthContext.test.jsx` (mocked) | None | No | No | Broken | Blocked by browser auth | TS-010 |
+| Protected routing | Authentication | All private routes via `ProtectedRoute` | Identity plus Workspace context | Auth and API state | `src/contexts/AuthContext.test.jsx` (mocked) | None | Yes | No | Verified | Full route-by-route E2E remains TS-015 | TS-015 |
 | Organization onboarding | Tenancy | Provider flow; no dedicated route | Tenancy API | PostgreSQL through API | `src/contexts/TenancyContext.test.jsx` (mocked) | `backend/tests/test_tenancy_security.py` | No | No | Test-only | No browser acceptance | TS-011 |
 | Workspace selection | Tenancy | Authenticated shell selector | Tenancy API | PostgreSQL through API | `src/contexts/TenancyContext.test.jsx` (mocked) | `backend/tests/test_tenancy_security.py` | No | No | Test-only | Protected browser flow blocked | TS-011 |
 | Cross-workspace isolation | Tenancy | API enforcement on private routes | Workspace-scoped dependencies | PostgreSQL test fixtures | None | `backend/tests/test_tenancy_security.py` | No | No | Partially verified | Deterministic tests only; no live database or production proof | TS-012 |
@@ -99,8 +99,8 @@ Evidence labels are intentionally independent. A component test using mocks is u
 
 | Task | Status | Commit | Validation | Blocker | Next task |
 |---|---|---|---|---|---|
-| TS-010 | live_acceptance_blocked | current TS-010 commit | 12 frontend test files / 48 tests; production build; configured Auth `/get-session` returned 200; bogus `/get-j-w-t-token` independently returns 404 | Browser-control runtime exits before opening a tab; no real account/session evidence | TS-010 browser acceptance, then TS-011 |
-| TS-011 | not_started | — | — | TS-010 real token unavailable | — |
+| TS-010 | complete | `f85207afb9cd9e38283571e5464e4c8553cb4227` plus closure evidence commit | 12 frontend test files / 48 tests; production build; real sign-in, refresh persistence, tenancy, protected navigation; no bogus JWT loop | none | TS-011 |
+| TS-011 | not_started | — | — | none | — |
 | TS-012 | not_started | — | — | — | — |
 | TS-013 | not_started | — | — | — | — |
 | TS-014 | not_started | — | — | — | — |
@@ -114,7 +114,8 @@ Evidence labels are intentionally independent. A component test using mocks is u
 - Package versions remain current and mutually matched: `@neondatabase/auth@0.4.2-beta`, `@neondatabase/auth-ui@0.2.1-beta`, and transitive `better-auth@1.4.18`.
 - The client exposes deterministic auth states, bounded token retry, concurrent-request deduplication, one forced refresh after API 401, and a visible terminal retry state. JWTs remain SDK-managed and are not logged or stored by ThreatStream.
 - Non-secret endpoint evidence: the configured Neon Auth host/path responded `200` at `/get-session`; the previously generated bogus endpoint responds `404` as expected.
-- Browser acceptance was not claimed. The mandated browser-control runtime failed before a tab could open because its generated kernel was treated as ESM by host configuration. No alternate browser mechanism was substituted.
+- At the implementation commit, browser acceptance was not claimed because the mandated browser-control runtime failed before opening a tab; no alternate browser mechanism was substituted.
+- Subsequent user-observed browser acceptance verified real sign-in, session restoration after refresh, tenancy resolution, protected navigation, and no repeated `/get-j-w-t-token` requests. The observed scanner-health CORS failure is tracked separately and did not reject authentication.
 - Stash `src/lib/neonAuth.js`: accepted the wrapper/adapter separation idea and independently implemented it without the stashed Proxy; the Proxy approach was rejected as an opaque API override.
 - Stash `src/contexts/AuthContext.jsx`: stable callbacks/memoized context were accepted and independently combined with the required state model. The stashed version alone did not address token refresh, bounded errors, or the endpoint cause.
 - The remaining five stash paths are still pending later Phase 1 review. The stash remains intact and unapplied.
