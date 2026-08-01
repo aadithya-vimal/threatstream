@@ -20,7 +20,7 @@ export const Terms = () => (
 
       <section className="terms-section">
         <h2>Intended product</h2>
-        <p>ThreatStream is intended to become a self-hostable Application Security Operations platform connecting repositories, scanner findings, deployments, runtime security events, ownership, remediation, and verification.</p>
+        <p>ThreatStream is intended to provide a public, attributed threat-observation experience and an authenticated vulnerability-discovery SaaS for repositories and authorized public targets. Automated remediation is deferred.</p>
       </section>
 
       <section className="terms-section">

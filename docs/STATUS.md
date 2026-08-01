@@ -6,10 +6,10 @@ Repository-wide instructions are in [`AGENTS.md`](../AGENTS.md).
 
 ## Current state
 
-- Current task: `TS-001 — Produce a repository reality audit`
+- Current task: `TS-002 — Lock the product contract`
 - Status: `complete`
-- Exact next task: `TS-002`
-- Completed task IDs: `TS-000`, `TS-001`
+- Exact next task: `TS-003`
+- Completed task IDs: `TS-000`, `TS-001`, `TS-002`
 - Blocked task IDs: none
 - Baseline commit: `600a1636e4257986467c6ecea9b6eb300d1a252b`
 - TS-000 documentation commit: `22bbb85b2e44b03b69dce367291a0d77a5da69c0` (original, amended locally with this final ledger update)
@@ -19,6 +19,17 @@ Repository-wide instructions are in [`AGENTS.md`](../AGENTS.md).
 - Browser acceptance state: unverified
 - Deployment state: unverified
 - TS-001 audit: [`docs/REPOSITORY_AUDIT.md`](REPOSITORY_AUDIT.md)
+
+## Phase 0 execution
+
+| Task | Status | Commit | Validation | Blockers | Next task |
+|---|---|---|---|---|---|
+| TS-002 | complete | current TS-002 commit | product contract and naming search; `git diff --check` | none | TS-003 |
+| TS-003 | not_started | — | — | — | — |
+| TS-004 | not_started | — | — | — | — |
+| TS-005 | not_started | — | — | — | — |
+| TS-006 | not_started | — | — | — | — |
+| TS-007 | not_started | — | — | — | — |
 
 ### TS-001 audit counts
 
@@ -127,7 +138,8 @@ Repository-wide instructions are in [`AGENTS.md`](../AGENTS.md).
 |---|---|
 | TS-000 | complete |
 | TS-001 | complete |
-| TS-002, TS-003, TS-004, TS-005, TS-006, TS-007 | not_started |
+| TS-002 | complete |
+| TS-003, TS-004, TS-005, TS-006, TS-007 | not_started |
 | TS-010, TS-011, TS-012, TS-013, TS-014, TS-015, TS-016, TS-017, TS-018 | not_started |
 | TS-020, TS-021, TS-022, TS-023, TS-024, TS-025, TS-026, TS-027 | not_started |
 | TS-030, TS-031, TS-032, TS-033, TS-034, TS-035, TS-036, TS-037, TS-038 | not_started |
@@ -260,3 +272,54 @@ Ending commit: current TS-001 commit (`git rev-parse HEAD`)
 ### Next task
 
 TS-002
+
+## TS-002 — Lock the product contract
+
+Status: complete
+Started: 2026-08-01T12:45:00Z
+Completed: 2026-08-01T12:49:21.3855700Z
+Starting commit: `58b925caa3f58d39b8dbb712caaa423d44750e36`
+Ending commit: current TS-002 commit (`git rev-parse HEAD`)
+
+### Implemented
+
+- Created [`docs/PRODUCT.md`](PRODUCT.md) as the authoritative contract for the two product surfaces, personas, release scope, exclusions, journeys, vocabulary, data truth, isolation, release acceptance, and future roadmap.
+- Defined all required public-intelligence, tenancy, source-control, scan, Finding, threat-observation, and audit terms.
+- Normalized the active Terms product description and explicitly deferred automated remediation.
+
+### Files changed
+
+- `docs/PRODUCT.md`
+- `docs/STATUS.md`
+- `src/pages/Terms.jsx`
+
+### Database
+
+- Migration: none
+- Target: not accessed
+- Result: not applicable
+
+### Validation
+
+- Command: active naming/product-description `rg` search
+- Result: reviewed; remaining SIEM/EDR/SOAR/malware-sandbox matches are explicit exclusions, historical audit evidence, the master plan, or dormant TS-003 candidates
+- Command: `git diff --check`
+- Result: passed
+
+### Browser verification
+
+- Journey: none; contract task
+- Result: not run and not claimed
+
+### Security review
+
+- Product contract forbids fabricated production telemetry/results, detected-secret exposure, unauthorized scans, and customer/public data-plane mixing.
+
+### Known limitations
+
+- This contract defines scope; it does not claim planned capabilities are implemented.
+- Broken browser authentication and other evidence gaps remain recorded.
+
+### Next task
+
+TS-003
