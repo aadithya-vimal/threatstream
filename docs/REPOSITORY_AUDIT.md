@@ -10,7 +10,7 @@ ThreatStream currently has a registered React/Vite public landing and authentica
 
 The repository does **not** contain browser evidence proving those protected journeys. The active Neon Auth browser bridge is classified **Broken** because the governing baseline records a repeated JWT endpoint `404`; component and JWT unit tests do not resolve that failure. All registered protected routes are consequently **Broken** as end-to-end browser journeys even where their frontend-to-backend contracts are present and test-covered.
 
-There are two scanner systems at the TS-001 baseline. `backend/app/domains/scans/adapters` is the registered, worker-integrated authority and has one active adapter, Nuclei. `backend/app/plugins` is unreachable from `backend/app/main.py`, imports modules that do not exist, duplicates Nuclei and Nmap concepts, and contains simulated/fabricated results and sleep-driven progress. It is a TS-004 deletion candidate, not accepted product behavior.
+There were two scanner systems at the TS-001 baseline. TS-004 deleted the unreachable `backend/app/plugins` framework after proving no active imports. `backend/app/domains/scans/adapters` is now the sole registered, worker-integrated authority and has one active adapter, Nuclei.
 
 At the TS-001 baseline, eight page components under `src/pages` were unregistered. TS-003 removed those pages and their unreachable supporting modules after import/route verification. Nineteen test files exist, but none is browser E2E or a live external-service test. The repository metadata has one Alembic head (`20260719_0006`); the live database revision was not queried in this documentation-only audit.
 
@@ -229,7 +229,7 @@ The worker tests use fake adapters and disposable/test database boundaries. They
 
 ## 14. Legacy plugin inventory
 
-Fourteen implementation classes are present: 11 module-based plugins (`auditd`, `masscan`, `nmap`, `osquery`, `rustscan`, `sslyze`, `suricata`, `sysmon`, `whatweb`, `windows_events`, `zeek`) and three inline manager classes (`NmapPlugin`, `NucleiPlugin`, `DefaultPlugin`). The manager also imports missing modules/classes for VirusTotal, IOC providers, Nuclei, Nikto, and lazy orchestrators, so importing it fails before use.
+At the TS-001 baseline, fourteen implementation classes were present: 11 module-based plugins (`auditd`, `masscan`, `nmap`, `osquery`, `rustscan`, `sslyze`, `suricata`, `sysmon`, `whatweb`, `windows_events`, `zeek`) and three inline manager classes (`NmapPlugin`, `NucleiPlugin`, `DefaultPlugin`). TS-004 deleted the entire isolated plugin directory. The active adapter framework, Nuclei adapter, worker, raw-result ingestion, normalization, Finding deduplication/occurrences, and scheduling remain unchanged.
 
 | Group | Reality | Verification | Disposition |
 |---|---|---|---|
@@ -363,7 +363,7 @@ The ordinary untracked `docs/THREATSTREAM_AGENT_START_PROMPT.txt` is also held b
 | `backend/app/domains/integrations` | provider credentials | Yes | Yes | integration routes | PostgreSQL/external provider | Test-only | Keep | External test unverified |
 | `backend/app/domains/scans` | adapter/orchestration/schedules | Yes | Yes | scan routes | PostgreSQL/Nuclei CLI | Test-only | Refactor | Real CLI/runtime unverified |
 | `backend/app/workers` | durable job loop | Yes | Process entry | scan routes indirectly | PostgreSQL/scanner | Test-only | Keep | Production runtime unverified |
-| `backend/app/plugins` | obsolete plugin framework | No | No | None | fabricated/subprocess/telemetry | Broken | Delete | Isolated imports; missing modules |
+| `backend/app/plugins` | removed obsolete plugin framework | No | No | None | none | Broken | Delete | Deleted in TS-004 after isolated-import proof; active adapter tests pass |
 | `backend/alembic` | schema migrations | Yes | CLI | N/A | repository metadata | Test-only | Keep | Live DB unverified |
 | `backend/tests` | backend tests | Yes | Test runner | N/A | mocks/test DB | Test-only | Keep | No browser/external acceptance |
 | `docs` | controls/audit | Yes | Agent-facing | N/A | repository evidence | Unverified | Keep | Authoritative controls |
@@ -391,7 +391,7 @@ The ordinary untracked `docs/THREATSTREAM_AGENT_START_PROMPT.txt` is also held b
 
 ## 23. Safe deletion candidates for later tasks
 
-Fifteen candidates were supported by TS-001 import/reference evidence. TS-003 removed the eight page candidates, six unreachable component candidates, and the broader obsolete supporting modules after confirming no active consumers. `backend/app/plugins/` remains for TS-004.
+Fifteen candidates were supported by TS-001 import/reference evidence. TS-003 removed the eight page candidates, six unreachable component candidates, and broader obsolete supporting modules. TS-004 removed `backend/app/plugins/`; no listed candidate remains in the active tree.
 
 | Candidate | Evidence | Risk/next task |
 |---|---|---|

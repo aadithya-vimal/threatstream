@@ -6,10 +6,10 @@ Repository-wide instructions are in [`AGENTS.md`](../AGENTS.md).
 
 ## Current state
 
-- Current task: `TS-003 — Remove dormant frontend product surfaces`
+- Current task: `TS-004 — Remove the obsolete backend plugin architecture`
 - Status: `complete`
-- Exact next task: `TS-004`
-- Completed task IDs: `TS-000`, `TS-001`, `TS-002`, `TS-003`
+- Exact next task: `TS-005`
+- Completed task IDs: `TS-000`, `TS-001`, `TS-002`, `TS-003`, `TS-004`
 - Blocked task IDs: none
 - Baseline commit: `600a1636e4257986467c6ecea9b6eb300d1a252b`
 - TS-000 documentation commit: `22bbb85b2e44b03b69dce367291a0d77a5da69c0` (original, amended locally with this final ledger update)
@@ -25,8 +25,8 @@ Repository-wide instructions are in [`AGENTS.md`](../AGENTS.md).
 | Task | Status | Commit | Validation | Blockers | Next task |
 |---|---|---|---|---|---|
 | TS-002 | complete | `e369d56330ac456dabd5cadce079f96cc2b0fb7d` | product contract and naming search; `git diff --check` | none | TS-003 |
-| TS-003 | complete | current TS-003 commit | 34 frontend tests; production build; reference search; `git diff --check` | none | TS-004 |
-| TS-004 | not_started | — | — | — | — |
+| TS-003 | complete | `a2d1e765090f7e3b2af53be7cfe15181cfbb7d35` | 34 frontend tests; production build; reference search; `git diff --check` | none | TS-004 |
+| TS-004 | complete | current TS-004 commit | compileall; 101 backend tests with global plugin autoload disabled; reference search | unrelated global pytest plugin failure documented | TS-005 |
 | TS-005 | not_started | — | — | — | — |
 | TS-006 | not_started | — | — | — | — |
 | TS-007 | not_started | — | — | — | — |
@@ -140,7 +140,8 @@ Repository-wide instructions are in [`AGENTS.md`](../AGENTS.md).
 | TS-001 | complete |
 | TS-002 | complete |
 | TS-003 | complete |
-| TS-004, TS-005, TS-006, TS-007 | not_started |
+| TS-004 | complete |
+| TS-005, TS-006, TS-007 | not_started |
 | TS-010, TS-011, TS-012, TS-013, TS-014, TS-015, TS-016, TS-017, TS-018 | not_started |
 | TS-020, TS-021, TS-022, TS-023, TS-024, TS-025, TS-026, TS-027 | not_started |
 | TS-030, TS-031, TS-032, TS-033, TS-034, TS-035, TS-036, TS-037, TS-038 | not_started |
@@ -385,3 +386,63 @@ Ending commit: current TS-003 commit (`git rev-parse HEAD`)
 ### Next task
 
 TS-004
+
+## TS-004 — Remove the obsolete backend plugin architecture
+
+Status: complete
+Started: 2026-08-01T12:56:00Z
+Completed: 2026-08-01T12:59:06.3298449Z
+Starting commit: `a2d1e765090f7e3b2af53be7cfe15181cfbb7d35`
+Ending commit: current TS-004 commit (`git rev-parse HEAD`)
+
+### Implemented
+
+- Deleted all 13 files under the unreachable `backend/app/plugins` framework, including its broken manager, duplicate scanner wrappers, simulated collectors, and fabricated fallback behavior.
+- Preserved the typed scanner adapter interface/registry, active Nuclei adapter, scan profiles, durable jobs, worker, raw-result persistence, normalization, Finding deduplication/occurrences, and scheduling unchanged.
+- Left the root `app` alias for TS-006 structural verification.
+- Updated the repository audit to record the sole authoritative scanner architecture.
+
+### Files changed
+
+- Deleted `backend/app/plugins/` tracked source files
+- Updated `docs/REPOSITORY_AUDIT.md` and `docs/STATUS.md`
+
+### Database
+
+- Migration: none
+- Target: not accessed
+- Result: not applicable
+
+### Validation
+
+- Command: `python -m compileall app` from `backend`
+- Result: passed
+- Command: `python -m pytest -q`
+- Result: collection blocked by an unrelated globally installed `anchorpy` pytest plugin missing `pytest_asyncio`
+- Command: `$env:PYTEST_DISABLE_PLUGIN_AUTOLOAD='1'; python -m pytest -q`
+- Result: passed, 101 tests
+- Command: `rg -n "app\.plugins|PluginManager|BasePlugin" backend app src scripts`
+- Result: no remaining source references
+- Command: production fabrication/fallback marker review
+- Result: no fabricated scanner results remain; worker sleeps are legitimate heartbeat/polling controls
+- Command: `git diff --check`
+- Result: passed
+
+### Browser verification
+
+- Journey: none
+- Result: not run and not claimed
+
+### Security review
+
+- Removed command-logging, fake-progress, fabricated CVE/host/port/OS, parser-fallback, and missing-service legacy paths.
+- Active Nuclei and worker behavior were not broadened.
+
+### Known limitations
+
+- Real Nuclei binary execution remains unverified.
+- The default local pytest environment has an unrelated third-party plugin dependency defect; repository tests pass with external plugin autoload disabled.
+
+### Next task
+
+TS-005
