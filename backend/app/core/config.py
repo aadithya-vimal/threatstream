@@ -42,7 +42,12 @@ class Settings(BaseSettings):
     @property
     def cors_allow_origins(self) -> list[str]:
         origins = [origin.strip() for origin in self.CORS_ALLOW_ORIGINS.split(",") if origin.strip()]
-        return origins or ["http://localhost:5173", "http://127.0.0.1:5173"]
+        if not origins:
+            return ["http://localhost:5173", "http://127.0.0.1:5173"]
+        local_origins = {"http://localhost:5173", "http://127.0.0.1:5173"}
+        if local_origins.intersection(origins):
+            origins.extend(origin for origin in local_origins if origin not in origins)
+        return origins
 
     @property
     def neon_auth_jwt_algorithms(self) -> list[str]:

@@ -6,7 +6,7 @@ from pydantic import BaseModel,ConfigDict,Field,field_validator,model_validator
 from typing import Literal
 
 class ScannerDefinitionResponse(BaseModel):scanner_type:str;display_name:str;supported_asset_types:list[str];execution_capability:str;adapter_version:str;parser_version:str;active:bool;configuration_schema:dict[str,Any]
-class ScannerHealth(BaseModel):scanner_type:str;available:bool;version:str|None=None;message:str
+class ScannerHealth(BaseModel):scanner_type:str;available:bool;configured:bool;binary_detected:bool;version:str|None=None;message:str
 class ScanProfileCreate(BaseModel):
     model_config=ConfigDict(extra="forbid");name:str=Field(min_length=2,max_length=160);description:str|None=Field(None,max_length=5000);scanner_type:str=Field(pattern="^nuclei$");configuration_json:dict[str,Any]=Field(default_factory=dict);is_enabled:bool=True
     @field_validator("name","description")

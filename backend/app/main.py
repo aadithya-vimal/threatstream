@@ -25,15 +25,6 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(title=settings.PROJECT_NAME, openapi_url=f"{settings.API_V1_STR}/openapi.json", lifespan=lifespan)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_allow_origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Correlation-ID", "X-Workspace-ID"],
-)
-
-
 @app.middleware("http")
 async def correlation_middleware(request: Request, call_next):
     supplied = request.headers.get("X-Correlation-ID")
@@ -74,10 +65,27 @@ async def upstream_exception_handler(request: Request, exc: UpstreamServiceError
     return error_response(request, exc.status_code, exc.code, exc.message)
 
 
-@app.exception_handler(Exception)
-async def unhandled_exception_handler(request: Request, exc: Exception):
-    logger.exception("Unhandled API error", extra={"correlation_id": str(getattr(request.state, "correlation_id", "unknown"))})
-    return error_response(request, 500, "internal_error", "An unexpected error occurred")
+@app.middleware("http")
+async def unhandled_exception_middleware(request: Request, call_next):
+    try:
+        return await call_next(request)
+    except Exception:
+        logger.error(
+            "Unhandled API error",
+            extra={"correlation_id": str(getattr(request.state, "correlation_id", "unknown"))},
+        )
+        return error_response(request, 500, "internal_error", "An unexpected error occurred")
+
+
+# Register CORS last so it is the outermost user middleware and decorates even
+# sanitized 500 responses produced by the application exception boundary.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_allow_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Correlation-ID", "X-Workspace-ID"],
+)
 
 
 app.include_router(tenancy.router, prefix=f"{settings.API_V1_STR}/tenancy", tags=["Tenancy"])

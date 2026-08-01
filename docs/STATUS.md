@@ -120,6 +120,14 @@ Evidence labels are intentionally independent. A component test using mocks is u
 - Stash `src/contexts/AuthContext.jsx`: stable callbacks/memoized context were accepted and independently combined with the required state model. The stashed version alone did not address token refresh, bounded errors, or the endpoint cause.
 - The remaining five stash paths are still pending later Phase 1 review. The stash remains intact and unapplied.
 
+### Post-TS-010 scanner-health defect
+
+- Browser evidence showed the scanner-health request hidden behind a missing-CORS-header error while other authenticated application requests worked.
+- Reproduction proved normal preflight and 401 responses had CORS, while an uncaught HTTP 500 response omitted `Access-Control-Allow-Origin`. The cause was error-boundary/middleware ordering, not the configured `http://localhost:5173` origin and not evidence of JWT rejection.
+- CORS is now the outermost user middleware around a sanitized application exception boundary. Both intentional local origins are supported without wildcard credentials.
+- Scanner health now reports `configured` and `binary_detected` truthfully. Missing Nuclei remains a normal HTTP 200 unavailable result; unexpected health failures are sanitized and cannot expose subprocess details.
+- Focused evidence covers both loopback origins, preflight, authenticated unavailable state, internal failure, CORS error headers, unauthorized access, and wrong-workspace denial. Live browser re-verification remains required before marking the Scans surface browser verified.
+
 ## Phase 0 gate evidence
 
 - Product scope is locked in `PRODUCT.md`; public and customer data planes are explicitly separated.

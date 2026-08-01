@@ -1,4 +1,5 @@
 from datetime import UTC,datetime
+import logging
 from uuid import UUID
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
@@ -8,6 +9,8 @@ from app.core.config import settings
 from app.database.repositories import ScansRepository
 from app.domains.scans.adapters import scanner_registry
 from app.domains.scans.schemas import ScanJobPage,ScanProfileCreate,ScanProfileUpdate
+
+logger=logging.getLogger("threatstream.scans")
 
 def profile_dict(row,count=0,targets=None):return {"id":row.id,"workspace_id":row.workspace_id,"name":row.name,"description":row.description,"scanner_type":row.scanner_type,"configuration_json":row.configuration_json,"is_enabled":row.is_enabled,"version":row.version,"target_count":count,"target_asset_ids":[item[0].asset_id for item in targets or []],"targets":[target_dict(link,asset) for link,asset in targets or []],"created_at":row.created_at,"updated_at":row.updated_at}
 def target_dict(row,asset=None):return {"id":getattr(row,"id",None),"asset_id":row.asset_id,"asset_name":getattr(asset,"name",None),"asset_type":getattr(row,"asset_type",getattr(asset,"asset_type",None)),"normalized_target":getattr(row,"normalized_target",getattr(asset,"normalized_identifier",None)),"execution_status":getattr(row,"execution_status",None),"started_at":getattr(row,"started_at",None),"completed_at":getattr(row,"completed_at",None),"error_summary":getattr(row,"error_summary",None),"result_count":getattr(row,"result_count",0)}
@@ -21,7 +24,10 @@ class ScansService:
  async def health(self,scanner_type):
   try:adapter=scanner_registry.resolve(scanner_type)
   except ValueError as exc:raise HTTPException(404,str(exc))
-  return {"scanner_type":scanner_type,**await adapter.health_check()}
+  try:return {"scanner_type":scanner_type,**await adapter.health_check()}
+  except Exception:
+   logger.error("Scanner health check failed",extra={"scanner_type":scanner_type})
+   return {"scanner_type":scanner_type,"available":False,"configured":True,"binary_detected":False,"version":None,"message":"Scanner health check failed safely"}
  async def profiles(self,w):
   result=[]
   for row,count in await self.repo.profiles(w):result.append(profile_dict(row,count,await self.repo.profile_targets(w,row.id)))

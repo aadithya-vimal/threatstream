@@ -81,7 +81,7 @@ def test_normalization_bounds_evidence_and_maps_info_severity():
 def test_health_reports_unavailable_without_startup_failure(monkeypatch):
     async def missing(*_args, **_kwargs): raise FileNotFoundError
     monkeypatch.setattr(asyncio, "create_subprocess_exec", missing)
-    assert asyncio.run(NucleiAdapter().health_check()) == {"available": False, "version": None, "message": "Nuclei CLI is not installed or not reachable"}
+    assert asyncio.run(NucleiAdapter().health_check()) == {"available": False, "configured": True, "binary_detected": False, "version": None, "message": "Nuclei CLI is not installed or not reachable"}
 
 
 def test_cancel_terminates_only_registered_job_process():

@@ -34,8 +34,9 @@ class NucleiAdapter(ScannerAdapter):
     async def health_check(self):
         try:
             proc=await asyncio.create_subprocess_exec("nuclei","-version",stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE);stdout,_=await asyncio.wait_for(proc.communicate(),5)
-            return {"available":proc.returncode==0,"version":stdout[:200].decode(errors="replace").strip() or None,"message":"Nuclei is available" if proc.returncode==0 else "Nuclei is unavailable"}
-        except (FileNotFoundError,asyncio.TimeoutError):return {"available":False,"version":None,"message":"Nuclei CLI is not installed or not reachable"}
+            return {"available":proc.returncode==0,"configured":True,"binary_detected":True,"version":stdout[:200].decode(errors="replace").strip() or None,"message":"Nuclei is available" if proc.returncode==0 else "Nuclei is unavailable"}
+        except FileNotFoundError:return {"available":False,"configured":True,"binary_detected":False,"version":None,"message":"Nuclei CLI is not installed or not reachable"}
+        except asyncio.TimeoutError:return {"available":False,"configured":True,"binary_detected":True,"version":None,"message":"Nuclei health check timed out"}
     async def execute_target(self,target,configuration):
         self.validate_asset(target.asset_type);args=self.build_execution_plan(target,configuration)
         try:proc=await asyncio.create_subprocess_exec(*args,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE)
