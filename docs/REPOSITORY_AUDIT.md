@@ -10,9 +10,9 @@ ThreatStream currently has a registered React/Vite public landing and authentica
 
 The repository does **not** contain browser evidence proving those protected journeys. The active Neon Auth browser bridge is classified **Broken** because the governing baseline records a repeated JWT endpoint `404`; component and JWT unit tests do not resolve that failure. All registered protected routes are consequently **Broken** as end-to-end browser journeys even where their frontend-to-backend contracts are present and test-covered.
 
-There are two scanner systems. `backend/app/domains/scans/adapters` is the registered, worker-integrated authority and has one active adapter, Nuclei. `backend/app/plugins` is unreachable from `backend/app/main.py`, imports modules that do not exist, duplicates Nuclei and Nmap concepts, and contains simulated/fabricated results and sleep-driven progress. It is a later deletion candidate, not accepted product behavior.
+There are two scanner systems at the TS-001 baseline. `backend/app/domains/scans/adapters` is the registered, worker-integrated authority and has one active adapter, Nuclei. `backend/app/plugins` is unreachable from `backend/app/main.py`, imports modules that do not exist, duplicates Nuclei and Nmap concepts, and contains simulated/fabricated results and sleep-driven progress. It is a TS-004 deletion candidate, not accepted product behavior.
 
-Eight page components under `src/pages` are unregistered. They are not product routes and use static, placeholder, simulated, alert-based, or removed-contract behavior. Nineteen test files exist, but none is browser E2E or a live external-service test. The repository metadata has one Alembic head (`20260719_0006`); the live database revision was not queried in this documentation-only audit.
+At the TS-001 baseline, eight page components under `src/pages` were unregistered. TS-003 removed those pages and their unreachable supporting modules after import/route verification. Nineteen test files exist, but none is browser E2E or a live external-service test. The repository metadata has one Alembic head (`20260719_0006`); the live database revision was not queried in this documentation-only audit.
 
 ## 2. Audit scope and evidence standard
 
@@ -92,7 +92,7 @@ All protected routes have matching backend contracts. Public landing/terms and r
 
 ## 6. Unregistered frontend pages
 
-`rg` found no imports or active route references for these eight page components.
+`rg` found no imports or active route references for these eight page components at the TS-001 baseline. TS-003 deleted all eight after rechecking imports, routes, dynamic imports, tests, CSS, and image dependencies.
 
 | File | Imported | Removed API dependency | Static/mock/simulated evidence | Reusable pieces | Disposition | Evidence |
 |---|---|---|---|---|---|---|
@@ -369,14 +369,14 @@ The ordinary untracked `docs/THREATSTREAM_AGENT_START_PROMPT.txt` is also held b
 | `docs` | controls/audit | Yes | Agent-facing | N/A | repository evidence | Unverified | Keep | Authoritative controls |
 | `public` | static media | Yes | Build/browser | None | local files | Unverified | Blocked pending verification | Globe assets may be reused later |
 | `scripts` | local launcher | Yes | Manual | health not awaited | local env/processes | Unverified | Refactor | Incomplete lifecycle/readiness |
-| `src/components` | shared and legacy UI | Mixed | Mixed | Mixed | props/context | Test-only | Refactor | Six clearly unreferenced components; others legacy-only |
+| `src/components` | shared UI | Yes | Yes | Mixed | props/context | Test-only | Keep | TS-003 removed unreachable legacy-only components; active shared primitives remain |
 | `src/contexts` | auth/tenancy/notifications | Yes | Providers in App | API/Auth | client/session | Broken | Refactor | Auth link blocks protected app |
 | `src/hooks` | generic `useApi` hook | No confirmed consumer | No | central API capable | callback | Unverified | Delete | No import references found |
 | `src/layouts` | authenticated shell | Yes | Protected pages | None | contexts | Test-only | Keep | Active navigation shell |
 | `src/lib` | API/domain helpers/auth client | Yes | Yes | `/api/v1` | API/Auth | Test-only | Refactor | Auth broken; obsolete helpers need proof |
-| `src/pages` | active and dormant pages | Mixed | 18 concrete routes | Mixed | API/static | Broken | Refactor | Eight unregistered pages |
-| `src/types` | placeholder JS type area | No verified consumer | No | None | static | Unverified | Delete | No substantive referenced contract found |
-| `src/legacy` | legacy notice | No | No | None | documentation | Unverified | Move | Historical note belongs in docs archive |
+| `src/pages` | active registered pages | Yes | 18 concrete routes | Mixed | API/static | Broken | Refactor | TS-003 removed all eight unregistered SOC pages; auth still blocks protected journeys |
+| `src/types` | removed legacy placeholder | No | No | None | none | Unverified | Delete | Deleted in TS-003 after no references were found |
+| `src/legacy` | removed legacy notice | No | No | None | none | Unverified | Delete | Deleted in TS-003; Git history remains the archive |
 | `src/index.css`, `src/App.css`, page CSS | design styling | Yes | Build imports | None | static | Unverified | Refactor | Active and legacy styling mixed |
 
 ## 22. Verified blockers
@@ -391,7 +391,7 @@ The ordinary untracked `docs/THREATSTREAM_AGENT_START_PROMPT.txt` is also held b
 
 ## 23. Safe deletion candidates for later tasks
 
-Fifteen candidates are supported by current import/reference evidence; deletion is deferred to the named future tasks.
+Fifteen candidates were supported by TS-001 import/reference evidence. TS-003 removed the eight page candidates, six unreachable component candidates, and the broader obsolete supporting modules after confirming no active consumers. `backend/app/plugins/` remains for TS-004.
 
 | Candidate | Evidence | Risk/next task |
 |---|---|---|

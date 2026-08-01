@@ -6,10 +6,10 @@ Repository-wide instructions are in [`AGENTS.md`](../AGENTS.md).
 
 ## Current state
 
-- Current task: `TS-002 — Lock the product contract`
+- Current task: `TS-003 — Remove dormant frontend product surfaces`
 - Status: `complete`
-- Exact next task: `TS-003`
-- Completed task IDs: `TS-000`, `TS-001`, `TS-002`
+- Exact next task: `TS-004`
+- Completed task IDs: `TS-000`, `TS-001`, `TS-002`, `TS-003`
 - Blocked task IDs: none
 - Baseline commit: `600a1636e4257986467c6ecea9b6eb300d1a252b`
 - TS-000 documentation commit: `22bbb85b2e44b03b69dce367291a0d77a5da69c0` (original, amended locally with this final ledger update)
@@ -24,8 +24,8 @@ Repository-wide instructions are in [`AGENTS.md`](../AGENTS.md).
 
 | Task | Status | Commit | Validation | Blockers | Next task |
 |---|---|---|---|---|---|
-| TS-002 | complete | current TS-002 commit | product contract and naming search; `git diff --check` | none | TS-003 |
-| TS-003 | not_started | — | — | — | — |
+| TS-002 | complete | `e369d56330ac456dabd5cadce079f96cc2b0fb7d` | product contract and naming search; `git diff --check` | none | TS-003 |
+| TS-003 | complete | current TS-003 commit | 34 frontend tests; production build; reference search; `git diff --check` | none | TS-004 |
 | TS-004 | not_started | — | — | — | — |
 | TS-005 | not_started | — | — | — | — |
 | TS-006 | not_started | — | — | — | — |
@@ -139,7 +139,8 @@ Repository-wide instructions are in [`AGENTS.md`](../AGENTS.md).
 | TS-000 | complete |
 | TS-001 | complete |
 | TS-002 | complete |
-| TS-003, TS-004, TS-005, TS-006, TS-007 | not_started |
+| TS-003 | complete |
+| TS-004, TS-005, TS-006, TS-007 | not_started |
 | TS-010, TS-011, TS-012, TS-013, TS-014, TS-015, TS-016, TS-017, TS-018 | not_started |
 | TS-020, TS-021, TS-022, TS-023, TS-024, TS-025, TS-026, TS-027 | not_started |
 | TS-030, TS-031, TS-032, TS-033, TS-034, TS-035, TS-036, TS-037, TS-038 | not_started |
@@ -323,3 +324,64 @@ Ending commit: current TS-002 commit (`git rev-parse HEAD`)
 ### Next task
 
 TS-003
+
+## TS-003 — Remove dormant frontend product surfaces
+
+Status: complete
+Started: 2026-08-01T12:50:00Z
+Completed: 2026-08-01T12:55:12.6206604Z
+Starting commit: `e369d56330ac456dabd5cadce079f96cc2b0fb7d`
+Ending commit: current TS-003 commit (`git rev-parse HEAD`)
+
+### Implemented
+
+- Deleted eight unregistered SOC-era pages: Threat Hunting, Threat Intelligence, Malware Analysis, IOC Enrichment, Graph Investigation, YARA Platform, duplicate Connectors, and duplicate Audit Log.
+- Deleted eleven supporting components used only by those pages or otherwise unreferenced, plus obsolete `src/types` and `src/legacy` content.
+- Preserved registered Assets, Findings, Scans, Teams, Audit, Integrations, landing, terms, and auth routes.
+- Preserved unreferenced globe image assets because the product contract establishes a concrete future Global Monitor use.
+- Updated the repository audit with the post-TS-003 disposition evidence.
+
+### Files changed
+
+- Deleted 8 files under `src/pages`
+- Deleted 11 files under `src/components`
+- Deleted `src/types/index.js` and `src/legacy/README.md`
+- Updated `docs/REPOSITORY_AUDIT.md` and `docs/STATUS.md`
+
+### Database
+
+- Migration: none
+- Target: not accessed
+- Result: not applicable
+
+### Validation
+
+- Command: legacy page/import/route search
+- Result: passed; no retired page reference remains under `src`
+- Command: remaining fake/mock/simulated marker review
+- Result: test mocks, honest anti-fabrication copy, and local notification ID generation only; no active fabricated security results
+- Command: `npm test -- --run`
+- Result: passed, 10 files and 34 tests
+- Command: `npm run build`
+- Result: passed; pre-existing Neon Auth chunk-size warning remains
+- Command: `git diff --check`
+- Result: passed
+
+### Browser verification
+
+- Journey: none
+- Result: not run; no browser functionality claimed
+
+### Security review
+
+- Removed static/simulated SOC data and browser-action surfaces from active source.
+- No preserved-stash path was modified by TS-003.
+
+### Known limitations
+
+- Public Global Monitor UI remains planned; only reusable static image assets were retained.
+- Browser authentication and protected journeys remain broken/unverified.
+
+### Next task
+
+TS-004
