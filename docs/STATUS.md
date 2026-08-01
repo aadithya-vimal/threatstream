@@ -5,10 +5,10 @@ This is the authoritative evidence ledger for the execution sequence in
 
 ## Current state
 
-- Current task: `TS-011 — Align FastAPI JWT validation with real Neon tokens`
+- Current task: `TS-012 — Make tenancy onboarding operational`
 - Task status: `complete`
 - Phase 0 gate: `complete` after the final validation recorded below
-- Exact next task: `TS-012 — Make tenancy onboarding operational`
+- Exact next task: `TS-013 — Repair the authenticated application shell`
 - TS-010 implementation: complete
 - Leading release blocker: Phase 1 backend and workflow acceptance remains incomplete; authentication is no longer the leading blocker
 - Browser acceptance: real sign-in, session restoration, tenancy resolution, and protected navigation verified for TS-010
@@ -101,7 +101,7 @@ Evidence labels are intentionally independent. A component test using mocks is u
 |---|---|---|---|---|---|
 | TS-010 | complete | `f85207afb9cd9e38283571e5464e4c8553cb4227` plus closure evidence commit | 12 frontend test files / 48 tests; production build; real sign-in, refresh persistence, tenancy, protected navigation; no bogus JWT loop | none | TS-011 |
 | TS-011 | complete | current TS-011 commit | real browser/API acceptance; public JWKS metadata; JWT/JWKS/identity/tenancy tests; full backend suite | none | TS-012 |
-| TS-012 | not_started | — | — | — | — |
+| TS-012 | complete | current TS-012 commit | 55 frontend tests; production build; focused bootstrap/identity/tenancy tests | none | TS-013 |
 | TS-013 | not_started | — | — | — | — |
 | TS-014 | not_started | — | — | — | — |
 | TS-015 | not_started | — | — | — | — |
@@ -135,6 +135,14 @@ Evidence labels are intentionally independent. A component test using mocks is u
 - Backend validation now enforces a fixed asymmetric algorithm ceiling (`EdDSA`, `RS256`, `ES256`) in addition to the environment allowlist, so configuration cannot accidentally enable a symmetric JWT algorithm.
 - Tests cover valid signature, invalid signature, wrong issuer/audience, optional absent audience, expiry, future `nbf`, missing subject, missing `kid`, symmetric algorithm rejection, unknown-key refresh, JWKS timeout, idempotent provider-neutral identity mapping, and no tenancy auto-grant.
 - Stash `backend/app/core/security.py`: rejected in full. It logged unverified token claims and detailed decode errors, violating token secrecy and verified-claims-only rules. No stashed security code was restored. The stash remains intact.
+
+### TS-012 evidence and stash review
+
+- The tenancy provider now exposes explicit loading, onboarding, ready, workspace-unavailable, permission-denied, backend-unavailable, and authentication-expired states. Invalid stored workspace IDs are discarded in favor of the first backend-authorized workspace with a visible notice.
+- All private routes wait for tenancy resolution. Users without a membership are directed to the deliberate `/overview` bootstrap form; product pages do not render against an empty tenant boundary.
+- Bootstrap slugs are normalized server-side, database uniqueness remains authoritative, conflicts return HTTP 409, and users with an existing active organization or workspace membership cannot invoke first-tenant bootstrap again.
+- A 401 tenancy response triggers one guarded Neon sign-out. A 403 remains a permission state and does not globally clear authentication.
+- Stash `src/contexts/TenancyContext.jsx` and its test: accepted the one-time 401 logout guard concept and independently implemented it as part of the fuller state model. No stashed file was restored. The stash remains intact.
 
 ## Phase 0 gate evidence
 

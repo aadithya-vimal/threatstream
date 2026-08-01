@@ -4,6 +4,10 @@ from uuid import UUID
 from pydantic import BaseModel, Field, field_validator
 
 
+def normalize_slug(value: str) -> str:
+    return "-".join(part for part in "".join(character.lower() if character.isalnum() else " " for character in value.strip()).split() if part)
+
+
 class OrganizationCreate(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     slug: str = Field(min_length=2, max_length=80, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
@@ -15,11 +19,21 @@ class OrganizationCreate(BaseModel):
     def trim_names(cls, value: str) -> str:
         return value.strip()
 
+    @field_validator("slug", "workspace_slug", mode="before")
+    @classmethod
+    def normalize_slugs(cls, value: str) -> str:
+        return normalize_slug(value)
+
 
 class WorkspaceCreate(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     slug: str = Field(min_length=2, max_length=80, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
     description: str | None = Field(default=None, max_length=1000)
+
+    @field_validator("slug", mode="before")
+    @classmethod
+    def normalize_workspace_slug(cls, value: str) -> str:
+        return normalize_slug(value)
 
 
 class TeamCreate(BaseModel):

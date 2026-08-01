@@ -20,6 +20,7 @@ from app.core.config import settings
 from app.core.credentials import CredentialCipher, secret_hint
 from app.core.security import AuthenticatedPrincipal, decode_neon_auth_token
 from app.domains.tenancy.service import TenancyService
+from app.domains.tenancy.schemas import OrganizationCreate
 from app.main import app
 
 
@@ -169,6 +170,31 @@ def test_tenancy_context_attaches_membership_roles():
     context = asyncio.run(service.context())
     assert context["organizations"][0]["id"] == organization.id
     assert context["workspaces"][0]["role_key"] == "application_security_engineer"
+
+
+def test_bootstrap_slugs_are_normalized_before_persistence():
+    payload = OrganizationCreate(name=" Example Company ", slug=" Example COMPANY! ", workspace_name=" Product Security ", workspace_slug=" Product Security ")
+    assert payload.name == "Example Company"
+    assert payload.slug == "example-company"
+    assert payload.workspace_slug == "product-security"
+
+
+def test_bootstrap_is_rejected_after_any_existing_membership():
+    class Transaction:
+        async def __aenter__(self): return self
+        async def __aexit__(self, *_args): return None
+    class Session:
+        def begin(self): return Transaction()
+    class Repository:
+        async def has_any_membership(self, _user_id): return True
+
+    service = TenancyService(Session(), principal())
+    service.repository = Repository()
+    payload = OrganizationCreate(name="Example", slug="example", workspace_name="Product", workspace_slug="product")
+    with pytest.raises(HTTPException) as exc_info:
+        asyncio.run(service.create_organization(payload))
+    assert exc_info.value.status_code == 409
+    assert "first membership" in exc_info.value.detail
 
 
 def test_audit_service_returns_safe_workspace_event_fields():

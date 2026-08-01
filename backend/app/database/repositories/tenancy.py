@@ -31,6 +31,17 @@ class TenancyRepository:
         )).all()
         return organizations, [(workspace, role or "organization_administrator") for workspace, role in rows]
 
+    async def has_any_membership(self, user_id: UUID) -> bool:
+        organization_membership = exists().where(
+            OrganizationMember.user_id == user_id,
+            OrganizationMember.status == "active",
+        )
+        workspace_membership = exists().where(
+            WorkspaceMember.user_id == user_id,
+            WorkspaceMember.status == "active",
+        )
+        return bool(await self.session.scalar(select(or_(organization_membership, workspace_membership))))
+
     async def is_organization_administrator(self, organization_id: UUID, user_id: UUID) -> bool:
         return bool(await self.session.scalar(select(exists().where(
             OrganizationMember.organization_id == organization_id,

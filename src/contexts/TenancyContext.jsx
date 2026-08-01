@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../lib/api';
 import { useAuth } from './AuthContext';
 
@@ -6,18 +6,24 @@ const TenancyContext = createContext(null);
 const STORAGE_KEY = 'threatstream.current_workspace_id';
 
 export const TenancyProvider = ({ children }) => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [organizations, setOrganizations] = useState([]);
   const [workspaces, setWorkspaces] = useState([]);
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState(() => localStorage.getItem(STORAGE_KEY));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [selectionNotice, setSelectionNotice] = useState(null);
+  const logoutStarted = useRef(false);
 
   const refresh = useCallback(async () => {
     if (!user) {
       setOrganizations([]);
       setWorkspaces([]);
+      setCurrentWorkspaceId(null);
       setError(null);
+      setSelectionNotice(null);
+      localStorage.removeItem(STORAGE_KEY);
+      logoutStarted.current = false;
       return;
     }
     setLoading(true);
@@ -31,25 +37,35 @@ export const TenancyProvider = ({ children }) => {
       setCurrentWorkspaceId((selected) => {
         const exists = nextWorkspaces.some((workspace) => workspace.id === selected);
         const next = exists ? selected : nextWorkspaces[0]?.id || null;
+        setSelectionNotice(selected && !exists && next ? 'The previously selected workspace is unavailable. ThreatStream selected your first permitted workspace.' : null);
         if (next) localStorage.setItem(STORAGE_KEY, next);
         else localStorage.removeItem(STORAGE_KEY);
         return next;
       });
     } catch (requestError) {
       setError(requestError);
+      if (requestError.status === 401 && !logoutStarted.current) {
+        logoutStarted.current = true;
+        await logout();
+      }
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, logout]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
 
   const selectWorkspace = (workspaceId) => {
-    if (!workspaces.some((workspace) => workspace.id === workspaceId)) return;
+    if (!workspaces.some((workspace) => workspace.id === workspaceId)) {
+      setSelectionNotice('That workspace is not available to your account.');
+      return false;
+    }
     localStorage.setItem(STORAGE_KEY, workspaceId);
     setCurrentWorkspaceId(workspaceId);
+    setSelectionNotice(null);
+    return true;
   };
 
   const createOrganization = async (payload) => {
@@ -68,6 +84,13 @@ export const TenancyProvider = ({ children }) => {
     () => organizations.find((organization) => organization.id === currentWorkspace?.organization_id) || null,
     [currentWorkspace, organizations]
   );
+  const status = !user ? 'signed_out'
+    : loading ? 'loading'
+      : error?.status === 401 ? 'authentication_expired'
+        : error?.status === 403 ? 'permission_denied'
+          : error ? 'backend_unavailable'
+            : currentWorkspace ? 'ready'
+              : organizations.length === 0 ? 'onboarding' : 'workspace_unavailable';
 
   return (
     <TenancyContext.Provider value={{
@@ -77,6 +100,8 @@ export const TenancyProvider = ({ children }) => {
       currentWorkspace,
       loading,
       error,
+      status,
+      selectionNotice,
       refresh,
       selectWorkspace,
       createOrganization

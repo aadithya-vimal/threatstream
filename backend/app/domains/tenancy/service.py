@@ -2,6 +2,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import AuthenticatedPrincipal
@@ -32,8 +33,13 @@ class TenancyService:
         return {"organizations": [organization_dict(row) for row in organizations], "workspaces": [workspace_dict(row, role) for row, role in workspaces]}
 
     async def create_organization(self, payload: OrganizationCreate) -> dict[str, Any]:
-        async with self.session.begin():
-            organization, workspace = await self.repository.create_organization(self.user.user_id, payload.name, payload.slug, payload.workspace_name, payload.workspace_slug)
+        try:
+            async with self.session.begin():
+                if await self.repository.has_any_membership(self.user.user_id):
+                    raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Tenant bootstrap is available only before the first membership")
+                organization, workspace = await self.repository.create_organization(self.user.user_id, payload.name, payload.slug, payload.workspace_name, payload.workspace_slug)
+        except IntegrityError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Organization or workspace slug is already in use") from exc
         return {"organization": organization_dict(organization), "workspace": workspace_dict(workspace, "workspace_administrator"), "role_key": "workspace_administrator"}
 
     async def create_workspace(self, organization_id: UUID, payload: WorkspaceCreate) -> dict[str, Any]:
