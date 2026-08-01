@@ -15,6 +15,7 @@ const Landing = lazy(() => import("./features/public/Landing"));
 const Terms = lazy(() => import("./features/public/Terms"));
 const AuthPage = lazy(() => import("./features/auth/AuthPage"));
 const Dashboard = lazy(() => import("./features/overview/Dashboard"));
+const NotFound = lazy(() => import("./features/overview/NotFound"));
 const Integrations = lazy(() => import("./features/integrations/Integrations"));
 const Teams = lazy(() => import("./features/teams/Teams"));
 const Audit = lazy(() => import("./features/audit/Audit"));
@@ -178,7 +179,11 @@ function App() {
                   />
                   <Route
                     path="*"
-                    element={<Navigate to="/overview" replace />}
+                    element={
+                      <ProtectedRoute>
+                        <NotFound />
+                      </ProtectedRoute>
+                    }
                   />
                 </Routes>
               </Suspense>

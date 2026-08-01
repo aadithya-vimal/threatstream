@@ -35,12 +35,22 @@ describe('apiFetch authentication', () => {
 
   it('does not recursively retry a second backend 401', async () => {
     const getToken = vi.fn().mockResolvedValue('session-token');
-    configureApiAuth({ getToken });
+    const onAuthenticationFailure = vi.fn();
+    configureApiAuth({ getToken, onAuthenticationFailure });
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}', { status: 401 }));
 
     await expect(apiFetch('/example')).rejects.toMatchObject({ status: 401 });
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(getToken).toHaveBeenCalledTimes(2);
+    expect(onAuthenticationFailure).toHaveBeenCalledOnce();
+  });
+
+  it.each([400, 403, 404, 409, 422, 429, 500, 503])('does not clear auth for non-401 status %s', async (status) => {
+    const onAuthenticationFailure = vi.fn();
+    configureApiAuth({ getToken: async () => 'session-token', onAuthenticationFailure });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ error: { code: 'request_failed', message: 'Safe failure' } }), { status, headers: { 'Content-Type': 'application/json' } }));
+    await expect(apiFetch('/example')).rejects.toMatchObject({ status });
+    expect(onAuthenticationFailure).not.toHaveBeenCalled();
   });
 
   it('preserves typed errors and correlation identifiers', async () => {

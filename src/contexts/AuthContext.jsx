@@ -36,11 +36,6 @@ const NeonAuthBridge = ({ children }) => {
     }
   }, []);
 
-  useEffect(() => {
-    configureApiAuth({ getToken });
-    return () => configureApiAuth(null);
-  }, [getToken]);
-
   const runAuthOperation = useCallback(async (name, action) => {
     setOperation(name);
     setOperationError(null);
@@ -66,6 +61,11 @@ const NeonAuthBridge = ({ children }) => {
     await runAuthOperation('authenticating', () => authClient.signOut());
     navigate('/', { replace: true });
   }, [navigate, runAuthOperation]);
+
+  useEffect(() => {
+    configureApiAuth({ getToken, onAuthenticationFailure: signOut });
+    return () => configureApiAuth(null);
+  }, [getToken, signOut]);
   const retryInitialization = useCallback(async () => {
     setOperationError(null);
     setOperation('initializing');

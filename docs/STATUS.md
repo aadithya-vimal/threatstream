@@ -5,10 +5,10 @@ This is the authoritative evidence ledger for the execution sequence in
 
 ## Current state
 
-- Current task: `TS-012 — Make tenancy onboarding operational`
+- Current task: `TS-013 — Repair the authenticated application shell`
 - Task status: `complete`
 - Phase 0 gate: `complete` after the final validation recorded below
-- Exact next task: `TS-013 — Repair the authenticated application shell`
+- Exact next task: `TS-014 — Verify and repair existing core workflows`
 - TS-010 implementation: complete
 - Leading release blocker: Phase 1 backend and workflow acceptance remains incomplete; authentication is no longer the leading blocker
 - Browser acceptance: real sign-in, session restoration, tenancy resolution, and protected navigation verified for TS-010
@@ -102,7 +102,7 @@ Evidence labels are intentionally independent. A component test using mocks is u
 | TS-010 | complete | `f85207afb9cd9e38283571e5464e4c8553cb4227` plus closure evidence commit | 12 frontend test files / 48 tests; production build; real sign-in, refresh persistence, tenancy, protected navigation; no bogus JWT loop | none | TS-011 |
 | TS-011 | complete | current TS-011 commit | real browser/API acceptance; public JWKS metadata; JWT/JWKS/identity/tenancy tests; full backend suite | none | TS-012 |
 | TS-012 | complete | current TS-012 commit | 55 frontend tests; production build; focused bootstrap/identity/tenancy tests | none | TS-013 |
-| TS-013 | not_started | — | — | — | — |
+| TS-013 | complete | current TS-013 commit | 13 frontend test files / 64 tests; production build; route/data-loader review | none | TS-014 |
 | TS-014 | not_started | — | — | — | — |
 | TS-015 | not_started | — | — | — | — |
 | TS-016 | not_started | — | — | — | — |
@@ -143,6 +143,13 @@ Evidence labels are intentionally independent. A component test using mocks is u
 - Bootstrap slugs are normalized server-side, database uniqueness remains authoritative, conflicts return HTTP 409, and users with an existing active organization or workspace membership cannot invoke first-tenant bootstrap again.
 - A 401 tenancy response triggers one guarded Neon sign-out. A 403 remains a permission state and does not globally clear authentication.
 - Stash `src/contexts/TenancyContext.jsx` and its test: accepted the one-time 401 logout guard concept and independently implemented it as part of the fuller state model. No stashed file was restored. The stash remains intact.
+
+### TS-013 evidence
+
+- Signed-out, initializing, authenticated, onboarding, tenancy-error, and ready route states are deterministic. Unknown authenticated routes now render a controlled 404 instead of silently redirecting to the overview.
+- The API client performs one forced refresh after a 401 and triggers sign-out only when the retried authenticated request is also 401. HTTP 400, 403, 404, 409, 422, 429, 500, and 503 remain typed application errors and do not clear authentication.
+- All retained feature data loaders were reviewed and key their workspace-scoped loads to `currentWorkspace.id`, causing workspace switches to reload rather than reuse another workspace's data.
+- Direct-route import/build coverage passes. Full real-browser route-by-route acceptance remains assigned to TS-015.
 
 ## Phase 0 gate evidence
 
