@@ -1,9 +1,11 @@
 export const API_BASE = import.meta.env.VITE_API_URL || window.location.origin;
 const V1 = `${API_BASE}/api/v1`;
-let tokenGetter = async () => null;
+let authHooks = { getToken: async () => null };
 
-export const configureApiAuth = (getToken) => {
-  tokenGetter = typeof getToken === "function" ? getToken : async () => null;
+export const configureApiAuth = (hooks) => {
+  authHooks = typeof hooks?.getToken === "function"
+    ? hooks
+    : { getToken: async () => null };
 };
 
 export class ApiError extends Error {
@@ -20,8 +22,7 @@ export class ApiError extends Error {
 }
 
 export async function apiFetch(path, options = {}) {
-  const token = await tokenGetter();
-  const response = await fetch(`${V1}${path}`, {
+  const request = async (token) => fetch(`${V1}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -30,6 +31,12 @@ export async function apiFetch(path, options = {}) {
       ...(options.headers || {}),
     },
   });
+  const token = await authHooks.getToken();
+  let response = await request(token);
+  if (response.status === 401 && token) {
+    const refreshedToken = await authHooks.getToken({ forceRefresh: true, retries: 0 });
+    if (refreshedToken) response = await request(refreshedToken);
+  }
   if (!response.ok) {
     let errorPayload = null;
     try {
