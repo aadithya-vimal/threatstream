@@ -1,6 +1,8 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { Link } from "react-router-dom";
 import { useThreatIntel } from "../../state/ThreatIntelContext.jsx";
+
+const LandingGlobe = lazy(() => import("../../components/globe/LandingGlobe.jsx"));
 
 export default function Landing() {
   const { events, initialLoading, health, providers } = useThreatIntel();
@@ -9,14 +11,6 @@ export default function Landing() {
     (e) => typeof e.source?.latitude === "number" && typeof e.source?.longitude === "number"
   );
   const geolocated = geolocatedEvents.length;
-  // Real plotted markers only: equirectangular projection of actual
-  // coordinates onto the decorative disc. No synthetic positions.
-  const heroDots = geolocatedEvents.slice(0, 12).map((e) => ({
-    id: e.id,
-    x: ((e.source.longitude + 180) / 360) * 100,
-    y: ((90 - e.source.latitude) / 180) * 100,
-    label: `${e.source.ip ?? e.id} · ${e.source.country ?? "Country pending"}`,
-  }));
 
   return (
     <div className="landing">
@@ -55,19 +49,9 @@ export default function Landing() {
           )}
         </div>
         <div className="hero-visual" aria-hidden="true">
-          <div className="css-globe">
-            <span className="css-globe-stars" />
-            <span className="css-globe-ring r1" />
-            <span className="css-globe-ring r2" />
-            {heroDots.map((d) => (
-              <span
-                key={d.id}
-                className="hero-dot"
-                style={{ left: `${d.x}%`, top: `${d.y}%` }}
-                title={d.label}
-              />
-            ))}
-          </div>
+          <Suspense fallback={<div className="landing-globe landing-globe-loading" />}>
+            <LandingGlobe events={geolocatedEvents} />
+          </Suspense>
           <span className="css-globe-tag" style={{ top: "12%", right: "8%" }}>Live intelligence</span>
           <span className="css-globe-tag" style={{ bottom: "14%", left: "6%" }}>{providers.length} sources</span>
         </div>

@@ -797,6 +797,21 @@ button.event-card { font-family: var(--sans); }
 }
 [data-theme="light"] .hero-dot { background: #c81e3a; box-shadow: 0 0 6px rgba(200, 30, 58, 0.7); }
 
+/* Landing hero globe: real 3D scene, strictly non-interactive. */
+.landing-globe {
+  width: min(430px, 100%);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(56, 120, 220, 0.16), transparent 55%),
+    radial-gradient(circle at 50% 50%, #070d1d 0%, #04070f 70%, #020409 100%);
+  border: 1px solid rgba(63, 216, 255, 0.22);
+  box-shadow: 0 0 90px rgba(63, 216, 255, 0.13), inset -22px -18px 70px rgba(0, 0, 0, 0.6);
+}
+.landing-globe canvas { width: 100% !important; height: 100% !important; display: block; }
+
 /* Bar-list select + sub rows (ASN analytics) */
 .bar-label-btn {
   background: none; border: none; padding: 0; cursor: pointer;
