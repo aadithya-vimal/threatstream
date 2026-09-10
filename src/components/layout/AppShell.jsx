@@ -71,7 +71,7 @@ export default function AppShell({ children }) {
       <main id="main" className="main">{children}</main>
       <footer className="footer">
         <span>ThreatStream visualizes public threat observations with source attribution.</span>
-        <span className="mono">Observed facts ≠ inferred context. Never fabricated.</span>
+        <span className="mono">Observed facts ≠ inferred context · Source-attributed intelligence.</span>
       </footer>
     </div>
   );

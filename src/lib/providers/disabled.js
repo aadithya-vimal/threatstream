@@ -49,7 +49,7 @@ export const DISABLED_PROVIDERS = [
     id: "otx",
     name: "AlienVault OTX",
     reason:
-      "API requires an authenticated user key. Disabled — no secrets in the frontend bundle.",
+      "API requires an authenticated user key. Disabled — user credentials cannot be distributed in a public client.",
     reference: "https://otx.alienvault.com/",
   },
 ];

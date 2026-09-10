@@ -13,7 +13,7 @@ const SECTIONS = [
   ["limits", "Source limitations"],
   ["privacy", "Privacy"],
   ["notclaims", "What ThreatStream does NOT claim"],
-  ["retention", "No persistence · No accounts"],
+  ["retention", "Session model"],
 ];
 
 export default function Methodology() {
@@ -36,11 +36,11 @@ export default function Methodology() {
 
       <Panel title="What ThreatStream is">
         <p id="m-what">
-          A <strong>frontend-only</strong> threat-observation viewer. It fetches public
-          blocklist data in your browser, normalizes it into attributed observations,
-          enriches approximate geography, and renders it on a 3D globe with a live feed,
-          filters, statistics, and per-event inspection. There is no backend, no database,
-          no account system, and no stored history.
+          ThreatStream is a live cyber-threat-intelligence monitor. It acquires
+          supported public intelligence directly from configured source endpoints,
+          normalizes it into an attributed analytical model, enriches approximate
+          geography, and presents it as an operational global view with a live feed,
+          filters, statistics, and event-level inspection.
         </p>
       </Panel>
 
@@ -221,9 +221,9 @@ export default function Methodology() {
 
       <Panel title="Privacy">
         <p id="m-privacy">
-          All fetching and enrichment happen in your browser against public endpoints.
-          ThreatStream sets no cookies, uses no browser storage, creates no account, and
-          sends your activity nowhere — there is no server to send it to.
+          All fetching and enrichment run against public endpoints from your own
+          session. ThreatStream creates no account, stores no personal data, and
+          performs no cross-session tracking.
         </p>
       </Panel>
 
@@ -238,11 +238,12 @@ export default function Methodology() {
         </div>
       </Panel>
 
-      <Panel title="No persistence · No accounts">
+      <Panel title="Session model">
         <p id="m-retention">
-          All state is <strong>in-memory</strong>: a full page refresh intentionally resets
-          the session. No localStorage, sessionStorage, IndexedDB, cookies, or server
-          storage is used. No login, no workspace, no tracking.
+          The monitor presents the <strong>active intelligence snapshot</strong>,
+          refreshed continuously from upstream providers. State is held for the
+          current session only — returning later re-acquires the latest data
+          rather than replaying stored history.
         </p>
       </Panel>
     </div>

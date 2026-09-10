@@ -15,6 +15,8 @@
  */
 import React, { useEffect, useMemo, useRef } from "react";
 import Globe from "globe.gl";
+import * as THREE from "three";
+import { buildStarPositions } from "./starfield.js";
 import {
   MAX_ARCS,
   MAX_MARKERS,
@@ -31,8 +33,8 @@ import {
 } from "./globeViews.js";
 import { useTheme } from "../../state/ThemeContext.jsx";
 
-const HOME_POV = { lat: 18, lng: 0, altitude: 2.4 };
-const FOCUS_ALTITUDE = 1.6;
+const HOME_POV = { lat: 18, lng: 0, altitude: 2.0 };
+const FOCUS_ALTITUDE = 1.4;
 
 const LEGENDS = {
   operations: "markers",
@@ -44,9 +46,11 @@ const LEGENDS = {
   hex: "hex",
 };
 
-function textureFor(view, theme) {
+function textureFor(view) {
+  // The globe is always a dark orbital environment (both app themes);
+  // only the explicit Satellite view uses the day texture.
   if (view === "imagery") return "/earth-day.jpg";
-  return theme === "light" ? "/earth-day.jpg" : "/earth-night.jpg";
+  return "/earth-night.jpg";
 }
 
 export const LIFECYCLE_MS = { enter: 800, changed: 1200, leave: 900 };
@@ -96,7 +100,8 @@ export default function ThreatGlobe({
 
   const legend = LEGENDS[view] ?? "markers";
   const pal = useMemo(() => paletteFor(theme), [theme]);
-  const labelColor = theme === "light" ? "#0b1222" : "#e6edf9";
+  // Labels float over the dark orbital scene in both app themes.
+  const labelColor = "#e6edf9";
 
   // Init once.
   useEffect(() => {
@@ -134,6 +139,35 @@ export default function ThreatGlobe({
     });
     globe.onHexHover(() => {});
 
+    // Deterministic in-scene starfield (globe radius = 100 units).
+    // Pure scene dressing scoped to this viewport — never threat data.
+    const scene = globe.scene();
+    const starLayers = [];
+    for (const cfg of [
+      { seed: 11, count: 650, rMin: 260, rMax: 640, size: 1.4, opacity: 0.55, color: 0x9db8e8 },
+      { seed: 77, count: 150, rMin: 150, rMax: 260, size: 2.3, opacity: 0.9, color: 0xd6e6ff },
+    ]) {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute(
+        "position",
+        new THREE.BufferAttribute(
+          buildStarPositions({ seed: cfg.seed, count: cfg.count, radiusMin: cfg.rMin, radiusMax: cfg.rMax }),
+          3
+        )
+      );
+      const m = new THREE.PointsMaterial({
+        color: cfg.color,
+        size: cfg.size,
+        sizeAttenuation: false,
+        transparent: true,
+        opacity: cfg.opacity,
+        depthWrite: false,
+      });
+      const pts = new THREE.Points(g, m);
+      scene.add(pts);
+      starLayers.push(pts);
+    }
+
     const resize = () => {
       const w = mount.clientWidth || 1;
       const h = mount.clientHeight || 1;
@@ -166,6 +200,11 @@ export default function ThreatGlobe({
       window.removeEventListener("focus", onReturn);
       window.removeEventListener("pageshow", onReturn);
       ro.disconnect();
+      for (const pts of starLayers) {
+        scene.remove(pts);
+        pts.geometry?.dispose?.();
+        pts.material?.dispose?.();
+      }
       globe._destructor();
       globeRef.current = null;
       mount.replaceChildren();
@@ -229,7 +268,7 @@ export default function ThreatGlobe({
     const baseRadius = (d) => (d.id === selectedId ? 0.55 : 0.34);
 
     globe
-      .globeImageUrl(textureFor(view, theme))
+      .globeImageUrl(textureFor(view))
       .bumpImageUrl("/earth-topology.png")
       .atmosphereColor(theme === "light" ? "#7fb3d5" : "#3fd8ff")
       .showGraticules(view !== "minimal")

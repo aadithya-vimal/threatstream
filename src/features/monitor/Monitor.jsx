@@ -261,7 +261,7 @@ export default function Monitor() {
                   </select>
                 </label>
                 <button type="button" className={`btn btn-ghost btn-icon${autoRotate ? " active" : ""}`} onClick={() => setAutoRotate((v) => !v)} aria-pressed={autoRotate} title="Toggle auto-rotate">⟳</button>
-                <button type="button" className="btn btn-ghost btn-icon" onClick={() => setPaused((v) => !v)} aria-pressed={paused} title={paused ? "Resume motion" : "Pause motion"}>{paused ? "▶" : "⏸"}</button>
+                <button type="button" className="btn btn-ghost btn-icon" onClick={() => setPaused((v) => !v)} aria-pressed={paused} title={paused ? "Resume rotation" : "Pause rotation"}>{paused ? "▶" : "⏸"}</button>
                 <button type="button" className="btn btn-ghost btn-icon" onClick={() => setResetSignal((n) => n + 1)} title="Reset view">⌂</button>
                 <button type="button" className="btn btn-ghost btn-icon" onClick={toggleFullscreen} aria-pressed={isFullscreen} title={isFullscreen ? "Exit fullscreen" : "Fullscreen globe"}>{isFullscreen ? "⤓" : "⤢"}</button>
                 <label className="check-inline" title="Mask last IP octets">

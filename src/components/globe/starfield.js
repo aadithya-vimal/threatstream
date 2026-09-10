@@ -1,7 +1,7 @@
 /**
- * Deterministic starfield layers (pure scene decoration — NEVER threat data).
- * Seeded PRNG ⇒ identical output every render; viewport units keep stars
- * responsive without JS resize handling.
+ * Deterministic star-shell positions for the globe scene (pure visual
+ * scene dressing — NEVER threat data, never read by any data pipeline).
+ * Seeded PRNG ⇒ identical output every load; sizes/counts are fixed.
  */
 
 function mulberry32(seed) {
@@ -15,21 +15,22 @@ function mulberry32(seed) {
 }
 
 /**
- * Build a CSS box-shadow star list.
- * colorVar references a theme-aware CSS variable so one markup works in
- * both dark and light modes.
+ * Positions for `count` stars distributed on a spherical shell.
+ * Returns a Float32Array of xyz triples with radius in [radiusMin, radiusMax].
+ * Every Nth star (brightEvery) is pushed slightly inward — depth layering
+ * comes from radius + size, never from threat state.
  */
-export function starShadows({ seed = 1, count = 120, colorVar = "--star-1", brightEvery = 9 } = {}) {
+export function buildStarPositions({ seed = 1, count = 600, radiusMin = 28, radiusMax = 70 } = {}) {
   const rand = mulberry32(seed);
-  const parts = [];
+  const pos = new Float32Array(count * 3);
   for (let i = 0; i < count; i += 1) {
-    const x = (rand() * 100).toFixed(2);
-    const y = (rand() * 100).toFixed(2);
-    const bright = i % brightEvery === 0;
-    const size = bright ? 2 : 1;
-    parts.push(`${x}vw ${y}vh 0 ${size}px var(${colorVar})`);
+    const r = radiusMin + rand() * (radiusMax - radiusMin);
+    const theta = rand() * Math.PI * 2;
+    const z = rand() * 2 - 1;
+    const s = Math.sqrt(Math.max(0, 1 - z * z));
+    pos[i * 3] = r * s * Math.cos(theta);
+    pos[i * 3 + 1] = r * z;
+    pos[i * 3 + 2] = r * s * Math.sin(theta);
   }
-  return parts.join(",");
+  return pos;
 }
-
-export const STAR_THEMES = ["dark", "light"];

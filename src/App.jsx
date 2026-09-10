@@ -1,10 +1,9 @@
-import React, { Suspense, lazy, useMemo } from "react";
+import React, { Suspense, lazy } from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import AppShell from "./components/layout/AppShell.jsx";
 import { ThreatIntelProvider } from "./state/ThreatIntelContext.jsx";
 import { ThemeProvider } from "./state/ThemeContext.jsx";
 import { LoadingState } from "./components/ui/Primitives.jsx";
-import { starShadows } from "./components/globe/starfield.js";
 import "./styles.css";
 
 const Landing = lazy(() => import("./features/landing/Landing.jsx"));
@@ -29,14 +28,11 @@ function NotFound() {
 }
 
 function AmbientSpace() {
-  const far = useMemo(() => starShadows({ seed: 1337, count: 170, colorVar: "--star-1" }), []);
-  const near = useMemo(() => starShadows({ seed: 7211, count: 60, colorVar: "--star-2", brightEvery: 6 }), []);
+  // Subtle page atmosphere only — the starfield lives inside the globe scene.
   return (
     <div className="ambient-space" aria-hidden="true">
       <div className="ambient-glow glow-a" />
       <div className="ambient-glow glow-b" />
-      <div className="stars stars-far" style={{ boxShadow: far }} />
-      <div className="stars stars-near" style={{ boxShadow: near }} />
     </div>
   );
 }

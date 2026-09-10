@@ -14,7 +14,7 @@ export const RING_WINDOW_MS = 3 * 60 * 1000;
 export const VIEWS = [
   { id: "operations", label: "Operations" },
   { id: "heatmap", label: "Threat heatmap" },
-  { id: "paths", label: "Attack paths" },
+  { id: "paths", label: "Verified Flows" },
   { id: "rings", label: "Threat rings" },
   { id: "hex", label: "Hex density" },
   { id: "imagery", label: "Satellite" },
