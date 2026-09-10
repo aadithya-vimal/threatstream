@@ -1,3 +1,5 @@
+> Historical record (SaaS era, superseded 2026-09-09). Not authoritative — ThreatStream is now a frontend-only visualization app. See root README.md.
+
 > Historical record. Not authoritative for current product behavior or setup instructions.
 >
 > See the [current documentation index](../README.md).

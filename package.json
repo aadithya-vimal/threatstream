@@ -1,7 +1,7 @@
 {
   "name": "threatstream",
-  "version": "1.0.0",
-  "description": "Self-hostable application security operations platform",
+  "version": "2.0.0",
+  "description": "Live cyber threat intelligence, visualized — frontend-only 3D threat observation platform",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,13 +10,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@neondatabase/auth": "0.4.2-beta",
-    "@neondatabase/auth-ui": "0.2.1-beta",
-    "@react-three/drei": "^9.122.0",
-    "@react-three/fiber": "^8.18.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-globe.gl": "^2.36.0",
     "react-router-dom": "^7.9.4",
     "three": "^0.180.0"
   },

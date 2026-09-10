@@ -10,14 +10,9 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
-    minify: 'esbuild',
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes('node_modules/@neondatabase')) return 'neon-auth';
-          if (id.includes('node_modules/react')) return 'react-vendor';
-        }
-      }
-    }
+    minify: 'esbuild'
+  },
+  test: {
+    environment: 'jsdom'
   }
 })

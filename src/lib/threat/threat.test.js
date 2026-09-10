@@ -1,0 +1,216 @@
+import { describe, expect, it } from "vitest";
+import {
+  createThreatEvent,
+  hasArc,
+  hasSourceCoordinates,
+  parseTimestamp,
+  relationshipKind,
+} from "./model.js";
+import {
+  cidrToRepresentativeIp,
+  normalizeDropLine,
+  normalizeDropList,
+  normalizeKevCatalog,
+  normalizeKevEntry,
+} from "./normalize.js";
+import { mergeEvents } from "./dedup.js";
+import { applyFilters } from "./filter.js";
+import { bucketizeByTime, computeStatistics } from "./statistics.js";
+
+const DROP_OPTS = { fileDateIso: "2026-09-08T10:58:27.000Z", sourceUrl: "https://example.invalid/drop" };
+
+describe("DROP normalization", () => {
+  it("turns a CIDR line into a source-only event with null coordinates", () => {
+    const e = normalizeDropLine("1.10.16.0/20", DROP_OPTS);
+    expect(e).not.toBeNull();
+    expect(e.sourceProvider).toBe("spamhaus-drop");
+    expect(e.source.ip).toBe("1.10.16.0");
+    expect(e.source.cidr).toBe("1.10.16.0/20");
+    expect(e.source.latitude).toBeNull();
+    expect(e.source.longitude).toBeNull();
+    expect(e.destination).toBeNull();
+    expect(e.observed).toContain("feed_record");
+    expect(e.inferred).toEqual([]);
+    expect(e.timestampKind).toBe("list_publication");
+    expect(relationshipKind(e)).toBe("intel_only");
+    expect(hasSourceCoordinates(e)).toBe(false);
+    expect(hasArc(e)).toBe(false);
+  });
+
+  it("computes the network address as block representative", () => {
+    expect(cidrToRepresentativeIp("2.56.192.0/22")).toBe("2.56.192.0");
+    expect(cidrToRepresentativeIp("  45.3.62.10/24  ")).toBe("45.3.62.0");
+  });
+
+  it("skips comments, blanks, garbage, and non-public IPs without inventing data", () => {
+    expect(normalizeDropLine("# comment", DROP_OPTS)).toBeNull();
+    expect(normalizeDropLine("", DROP_OPTS)).toBeNull();
+    expect(normalizeDropLine("not-a-cidr", DROP_OPTS)).toBeNull();
+    expect(normalizeDropLine("10.0.0.0/8", DROP_OPTS)).toBeNull();
+    expect(normalizeDropLine("192.168.1.0/24", DROP_OPTS)).toBeNull();
+    expect(normalizeDropLine("999.1.1.0/24", DROP_OPTS)).toBeNull();
+  });
+
+  it("is pure: identical input yields identical output (no clock, no randomness)", () => {
+    const a = normalizeDropLine("5.42.92.0/24", DROP_OPTS);
+    const b = normalizeDropLine("5.42.92.0/24", DROP_OPTS);
+    expect(a).toEqual(b);
+  });
+
+  it("parses file date from header and counts skipped lines", () => {
+    const text = "# spamhaus_drop\n# Source File Date: Tue Sep  8 10:58:27 UTC 2026\n1.10.16.0/20\ngarbage-line\n";
+    const { events, skipped, fileDateIso } = normalizeDropList(text, { sourceUrl: "x" });
+    expect(events).toHaveLength(1);
+    expect(skipped).toBe(1);
+    expect(fileDateIso).toContain("2026-09-08");
+  });
+});
+
+describe("KEV normalization", () => {
+  const entry = {
+    cveID: "CVE-2024-1234",
+    vendorProject: "Example",
+    product: "Widget",
+    vulnerabilityName: "Widget RCE",
+    dateAdded: "2024-01-02",
+    dueDate: "2024-01-23",
+    requiredAction: "Apply updates.",
+  };
+
+  it("creates a non-geographic vulnerability event, severity stays unknown", () => {
+    const e = normalizeKevEntry(entry);
+    expect(e.sourceProvider).toBe("cisa-kev");
+    expect(e.classification).toBe("vulnerability");
+    expect(e.severity).toBe("unknown");
+    expect(e.source.ip).toBeNull();
+    expect(e.destination).toBeNull();
+    expect(hasSourceCoordinates(e)).toBe(false);
+    expect(relationshipKind(e)).toBe("intel_only");
+    expect(e.timestampKind).toBe("published");
+  });
+
+  it("rejects malformed entries instead of repairing them with guesses", () => {
+    expect(normalizeKevEntry(null)).toBeNull();
+    expect(normalizeKevEntry({})).toBeNull();
+    expect(normalizeKevEntry({ cveID: "not-a-cve" })).toBeNull();
+    expect(normalizeKevEntry([])).toBeNull();
+    expect(normalizeKevCatalog({})).toEqual({ events: [], skipped: 0 });
+    expect(normalizeKevCatalog(null)).toEqual({ events: [], skipped: 0 });
+  });
+});
+
+describe("timestamps", () => {
+  it("parses real dates and returns null for garbage — never substitutes now", () => {
+    expect(parseTimestamp("2026-09-08T10:58:27Z")).toBe("2026-09-08T10:58:27.000Z");
+    expect(parseTimestamp("2024-01-02")).toContain("2024-01-02");
+    expect(parseTimestamp(null)).toBeNull();
+    expect(parseTimestamp("")).toBeNull();
+    expect(parseTimestamp("not-a-date")).toBeNull();
+    expect(parseTimestamp(undefined)).toBeNull();
+  });
+});
+
+describe("coordinate guards", () => {
+  it("rejects nulls and (0,0) Null-Island fallbacks", () => {
+    const base = createThreatEvent({ provider: "p", recordId: "r", source: {} });
+    expect(hasSourceCoordinates(base)).toBe(false);
+    const zero = createThreatEvent({
+      provider: "p",
+      recordId: "r",
+      source: { latitude: 0, longitude: 0 },
+    });
+    expect(hasSourceCoordinates(zero)).toBe(false);
+    const real = createThreatEvent({
+      provider: "p",
+      recordId: "r",
+      source: { latitude: 12.97, longitude: 77.59 },
+    });
+    expect(hasSourceCoordinates(real)).toBe(true);
+    expect(relationshipKind(real)).toBe("source_only");
+  });
+
+  it("requires both endpoints for an arc", () => {
+    const e = createThreatEvent({
+      provider: "p",
+      recordId: "r",
+      source: { latitude: 12.97, longitude: 77.59 },
+      destination: { latitude: 51.5, longitude: -0.12 },
+    });
+    expect(hasArc(e)).toBe(true);
+    expect(relationshipKind(e)).toBe("observed_path");
+  });
+});
+
+describe("deduplication", () => {
+  it("merges unchanged refreshes silently and preserves enrichment", () => {
+    const e = normalizeDropLine("1.10.16.0/20", DROP_OPTS);
+    const first = mergeEvents(new Map(), [e]);
+    expect(first.added).toBe(1);
+    const again = mergeEvents(first.map, [normalizeDropLine("1.10.16.0/20", DROP_OPTS)]);
+    expect(again.added).toBe(0);
+    expect(again.updated).toBe(0);
+    // Refresh payload without geo must not wipe enriched coordinates.
+    const enriched = {
+      ...e,
+      source: { ...e.source, latitude: 1, longitude: 2, country: "X", countryCode: "XX" },
+      inferred: ["geolocation_approximate"],
+    };
+    const withGeo = mergeEvents(first.map, [enriched]);
+    expect(withGeo.updated).toBe(1);
+    const wiped = mergeEvents(withGeo.map, [normalizeDropLine("1.10.16.0/20", DROP_OPTS)]);
+    expect(wiped.map.get(e.id).source.latitude).toBe(1);
+  });
+});
+
+describe("filtering", () => {
+  const evts = [
+    createThreatEvent({ provider: "spamhaus-drop", recordId: "1.1.1.0/24", source: { ip: "1.1.1.0", countryCode: "US", country: "United States", asn: 13335, organization: "Cloudflare" }, category: "reputation_blocklist", classification: "malicious_source", severity: "high", confidence: "high", timestamp: "2026-09-08T10:00:00Z" }),
+    createThreatEvent({ provider: "cisa-kev", recordId: "CVE-2024-1234", classification: "vulnerability", category: "known_exploited_vulnerability", severity: "unknown", confidence: "high", timestamp: "2024-01-02", raw: { cveID: "CVE-2024-1234", vendorProject: "Example", product: "Widget" } }),
+  ];
+
+  it("filters by provider, category, severity, confidence, country, relationship", () => {
+    expect(applyFilters(evts, { providers: ["cisa-kev"] })).toHaveLength(1);
+    expect(applyFilters(evts, { categories: ["reputation_blocklist"] })).toHaveLength(1);
+    expect(applyFilters(evts, { severities: ["high"] })).toHaveLength(1);
+    expect(applyFilters(evts, { sourceCountries: ["US"] })).toHaveLength(1);
+    expect(applyFilters(evts, { relationship: "intel_only" })).toHaveLength(2);
+    expect(applyFilters(evts, { relationship: "source_only" })).toHaveLength(0);
+  });
+
+  it("searches IP, ASN, org, CVE, country", () => {
+    expect(applyFilters(evts, { query: "1.1.1" })).toHaveLength(1);
+    expect(applyFilters(evts, { query: "13335" })).toHaveLength(1);
+    expect(applyFilters(evts, { query: "as13335" })).toHaveLength(1);
+    expect(applyFilters(evts, { query: "cloudflare" })).toHaveLength(1);
+    expect(applyFilters(evts, { query: "cve-2024-1234" })).toHaveLength(1);
+    expect(applyFilters(evts, { query: "no-such-thing" })).toHaveLength(0);
+  });
+
+  it("time window narrows honestly", () => {
+    const now = Date.parse("2026-09-08T12:00:00Z");
+    expect(applyFilters(evts, { hours: 24 }, now)).toHaveLength(1);
+    expect(applyFilters(evts, { hours: 0 }, now)).toHaveLength(2);
+  });
+});
+
+describe("statistics", () => {
+  it("derives counts only from loaded events — small stays small", () => {
+    const evts = [
+      createThreatEvent({ provider: "spamhaus-drop", recordId: "1.1.1.0/24", source: { ip: "1.1.1.0", countryCode: "US", latitude: 37, longitude: -97 }, confidence: "high" }),
+      createThreatEvent({ provider: "spamhaus-drop", recordId: "2.2.2.0/24", source: { ip: "2.2.2.0" }, confidence: "high" }),
+    ];
+    const s = computeStatistics(evts);
+    expect(s.total).toBe(2);
+    expect(s.uniqueSourceIps).toBe(2);
+    expect(s.sourceCountries).toBe(1);
+    expect(s.geolocated).toBe(1);
+    expect(s.pendingGeolocation).toBe(1);
+    expect(s.genuineArcs).toBe(0);
+    expect(s.byProvider["spamhaus-drop"]).toBe(2);
+  });
+
+  it("returns empty buckets when no timestamps exist", () => {
+    expect(bucketizeByTime([{ timestamp: null }])).toEqual([]);
+    expect(computeStatistics([]).total).toBe(0);
+  });
+});
