@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import spamhausDrop from "./spamhausDrop.js";
+import dshield from "./dshield.js";
+import openphish from "./openphish.js";
 import cisaKev from "./cisaKev.js";
-import { DISABLED_PROVIDERS } from "./disabled.js";
-import { fetchAllProviders, getProviderMetadata } from "./index.js";
+import { DISABLED_PROVIDERS, UNAVAILABLE_PROVIDERS } from "./disabled.js";
+import { fetchAllProviders, fetchProviders, getProviderMetadata } from "./index.js";
 
 describe("spamhaus-drop provider", () => {
   it("normalizes fetched text with a bounded, deterministic slice", async () => {
@@ -23,7 +25,39 @@ describe("spamhaus-drop provider", () => {
   });
 });
 
-describe("cisa-kev provider", () => {
+describe("dshield provider", () => {
+  it("normalizes the SANS block list with attack-source semantics", async () => {
+    const text = "# hdr\n# Source File Date: Wed Sep  9 06:00:03 UTC 2026\n4.3.2.0/24\ngarbage\n";
+    const result = await dshield.fetchLatest({ fetchText: async () => text });
+    expect(result.totalInFeed).toBe(1);
+    expect(result.skipped).toBe(1);
+    expect(result.events[0].sourceProvider).toBe("dshield");
+    expect(result.events[0].category).toBe("attack_source");
+    expect(result.events[0].destination).toBeNull();
+    expect(result.fileDateIso).toContain("2026-09-09");
+  });
+});
+
+describe("openphish provider", () => {
+  it("returns phishing intel with null timestamps and no destinations", async () => {
+    const result = await openphish.fetchLatest({
+      fetchText: async () => "http://example.com/a\nnot a url\n",
+    });
+    expect(result.totalInFeed).toBe(1);
+    expect(result.skipped).toBe(1);
+    expect(result.events[0].classification).toBe("phishing");
+    expect(result.events[0].timestamp).toBeNull();
+    expect(result.events.every((e) => e.destination === null)).toBe(true);
+  });
+
+  it("propagates fetch failure instead of fabricating fallback data", async () => {
+    await expect(
+      openphish.fetchLatest({ fetchText: async () => { throw new Error("net down"); } })
+    ).rejects.toThrow("net down");
+  });
+});
+
+describe("cisa-kev provider (GitHub mirror)", () => {
   const payload = {
     vulnerabilities: [
       { cveID: "CVE-2024-0002", vendorProject: "B", product: "P2", dateAdded: "2024-02-01" },
@@ -42,10 +76,24 @@ describe("cisa-kev provider", () => {
 });
 
 describe("provider registry", () => {
-  it("exposes metadata for enabled providers", () => {
+  it("exposes metadata only for verified browser-compatible providers", () => {
     const meta = getProviderMetadata();
-    expect(meta.map((m) => m.id).sort()).toEqual(["cisa-kev", "spamhaus-drop"]);
+    expect(meta.map((m) => m.id).sort()).toEqual(["cisa-kev", "dshield", "openphish", "spamhaus-drop"]);
     expect(meta.every((m) => m.requiresKey === false)).toBe(true);
+    expect(meta.every((m) => m.browserCompatible === true)).toBe(true);
+    expect(meta.every((m) => m.attribution && m.updateCadence && m.feedType)).toBe(true);
+  });
+
+  it("fetches a subset of providers without touching the others", async () => {
+    const results = await fetchProviders(["dshield"]);
+    expect(results).toHaveLength(1);
+    expect(results[0].id).toBe("dshield");
+  });
+
+  it("keeps CORS-blocked sources out of the live list with documentation", () => {
+    expect(UNAVAILABLE_PROVIDERS.map((p) => p.id)).toContain("feodo-tracker");
+    expect(UNAVAILABLE_PROVIDERS.every((d) => d.reason && d.reference)).toBe(true);
+    expect(getProviderMetadata().map((m) => m.id)).not.toContain("feodo-tracker");
   });
 
   it("isolates failures: one provider down never crashes the other", async () => {

@@ -4,6 +4,27 @@
  * return unchanged data therefore never appear as "new attacks".
  */
 
+/**
+ * Compare two live snapshots by stable event id.
+ * Ordering changes are ignored — only membership matters.
+ * Returns { added, removed, unchanged } as arrays of ids.
+ */
+export function diffIdSets(prevIds, nextIds) {
+  const prev = new Set(prevIds ?? []);
+  const next = new Set(nextIds ?? []);
+  const added = [];
+  const unchanged = [];
+  for (const id of next) {
+    if (prev.has(id)) unchanged.push(id);
+    else added.push(id);
+  }
+  const removed = [];
+  for (const id of prev) {
+    if (!next.has(id)) removed.push(id);
+  }
+  return { added, removed, unchanged };
+}
+
 /** djb2 — small deterministic non-crypto hash for dedup keys. */
 export function stableHash(input) {
   const str = String(input);

@@ -1,3 +1,6 @@
+> Historical record — superseded.
+> Not authoritative for current ThreatStream architecture or setup.
+
 # ThreatStream Repository Reality Audit
 
 Audit date: 2026-08-01

@@ -382,19 +382,20 @@ export default function ThreatGlobe({
 
   return (
     <div className="globe-wrap">
-      <div ref={mountRef} className="globe-canvas" role="img" aria-label="3D globe showing geolocated threat observations" />
+      <div ref={mountRef} className="globe-canvas" role="img" aria-label="3D globe showing geolocated malicious infrastructure observations" />
       <div ref={tooltipRef} className="globe-tooltip" style={{ display: "none" }}>
         {hover && (
           <>
             <strong className="mono">{hover.source?.ip ?? hover.raw?.cveID ?? hover.id}</strong>
             <span>{hover.source?.country ?? "Country pending"} · {hover.category}</span>
+            <span className="muted">Approximate infrastructure location</span>
           </>
         )}
       </div>
       <div className="globe-legend" aria-hidden="true">
-        <span><i className="dot dot-source" /> Observed source</span>
-        <span><i className="dot dot-enriched" /> Geolocation (approximate)</span>
-        <span><i className="arc-sample" /> Confirmed path (both ends observed)</span>
+        <span><i className="dot dot-source" /> Malicious infrastructure</span>
+        <span><i className="dot dot-enriched" /> Approximate geolocation</span>
+        <span><i className="arc-sample" /> Confirmed observed path</span>
       </div>
       <div className="globe-count" aria-live="polite">
         {renderable.markers.length} geolocated of {events.length} loaded · {renderable.arcs.length} confirmed paths

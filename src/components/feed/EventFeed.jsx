@@ -4,32 +4,52 @@ import { formatClock, maskIp, prettyLabel } from "../../lib/format.js";
 import { relationshipKind } from "../../lib/threat/model.js";
 import { ConfidenceBadge, SeverityBadge } from "../ui/Primitives.jsx";
 
+const PROVIDER_LABELS = {
+  "spamhaus-drop": "Spamhaus DROP",
+  "dshield": "DShield",
+  "openphish": "OpenPhish",
+  "cisa-kev": "CISA KEV",
+};
+
 function ProviderTag({ id }) {
-  const label = id === "spamhaus-drop" ? "Spamhaus DROP" : id === "cisa-kev" ? "CISA KEV" : id;
-  return <span className="provider-tag mono">{label}</span>;
+  return <span className="provider-tag mono">{PROVIDER_LABELS[id] ?? id}</span>;
 }
 
-export function EventCard({ event, masked = false, selected = false, onPick = null }) {
+function titleFor(event) {
+  if (event.classification === "vulnerability") return event.raw?.cveID ?? "Vulnerability intel";
+  if (event.classification === "phishing") return "Phishing URL";
+  if (event.category === "attack_source") return "Attack source";
+  if (event.category === "reputation_blocklist") return "Malicious infrastructure";
+  return prettyLabel(event.category);
+}
+
+export function EventCard({ event, masked = false, selected = false, isNew = false, onPick = null }) {
   const rel = relationshipKind(event);
   const ip = masked ? maskIp(event.source?.ip) : event.source?.ip;
   const body = (
     <>
       <div className="event-top">
-        <span className="mono event-time">{formatClock(event.timestamp)}</span>
-        <span className={`rel-pill rel-${rel}`}>
-          {rel === "observed_path" ? "Observed path" : rel === "source_only" ? "Source intel" : "Intel record"}
+        <span className="mono event-time" title={event.timestamp ? new Date(event.timestamp).toUTCString() : "Feed provides no timestamp"}>
+          {formatClock(event.timestamp)}
+        </span>
+        <span className="event-pills">
+          {isNew && <span className="rel-pill rel-new">New</span>}
+          <span className={`rel-pill rel-${rel}`}>
+            {rel === "observed_path" ? "Observed path" : rel === "source_only" ? "Source intel" : "Intel record"}
+          </span>
         </span>
       </div>
-      <div className="event-title">
-        {event.classification === "vulnerability"
-          ? event.raw?.cveID ?? "Vulnerability intel"
-          : prettyLabel(event.category)}
-      </div>
+      <div className="event-title">{titleFor(event)}</div>
       {event.classification === "vulnerability" ? (
         <div className="event-route">
           <span>{event.raw?.vendorProject ?? "Unknown vendor"}</span>
           <span className="event-sep">·</span>
           <span>{event.raw?.product ?? "Unknown product"}</span>
+        </div>
+      ) : event.classification === "phishing" ? (
+        <div className="event-route">
+          <span className="mono">{event.raw?.domain ?? "Unknown domain"}</span>
+          <span className="event-dest-missing">Non-geographic · feed only</span>
         </div>
       ) : (
         <div className="event-route">
@@ -80,12 +100,13 @@ export function EventCard({ event, masked = false, selected = false, onPick = nu
   );
 }
 
-export default function EventFeed({ events, masked, selectedId, onPick, max = 120 }) {
+export default function EventFeed({ events, masked, selectedId, newIds, onPick, max = 120 }) {
   const visible = events.slice(0, max);
+  const fresh = newIds instanceof Set ? newIds : new Set(newIds ?? []);
   return (
     <div className="event-feed" role="feed" aria-label="Live threat observation feed">
       {visible.map((e) => (
-        <EventCard key={e.id} event={e} masked={masked} selected={e.id === selectedId} onPick={onPick} />
+        <EventCard key={e.id} event={e} masked={masked} selected={e.id === selectedId} isNew={fresh.has(e.id)} onPick={onPick} />
       ))}
     </div>
   );

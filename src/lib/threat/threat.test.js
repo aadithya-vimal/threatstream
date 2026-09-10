@@ -8,12 +8,15 @@ import {
 } from "./model.js";
 import {
   cidrToRepresentativeIp,
+  normalizeDshieldLine,
   normalizeDropLine,
   normalizeDropList,
   normalizeKevCatalog,
   normalizeKevEntry,
+  normalizeOpenphishFeed,
+  normalizeOpenphishUrl,
 } from "./normalize.js";
-import { mergeEvents } from "./dedup.js";
+import { diffIdSets, mergeEvents } from "./dedup.js";
 import { applyFilters } from "./filter.js";
 import { bucketizeByTime, computeStatistics } from "./statistics.js";
 
@@ -94,8 +97,8 @@ describe("KEV normalization", () => {
     expect(normalizeKevEntry({})).toBeNull();
     expect(normalizeKevEntry({ cveID: "not-a-cve" })).toBeNull();
     expect(normalizeKevEntry([])).toBeNull();
-    expect(normalizeKevCatalog({})).toEqual({ events: [], skipped: 0 });
-    expect(normalizeKevCatalog(null)).toEqual({ events: [], skipped: 0 });
+    expect(normalizeKevCatalog({})).toEqual({ events: [], skipped: 0, catalogVersion: null, dateReleased: null });
+    expect(normalizeKevCatalog(null)).toEqual({ events: [], skipped: 0, catalogVersion: null, dateReleased: null });
   });
 });
 
@@ -212,5 +215,70 @@ describe("statistics", () => {
   it("returns empty buckets when no timestamps exist", () => {
     expect(bucketizeByTime([{ timestamp: null }])).toEqual([]);
     expect(computeStatistics([]).total).toBe(0);
+  });
+});
+
+describe("dshield normalization", () => {
+  it("produces source-only attack-source events with DShield identity", () => {
+    const e = normalizeDshieldLine("4.3.2.0/24", { fileDateIso: "2026-09-09T06:00:03.000Z", sourceUrl: "https://www.dshield.org/block.html" });
+    expect(e).not.toBeNull();
+    expect(e.sourceProvider).toBe("dshield");
+    expect(e.category).toBe("attack_source");
+    expect(e.destination).toBeNull();
+    expect(e.source.ip).toBe("4.3.2.0");
+    expect(relationshipKind(e)).toBe("intel_only");
+    expect(hasArc(e)).toBe(false);
+  });
+});
+
+describe("openphish normalization", () => {
+  it("turns URL lines into non-geographic phishing intel with null timestamps", () => {
+    const e = normalizeOpenphishUrl("http://example.com/login");
+    expect(e).not.toBeNull();
+    expect(e.sourceProvider).toBe("openphish");
+    expect(e.classification).toBe("phishing");
+    expect(e.destination).toBeNull();
+    expect(e.timestamp).toBeNull();
+    expect(e.timestampKind).toBe("received");
+    expect(e.raw.domain).toBe("example.com");
+    expect(hasSourceCoordinates(e)).toBe(false);
+    expect(hasArc(e)).toBe(false);
+  });
+
+  it("skips blanks, comments, and malformed URLs without inventing data", () => {
+    expect(normalizeOpenphishUrl("")).toBeNull();
+    expect(normalizeOpenphishUrl("# comment")).toBeNull();
+    expect(normalizeOpenphishUrl("not a url")).toBeNull();
+    expect(normalizeOpenphishUrl("http://nodot")).toBeNull();
+    const { events, skipped } = normalizeOpenphishFeed("http://a.com/x\nhttp://a.com/x\njunk\n");
+    expect(events).toHaveLength(1);
+    expect(skipped).toBe(1);
+  });
+});
+
+describe("snapshot diffing", () => {
+  it("computes added/removed/unchanged by stable id, ignoring order", () => {
+    const d = diffIdSets(["a", "b", "c"], ["c", "a", "d"]);
+    expect(d.added).toEqual(["d"]);
+    expect(d.removed).toEqual(["b"]);
+    expect(d.unchanged.sort()).toEqual(["a", "c"]);
+  });
+
+  it("reports no changes for identical snapshots", () => {
+    const d = diffIdSets(["a"], ["a"]);
+    expect(d).toEqual({ added: [], removed: [], unchanged: ["a"] });
+  });
+});
+
+describe("no fabricated destinations", () => {
+  it("a source-only record cannot become a source→destination path", () => {
+    const drop = normalizeDropLine("1.10.16.0/20", DROP_OPTS);
+    const dshield = normalizeDshieldLine("4.3.2.0/24", DROP_OPTS);
+    const phish = normalizeOpenphishUrl("http://example.com/login");
+    for (const e of [drop, dshield, phish]) {
+      expect(e.destination).toBeNull();
+      expect(hasArc(e)).toBe(false);
+      expect(relationshipKind(e)).not.toBe("observed_path");
+    }
   });
 });

@@ -3,54 +3,69 @@ import { Link } from "react-router-dom";
 import { useThreatIntel } from "../../state/ThreatIntelContext.jsx";
 
 export default function Landing() {
-  const { events, initialLoading, health } = useThreatIntel();
+  const { events, initialLoading, health, providers } = useThreatIntel();
   const okProviders = Object.values(health).filter((h) => h.status === "ok").length;
+  const geolocated = events.filter(
+    (e) => typeof e.source?.latitude === "number" && typeof e.source?.longitude === "number"
+  ).length;
 
   return (
     <div className="landing">
       <section className="hero">
         <div className="hero-copy">
-          <p className="eyebrow">Public threat-intelligence visualization</p>
+          <p className="eyebrow">ThreatStream · Public threat-intelligence visualization</p>
           <h1>
-            Live Cyber Threat Intelligence, <span className="gradient-text">Visualized.</span>
+            <span className="thin">LIVE CYBER THREAT INTELLIGENCE</span>
+            Visualized<span className="glow">.</span>
           </h1>
           <p className="lede">
-            ThreatStream aggregates current threat observations from public sources, enriches
-            infrastructure metadata in your browser, and renders global activity on an
-            interactive 3D globe — distinguishing observed activity from inference, always
-            with source attribution.
+            ThreatStream transforms continuously updated public threat-intelligence feeds
+            into an interactive geographic view of malicious infrastructure, phishing
+            indicators, and vulnerability intelligence — with transparent attribution
+            and a strict observed-vs-inferred distinction. No fabricated attacks, ever.
           </p>
           <div className="hero-actions">
-            <Link to="/monitor" className="btn btn-primary">Open Live Monitor →</Link>
-            <Link to="/methodology" className="btn btn-secondary">How we stay honest</Link>
+            <Link to="/monitor" className="btn btn-primary">Enter live monitor →</Link>
+            <Link to="/methodology" className="btn btn-secondary">Methodology</Link>
           </div>
           <div className="hero-live mono" aria-live="polite">
+            <span className={`live-dot${initialLoading ? " pulsing" : ""}`} aria-hidden="true" />
             {initialLoading ? (
               <span>Contacting live sources…</span>
             ) : (
               <span>
-                {events.length} live observations in memory · {okProviders} source(s) healthy · no fabricated events, ever
+                {events.length} observations in memory · {okProviders}/{providers.length} source(s) healthy
               </span>
             )}
           </div>
+          {!initialLoading && events.length > 0 && (
+            <div className="hero-facts" aria-label="Currently loaded data">
+              <div className="hero-fact"><b>{events.length}</b><span>Observations</span></div>
+              <div className="hero-fact"><b>{geolocated}</b><span>Geolocated</span></div>
+              <div className="hero-fact"><b>{okProviders}/{providers.length}</b><span>Sources live</span></div>
+            </div>
+          )}
         </div>
-        <div className="hero-globe" aria-hidden="true">
-          <img src="/earth-night.jpg" alt="" />
-          <div className="hero-orbit"><i /><i /><i /></div>
+        <div className="hero-visual" aria-hidden="true">
+          <div className="css-globe">
+            <span className="css-globe-ring r1" />
+            <span className="css-globe-ring r2" />
+          </div>
+          <span className="css-globe-tag" style={{ top: "12%", right: "8%" }}>DROP · live</span>
+          <span className="css-globe-tag" style={{ bottom: "14%", left: "6%" }}>in-memory · no tracking</span>
         </div>
       </section>
 
       <section className="landing-grid">
-        <article className="panel">
+        <article className="panel"><div className="panel-body">
           <h2>What it shows</h2>
           <ul>
             <li>Blocklisted malicious infrastructure as <strong>source markers</strong> — never invented victims</li>
             <li>Genuine source → destination arcs <strong>only</strong> when a source proves both ends</li>
-            <li>Actively exploited vulnerabilities (CISA KEV) as attributed intel records</li>
             <li>Live counts derived from the data actually loaded — 27 means 27</li>
           </ul>
-        </article>
-        <article className="panel">
+        </div></article>
+        <article className="panel"><div className="panel-body">
           <h2>What it refuses to do</h2>
           <ul>
             <li>No random attacks, IPs, coordinates, timestamps, or severity</li>
@@ -58,8 +73,8 @@ export default function Landing() {
             <li>No private API keys in the browser bundle</li>
             <li>No database, no accounts, no tracking — refresh resets the session</li>
           </ul>
-        </article>
-        <article className="panel">
+        </div></article>
+        <article className="panel"><div className="panel-body">
           <h2>How to read the globe</h2>
           <ul>
             <li><span className="dot dot-source" /> red marker — observed malicious source</li>
@@ -67,18 +82,23 @@ export default function Landing() {
             <li><span className="arc-sample" /> arc — confirmed path, both endpoints observed</li>
             <li>Click any marker for the full attributed record</li>
           </ul>
-        </article>
+        </div></article>
       </section>
 
-      <section className="landing-sources panel">
-        <h2>Live sources</h2>
-        <p>
-          <strong>Spamhaus DROP</strong> (malicious infrastructure, geolocated in-browser) and{" "}
-          <strong>CISA KEV</strong> (exploited vulnerabilities, non-geographic) — both public,
-          keyless, and fetched live from your browser. Sources that require secret keys
-          (URLhaus, ThreatFox, AbuseIPDB, GreyNoise, OTX) stay disabled and documented.
-        </p>
-        <Link to="/methodology" className="btn btn-ghost">Read the methodology →</Link>
+      <section className="panel landing-sources">
+        <div className="panel-body">
+          <h2>Live sources</h2>
+          <p>
+            <strong>Spamhaus DROP</strong> (blocklisted infrastructure) and{" "}
+            <strong>DShield</strong> (recent attack sources) — geolocated in-browser;{" "}
+            <strong>OpenPhish</strong> (phishing URLs) and <strong>CISA KEV</strong>{" "}
+            (exploited vulnerabilities, via the official GitHub mirror) as attributed
+            intel records. Every source is public, keyless, and fetched live from your
+            browser on its own cadence. Feodo Tracker stays <strong>unavailable</strong>{" "}
+            (CORS-blocked + stale), and secret-key sources stay disabled and documented.
+          </p>
+          <Link to="/methodology" className="btn btn-ghost btn-sm">Read the methodology →</Link>
+        </div>
       </section>
     </div>
   );

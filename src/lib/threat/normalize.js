@@ -66,14 +66,33 @@ function parseDropFileDate(text) {
  * Returns null for comments, blanks, and malformed lines.
  */
 export function normalizeDropLine(line, { fileDateIso = null, sourceUrl = null } = {}) {
-  if (typeof line !== "string") return null;
+  return normalizeCidrLine(line, {
+    provider: PROVIDERS.SPAMHAUS_DROP,
+    category: "reputation_blocklist",
+    // Provider-level mapping, documented in Methodology: Spamhaus DROP lists
+    // networks under hijacked / botnet-C&C control that should be blocked.
+    severity: "high",
+    fileDateIso,
+    sourceUrl,
+  });
+}
+
+/**
+ * Generic CIDR-list line normalizer shared by IP blocklist feeds
+ * (Spamhaus DROP, DShield). Always source-only: destination stays null.
+ */
+export function normalizeCidrLine(
+  line,
+  { provider, category, severity = "unknown", fileDateIso = null, sourceUrl = null } = {}
+) {
+  if (typeof line !== "string" || !provider || !category) return null;
   const cidr = line.split(";")[0].trim();
   if (!cidr || cidr.startsWith("#")) return null;
   const ip = cidrToRepresentativeIp(cidr);
   if (!ip || !isPublicIpv4(ip)) return null;
   const normalizedCidr = cidr.includes("/") ? cidr : `${ip}/32`;
   return createThreatEvent({
-    provider: PROVIDERS.SPAMHAUS_DROP,
+    provider,
     recordId: normalizedCidr,
     timestamp: fileDateIso,
     timestampKind: fileDateIso
@@ -82,10 +101,8 @@ export function normalizeDropLine(line, { fileDateIso = null, sourceUrl = null }
     source: { ip, cidr: normalizedCidr },
     destination: null,
     classification: CLASSIFICATIONS.MALICIOUS_SOURCE,
-    category: "reputation_blocklist",
-    // Provider-level mapping, documented in Methodology: Spamhaus DROP lists
-    // networks under hijacked / botnet-C&C control that should be blocked.
-    severity: "high",
+    category,
+    severity,
     confidence: "high",
     sourceUrl,
     observed: ["feed_record"],
@@ -94,7 +111,36 @@ export function normalizeDropLine(line, { fileDateIso = null, sourceUrl = null }
   });
 }
 
+/**
+ * Normalize one DShield (SANS) block-list line. DShield publishes the top
+ * attacking /24 subnets observed over the last three days — recent attack
+ * sources, still source-only (no victims, no per-event time).
+ */
+export function normalizeDshieldLine(line, { fileDateIso = null, sourceUrl = null } = {}) {
+  return normalizeCidrLine(line, {
+    provider: PROVIDERS.DSHIELD,
+    category: "attack_source",
+    // Provider-level mapping, documented in Methodology: DShield lists
+    // subnets its sensors saw attacking recently — block recommendation.
+    severity: "high",
+    fileDateIso,
+    sourceUrl,
+  });
+}
+
 export function normalizeDropList(text, options = {}) {
+  return normalizeCidrList(text, normalizeDropLine, options);
+}
+
+/**
+ * Normalize one DShield block-list file. Same envelope as DROP
+ * (Source File Date header, CIDR lines) with DShield semantics.
+ */
+export function normalizeDshieldList(text, options = {}) {
+  return normalizeCidrList(text, normalizeDshieldLine, options);
+}
+
+function normalizeCidrList(text, lineFn, options = {}) {
   if (typeof text !== "string" || !text.length) {
     return { events: [], skipped: 0, fileDateIso: null };
   }
@@ -105,7 +151,7 @@ export function normalizeDropList(text, options = {}) {
   for (const line of text.split("\n")) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("#") || trimmed.startsWith(";")) continue;
-    const event = normalizeDropLine(trimmed, opts);
+    const event = lineFn(trimmed, opts);
     if (event) events.push(event);
     else skipped += 1;
   }
@@ -159,13 +205,75 @@ export function normalizeKevEntry(entry) {
 
 export function normalizeKevCatalog(payload) {
   const list = payload?.vulnerabilities;
-  if (!Array.isArray(list)) return { events: [], skipped: 0 };
+  if (!Array.isArray(list)) return { events: [], skipped: 0, catalogVersion: null, dateReleased: null };
   const events = [];
   let skipped = 0;
   for (const entry of list) {
     const event = normalizeKevEntry(entry);
     if (event) events.push(event);
     else skipped += 1;
+  }
+  return {
+    events,
+    skipped,
+    catalogVersion: asNonEmptyString(payload?.catalogVersion),
+    dateReleased: asNonEmptyString(payload?.dateReleased),
+  };
+}
+
+/**
+ * Normalize one OpenPhish community-feed URL line into phishing intel.
+ * The feed carries no per-URL timestamps and no IPs: the event is
+ * non-geographic by construction (destination null, no coordinates).
+ * Returns null for blanks and malformed lines.
+ */
+export function normalizeOpenphishUrl(line) {
+  if (typeof line !== "string") return null;
+  const url = line.trim();
+  if (!url || url.startsWith("#")) return null;
+  let domain = null;
+  try {
+    domain = new URL(url).hostname.toLowerCase() || null;
+  } catch {
+    return null;
+  }
+  if (!domain || !domain.includes(".")) return null;
+  return createThreatEvent({
+    provider: PROVIDERS.OPENPHISH,
+    recordId: url,
+    timestamp: null,
+    timestampKind: TIMESTAMP_KINDS.RECEIVED,
+    source: {},
+    destination: null,
+    classification: CLASSIFICATIONS.PHISHING,
+    category: "phishing_url",
+    // Community feed is machine-verified: medium confidence, never guessed high.
+    severity: "unknown",
+    confidence: "medium",
+    sourceUrl: "https://www.openphish.com/phishing_feeds.html",
+    observed: ["feed_record"],
+    inferred: [],
+    raw: { url, domain },
+  });
+}
+
+export function normalizeOpenphishFeed(text) {
+  if (typeof text !== "string" || !text.length) {
+    return { events: [], skipped: 0 };
+  }
+  const events = [];
+  let skipped = 0;
+  const seen = new Set();
+  for (const line of text.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const event = normalizeOpenphishUrl(trimmed);
+    if (event && !seen.has(event.id)) {
+      seen.add(event.id);
+      events.push(event);
+    } else if (!event) {
+      skipped += 1;
+    }
   }
   return { events, skipped };
 }

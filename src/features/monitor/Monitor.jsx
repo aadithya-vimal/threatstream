@@ -1,14 +1,15 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import ThreatGlobe from "../../components/globe/ThreatGlobe.jsx";
 import EventFeed from "../../components/feed/EventFeed.jsx";
 import EventDetail from "../../components/detail/EventDetail.jsx";
 import FilterPanel from "../../components/filters/FilterPanel.jsx";
 import Timeline from "../../components/timeline/Timeline.jsx";
 import { ActivityChart, BarList, Metric } from "../../components/stats/StatsPanels.jsx";
-import { DISABLED_PROVIDERS } from "../../lib/providers/disabled.js";
+import { DISABLED_PROVIDERS, UNAVAILABLE_PROVIDERS } from "../../lib/providers/disabled.js";
 import { hasSourceCoordinates } from "../../lib/threat/model.js";
 import { EMPTY_FILTERS, applyFilters } from "../../lib/threat/filter.js";
 import { computeStatistics } from "../../lib/threat/statistics.js";
+import { formatClock } from "../../lib/format.js";
 import { useThreatIntel } from "../../state/ThreatIntelContext.jsx";
 import {
   EmptyState,
@@ -18,26 +19,45 @@ import {
   UpdatedAgo,
 } from "../../components/ui/Primitives.jsx";
 
+function UtcClock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const p = (n) => String(n).padStart(2, "0");
+  return (
+    <span className="mono" title={now.toUTCString()} aria-label="Current UTC time">
+      UTC {p(now.getUTCHours())}:{p(now.getUTCMinutes())}:{p(now.getUTCSeconds())}
+    </span>
+  );
+}
+
 export default function Monitor() {
   const {
     events,
     health,
+    diffs,
+    diffTotals,
+    newIds,
     providers,
     lastUpdated,
     initialLoading,
     refreshing,
     refresh,
-    refreshIntervalMs,
     getEvent,
   } = useThreatIntel();
 
   const [filters, setFilters] = useState({ ...EMPTY_FILTERS });
   const [selectedId, setSelectedId] = useState(null);
+  const [selectedProvider, setSelectedProvider] = useState(null);
   const [focusRequest, setFocusRequest] = useState(null);
   const [resetSignal, setResetSignal] = useState(0);
   const [paused, setPaused] = useState(false);
   const [autoRotate, setAutoRotate] = useState(true);
   const [masked, setMasked] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const globeBoxRef = React.useRef(null);
 
   const facets = useMemo(
     () => ({
@@ -54,6 +74,8 @@ export default function Monitor() {
   const filtered = useMemo(() => applyFilters(events, filters), [events, filters]);
   const stats = useMemo(() => computeStatistics(filtered), [filtered]);
   const globeEvents = useMemo(() => filtered.filter(hasSourceCoordinates), [filtered]);
+  const phishingCount = useMemo(() => filtered.filter((e) => e.classification === "phishing").length, [filtered]);
+  const vulnCount = useMemo(() => filtered.filter((e) => e.classification === "vulnerability").length, [filtered]);
   const selected = selectedId ? getEvent(selectedId) : null;
 
   const pick = (id, opts = {}) => {
@@ -67,36 +89,77 @@ export default function Monitor() {
   };
 
   const failing = providers.filter((p) => health[p.id]?.status === "error");
-  const anyOk = providers.some((p) => health[p.id]?.status === "ok" || health[p.id]?.status === "stale");
+  const okCount = providers.filter((p) => health[p.id]?.status === "ok").length;
+  const liveTone = initialLoading ? "" : okCount === providers.length && providers.length > 0 ? "" : okCount > 0 ? "degraded" : "down";
+  const liveLabel = initialLoading ? "CONNECTING" : okCount === providers.length && providers.length > 0 ? "LIVE" : okCount > 0 ? "DEGRADED" : "OFFLINE";
+  const lastDiffAt = Object.values(diffs).map((d) => d.at).filter(Boolean).sort().pop() ?? null;
+
+  const toggleFullscreen = () => {
+    const el = globeBoxRef.current;
+    if (!el) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.().catch(() => {});
+      setIsFullscreen(false);
+    } else {
+      el.requestFullscreen?.().then(() => setIsFullscreen(true)).catch(() => {});
+    }
+  };
+
+  useEffect(() => {
+    const onFs = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onFs);
+    return () => document.removeEventListener("fullscreenchange", onFs);
+  }, []);
+
+  const providerDetail = selectedProvider ? providers.find((p) => p.id === selectedProvider) : null;
 
   return (
     <div className="monitor">
-      <div className="monitor-toolbar">
-        <div>
-          <h1>Global Monitor</h1>
-          <p className="muted">
-            Live public observations · auto-refresh every {Math.round(refreshIntervalMs / 60000)} min from real
-            provider data · <UpdatedAgo iso={lastUpdated} />
-          </p>
-        </div>
-        <div className="toolbar-actions">
-          <button type="button" className="btn btn-ghost btn-sm" onClick={refresh} disabled={refreshing}>
+      <div className="monitor-head">
+        <p className="eyebrow">Global threat intelligence</p>
+        <h1>Live indicators</h1>
+        <p className="sub">
+          Current malicious infrastructure, phishing, and vulnerability intelligence ·
+          per-source refresh cadence · <UpdatedAgo iso={lastUpdated} />
+        </p>
+      </div>
+
+      <div className="statusbar" role="status" aria-live="polite">
+        <span className={`live-pill ${liveTone}`}>
+          <span className={`live-dot${initialLoading || refreshing ? " pulsing" : ""}`} aria-hidden="true" />
+          {refreshing ? "REFRESHING" : liveLabel}
+        </span>
+        <span className="provider-dots" aria-label="Per-source status">
+          {providers.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              className="provider-dot"
+              title={`${p.name}: ${health[p.id]?.status ?? "loading"}`}
+              aria-label={`${p.name} status ${health[p.id]?.status ?? "loading"} — show details`}
+              onClick={() => setSelectedProvider(p.id)}
+            >
+              <HealthDot status={health[p.id]?.status ?? "loading"} />
+            </button>
+          ))}
+        </span>
+        <span className="mono">{filtered.length}/{events.length} indicators loaded</span>
+        <span className="sep" aria-hidden="true">·</span>
+        <span className="mono">+{diffTotals.added} new −{diffTotals.removed} removed{lastDiffAt ? ` · ${formatClock(lastDiffAt)}` : ""}</span>
+        <span className="spacer" />
+        <UtcClock />
+        <span className="statusbar-actions">
+          <button type="button" className="btn btn-ghost btn-sm" onClick={refresh} disabled={refreshing || initialLoading}>
             {refreshing ? "Refreshing…" : "⟳ Refresh now"}
           </button>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setResetSignal((n) => n + 1)}>
-            Reset view
-          </button>
-          <label className="toggle"><input type="checkbox" checked={autoRotate} onChange={(e) => setAutoRotate(e.target.checked)} /> Rotate</label>
-          <label className="toggle"><input type="checkbox" checked={paused} onChange={(e) => setPaused(e.target.checked)} /> Pause motion</label>
-          <label className="toggle"><input type="checkbox" checked={masked} onChange={(e) => setMasked(e.target.checked)} /> Mask IPs</label>
-        </div>
+        </span>
       </div>
 
       {initialLoading ? (
-        <LoadingState />
+        <LoadingState label="Establishing connections to live sources…" />
       ) : events.length === 0 ? (
         <EmptyState
-          title="No live observations currently available."
+          title="No live observations"
           hint={
             failing.length
               ? `All providers failed (${failing.map((p) => p.name).join(", ")}). Check your connection and refresh — ThreatStream will not invent data to fill the silence.`
@@ -106,27 +169,18 @@ export default function Monitor() {
         />
       ) : (
         <>
-          <div className="metrics-grid" aria-label="Live metrics from loaded data">
-            <Metric label="Live observations" value={stats.total} sub="loaded in memory" />
-            <Metric label="Active source IPs" value={stats.uniqueSourceIps} sub="distinct representatives" />
-            <Metric label="Source countries" value={stats.sourceCountries} sub="geolocated only" />
-            <Metric label="High-confidence" value={stats.highConfidence} sub="of loaded" />
-            <Metric label="Confirmed paths" value={stats.genuineArcs} sub="both ends observed" />
-            <Metric label="Pending geolocation" value={stats.pendingGeolocation} sub="feed-only for now" />
-          </div>
-
-          <div className="monitor-grid">
-            <Panel
-              title="Threat globe"
-              className="globe-panel"
-              action={
-                selected && (
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setSelectedId(null)}>
-                    Clear selection
-                  </button>
-                )
-              }
-            >
+          <Panel
+            title={`Threat globe · ${globeEvents.length} geolocated of ${filtered.length} loaded · ${stats.genuineArcs} confirmed paths`}
+            className="globe-panel"
+            action={
+              selected && (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setSelectedId(null)}>
+                  Clear selection
+                </button>
+              )
+            }
+          >
+            <div className="globe-wrap" ref={globeBoxRef}>
               <ThreatGlobe
                 events={globeEvents}
                 selectedId={selectedId}
@@ -136,65 +190,123 @@ export default function Monitor() {
                 paused={paused}
                 autoRotate={autoRotate}
               />
-              <Timeline events={filtered} selectedId={selectedId} onPick={pick} />
+              <div className="globe-controls" role="toolbar" aria-label="Globe controls">
+                <span className="ctl-label">View</span>
+                <button type="button" className={`btn btn-ghost btn-icon${autoRotate ? " active" : ""}`} onClick={() => setAutoRotate((v) => !v)} aria-pressed={autoRotate} title="Toggle auto-rotate">⟳</button>
+                <button type="button" className="btn btn-ghost btn-icon" onClick={() => setPaused((v) => !v)} aria-pressed={paused} title={paused ? "Resume motion" : "Pause motion"}>{paused ? "▶" : "⏸"}</button>
+                <button type="button" className="btn btn-ghost btn-icon" onClick={() => setResetSignal((n) => n + 1)} title="Reset view">⌂</button>
+                <button type="button" className="btn btn-ghost btn-icon" onClick={toggleFullscreen} aria-pressed={isFullscreen} title={isFullscreen ? "Exit fullscreen" : "Fullscreen globe"}>{isFullscreen ? "⤓" : "⤢"}</button>
+                <label className="check-inline" title="Mask last IP octets">
+                  <input type="checkbox" checked={masked} onChange={(e) => setMasked(e.target.checked)} /> Mask IPs
+                </label>
+              </div>
+            </div>
+            <Timeline events={filtered} selectedId={selectedId} onPick={pick} />
+          </Panel>
+
+          <div className="metrics-row" aria-label="Live metrics from loaded data">
+            <Metric label="Live indicators" value={stats.total} sub="in memory" />
+            <Metric label="New since fetch" value={`+${diffTotals.added}`} sub={`${diffTotals.removed} removed`} />
+            <Metric label="Source countries" value={stats.sourceCountries} sub="geolocated" />
+            <Metric label="Phishing" value={phishingCount} sub="intel records" />
+            <Metric label="Vuln intel" value={vulnCount} sub="KEV records" />
+            <Metric label="Confirmed paths" value={stats.genuineArcs} sub="both ends observed" />
+          </div>
+
+          <div className="monitor-cols">
+            <Panel title={`Live intelligence feed · ${filtered.length}`}>
+              {filtered.length === 0 ? (
+                <EmptyState title="No observations match these filters." hint="Widen the scope — filters only narrow real data." />
+              ) : (
+                <EventFeed events={filtered} masked={masked} selectedId={selectedId} newIds={newIds} onPick={pick} />
+              )}
             </Panel>
 
-            <div className="side-col">
-              <Panel title={`Live event feed (${filtered.length})`}>
-                {filtered.length === 0 ? (
-                  <EmptyState title="No observations match these filters." hint="Widen the scope — filters only narrow real data." />
-                ) : (
-                  <EventFeed events={filtered} masked={masked} selectedId={selectedId} onPick={pick} />
+            <div className="col-stack">
+              <Panel
+                title={selected ? `Event ${selected.id}` : "Event details"}
+                action={selected && (
+                  <a className="btn btn-ghost btn-sm" href={`/event/${encodeURIComponent(selected.id)}`}>Open full record →</a>
                 )}
+              >
+                {selected ? (
+                  <EventDetail event={selected} />
+                ) : (
+                  <EmptyState title="No event selected" hint="Select a globe marker or feed row to inspect the attributed record." />
+                )}
+              </Panel>
+              <Panel title="Filters">
+                <FilterPanel filters={filters} onChange={setFilters} facets={facets} resultCount={filtered.length} totalCount={events.length} />
               </Panel>
             </div>
           </div>
 
-          {selected && (
-            <Panel title={`Event ${selected.id}`} action={<a className="btn btn-ghost btn-sm" href={`/event/${encodeURIComponent(selected.id)}`}>Open full record →</a>}>
-              <EventDetail event={selected} />
-            </Panel>
-          )}
-
-          <Panel title="Filters">
-            <FilterPanel filters={filters} onChange={setFilters} facets={facets} resultCount={filtered.length} totalCount={events.length} />
-          </Panel>
-
           <div className="stats-grid">
             <Panel title="Top source countries"><BarList items={stats.bySourceCountry} /></Panel>
-            <Panel title="Categories"><BarList items={Object.entries(stats.byCategory).map(([label, value]) => ({ label, value }))} /></Panel>
             <Panel title="ASN distribution"><BarList items={stats.byAsn} /></Panel>
+            <Panel title="Categories"><BarList items={Object.entries(stats.byCategory).map(([label, value]) => ({ label, value }))} /></Panel>
             <Panel title="Provider distribution"><BarList items={Object.entries(stats.byProvider).map(([label, value]) => ({ label, value }))} /></Panel>
-            <Panel title="Activity over loaded span" className="span-2"><ActivityChart buckets={stats.activityOverTime} /></Panel>
           </div>
+          <Panel title="Activity over loaded span">
+            <ActivityChart buckets={stats.activityOverTime} />
+          </Panel>
 
-          <Panel title="Source health">
+          <Panel
+            title="Source health"
+            action={providerDetail && (
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setSelectedProvider(null)}>
+                Close details
+              </button>
+            )}
+          >
+            {providerDetail && (
+              <SourceDrawer
+                provider={providerDetail}
+                health={health[providerDetail.id]}
+                diff={diffs[providerDetail.id]}
+              />
+            )}
             <ul className="health-list">
               {providers.map((p) => {
                 const h = health[p.id];
+                const d = diffs[p.id];
                 return (
                   <li key={p.id}>
                     <HealthDot status={h?.status ?? "loading"} />
                     <div>
-                      <strong>{p.name}</strong>
+                      <button type="button" className="linklike" onClick={() => setSelectedProvider(p.id)}>
+                        <strong>{p.name}</strong>
+                      </button>
                       <span className="muted"> · {p.kind} · </span>
                       <a href={p.sourceUrl} target="_blank" rel="noreferrer">origin ↗</a>
                       <div className="mono health-meta">
                         {h?.status === "ok" || h?.status === "stale"
-                          ? `${h.eventCount} events this cycle${h.totalInFeed != null ? ` (feed: ${h.totalInFeed})` : ""} · ${h.latencyMs} ms · ${h.status}`
+                          ? `${h.eventCount} this cycle${h.totalInFeed != null ? ` (feed: ${h.totalInFeed})` : ""} · ${h.latencyMs} ms · ${h.status}`
                           : h?.status === "error"
                             ? `failed: ${h.lastError}`
                             : "contacting…"}
+                      </div>
+                      <div className="mono health-meta">
+                        fetched {h?.lastSuccess ? formatClock(h.lastSuccess) : "—"}
+                        {" · "}source {h?.sourceUpdated ? formatClock(h.sourceUpdated) : "n/a"}
+                        {d?.at ? ` · +${d.added} −${d.removed} ~${d.unchanged}` : ""}
                       </div>
                     </div>
                   </li>
                 );
               })}
             </ul>
-            {!anyOk && (
-              <p className="warn-line">Partial-source state: every provider is failing. Showing the last loaded snapshot, if any.</p>
-            )}
-            <details className="disabled-sources">
+            <details className="source-sublist">
+              <summary>Unavailable sources ({UNAVAILABLE_PROVIDERS.length}) — not browser-compatible</summary>
+              <ul>
+                {UNAVAILABLE_PROVIDERS.map((d) => (
+                  <li key={d.id}>
+                    <strong>{d.name}</strong> — {d.reason} <a href={d.reference} target="_blank" rel="noreferrer">docs ↗</a>
+                  </li>
+                ))}
+              </ul>
+            </details>
+            <details className="source-sublist">
               <summary>Disabled sources ({DISABLED_PROVIDERS.length}) — why they stay off</summary>
               <ul>
                 {DISABLED_PROVIDERS.map((d) => (
@@ -207,6 +319,29 @@ export default function Monitor() {
           </Panel>
         </>
       )}
+    </div>
+  );
+}
+
+function SourceDrawer({ provider, health, diff }) {
+  return (
+    <div className="source-drawer" aria-label={`Source details for ${provider.name}`}>
+      <h3>{provider.name}</h3>
+      <p className="muted">{provider.description}</p>
+      <dl className="field-grid">
+        <div className="field"><dt>Official source</dt><dd><a href={provider.sourceUrl} target="_blank" rel="noreferrer">{provider.sourceUrl} ↗</a></dd></div>
+        <div className="field"><dt>Fetched endpoint</dt><dd className="mono">{provider.feedUrl ?? "—"}</dd></div>
+        <div className="field"><dt>Attribution</dt><dd>{provider.attribution}</dd></div>
+        <div className="field"><dt>Feed type</dt><dd>{provider.feedType ?? "—"}</dd></div>
+        <div className="field"><dt>Update cadence</dt><dd>{provider.updateCadence ?? "—"}</dd></div>
+        <div className="field"><dt>Browser compatible</dt><dd>{provider.browserCompatible ? "Yes — verified CORS" : "No"}</dd></div>
+        <div className="field"><dt>Status</dt><dd>{health?.status ?? "loading"}</dd></div>
+        <div className="field"><dt>Last fetched (client)</dt><dd className="mono">{health?.lastSuccess ? formatClock(health.lastSuccess) : "—"}</dd></div>
+        <div className="field"><dt>Source updated</dt><dd className="mono">{health?.sourceUpdated ? formatClock(health.sourceUpdated) : "n/a"}</dd></div>
+        <div className="field"><dt>Records loaded</dt><dd className="mono">{health?.eventCount ?? 0}{health?.totalInFeed != null ? ` of ${health.totalInFeed} in feed` : ""}</dd></div>
+        <div className="field"><dt>Last cycle diff</dt><dd className="mono">{diff?.at ? `+${diff.added} added · −${diff.removed} removed · ~${diff.unchanged} unchanged` : "no cycle yet"}</dd></div>
+        <div className="field"><dt>Known limitations</dt><dd>{provider.limitations ?? "—"}</dd></div>
+      </dl>
     </div>
   );
 }

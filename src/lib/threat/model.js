@@ -13,6 +13,8 @@
 /** Stable provider identifiers for enabled (live) providers. */
 export const PROVIDERS = {
   SPAMHAUS_DROP: "spamhaus-drop",
+  DSHIELD: "dshield",
+  OPENPHISH: "openphish",
   CISA_KEV: "cisa-kev",
 };
 
@@ -30,6 +32,8 @@ export const TIMESTAMP_KINDS = {
 export const CLASSIFICATIONS = {
   /** Malicious infrastructure published by a reputation feed. Source-only. */
   MALICIOUS_SOURCE: "malicious_source",
+  /** Phishing URL intelligence. Non-geographic — never a globe marker. */
+  PHISHING: "phishing",
   /** Actively-exploited vulnerability intelligence. Non-geographic. */
   VULNERABILITY: "vulnerability",
 };

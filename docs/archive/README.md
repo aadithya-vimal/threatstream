@@ -1,3 +1,6 @@
+> Historical record — superseded.
+> Not authoritative for current ThreatStream architecture or setup.
+
 # ThreatStream Documentation
 
 Current authoritative documents:

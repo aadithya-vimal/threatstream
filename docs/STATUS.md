@@ -9,8 +9,13 @@ historical and not authoritative.
 - Current task: validate + harden (tests, build, docs) — then demo.
 - Exact next task: run `npm install`, `npm test`, `npm run build`; fix fallout.
 - Architecture: static React + Three.js frontend. No backend/database/auth.
-- Live sources: Spamhaus DROP (FireHOL mirror), CISA KEV, ipwho.is enrichment.
-- Disabled (documented): URLhaus, ThreatFox, Feodo, AbuseIPDB, GreyNoise, OTX.
+- Live sources (all verified browser-compatible 2026-09-10): Spamhaus DROP
+  (FireHOL mirror, 10 min), DShield via FireHOL mirror (10 min), OpenPhish
+  community raw mirror (30 min), CISA KEV via official cisagov/kev-data mirror
+  (60 min); ipwho.is enrichment. Per-source cadence scheduler + snapshot
+  diffing (+added −removed ~unchanged) with NEW badges and source drawer.
+- Unavailable (documented): Feodo Tracker (CORS-blocked + stale + Auth-Key).
+- Disabled (documented): URLhaus, ThreatFox, AbuseIPDB, GreyNoise, OTX.
 - Browser acceptance: not yet run (pending `npm run dev` + manual pass).
 - Production acceptance: none yet (no deployment URL).
 

@@ -3,7 +3,8 @@
  * FireHOL-maintained mirror on raw.githubusercontent.com.
  *
  * Why this source:
- * - Genuinely public, no key, browser-fetchable (CORS-enabled static file).
+ * - Genuinely public, no key, browser-fetchable (CORS-enabled static file,
+ *   verified Access-Control-Allow-Origin: *).
  * - Updated ~every 12h at origin; the mirror header states its file date,
  *   which becomes each event's LIST_PUBLICATION timestamp.
  * - Each entry is a CIDR under hijacked / botnet-C&C control.
@@ -40,6 +41,13 @@ const provider = {
   description:
     "Networks under hijacked or botnet command-and-control — published for blocklisting, not a victim-attack log.",
   sourceUrl: SPAMHAUS_DROP_SOURCE_URL,
+  feedUrl: SPAMHAUS_DROP_MIRROR_URL,
+  attribution: "Spamhaus Project (via FireHOL mirror)",
+  updateCadence: "Origin ~12h · polled every 10 min",
+  feedType: "CIDR blocklist (text)",
+  browserCompatible: true,
+  limitations:
+    "Lists ranges only — absence proves nothing. No victims, times, or targets. First ~140 subnets per cycle.",
   refreshIntervalMs: 10 * 60 * 1000,
   requiresKey: false,
 

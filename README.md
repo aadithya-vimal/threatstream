@@ -1,97 +1,113 @@
-# ThreatStream — Live Cyber Threat Intelligence, Visualized
+# ThreatStream
 
-ThreatStream is a **frontend-only** cybersecurity threat-intelligence
-visualization platform. It retrieves current threat observations from
-legitimate public, browser-accessible sources, normalizes them in the
-browser, geolocates source infrastructure where the data permits, and renders
-source → destination relationships as animated arcs on an interactive 3D Earth —
-alongside a live event feed, filters, statistics, event details, timeline
-controls, and geographic exploration.
+Live Cyber Threat Intelligence, Visualized.
 
-It clearly distinguishes **observed facts** from **inferred/enriched**
-information, attributes every event to its source, and **never fabricates**
-attack events, IPs, locations, timestamps, attackers, victims, or statistics.
+## Overview
+
+ThreatStream is a **frontend-only** live threat-intelligence viewer. It continuously
+fetches current public security feeds in the browser, normalizes them into attributed
+observations, enriches approximate infrastructure geography, and renders them on an
+interactive 3D globe — alongside a live feed, filters, statistics, event inspection,
+timeline, and methodology.
+
+It distinguishes **observed facts** from **enriched/inferred** context, attributes
+every event to its source, and **never fabricates** attacks, IPs, locations,
+timestamps, victims, or statistics.
+
+## Features
+
+- Interactive Three.js globe (source markers, genuine arcs only, selection, hover,
+  focus, auto-rotate, fullscreen, reduced-motion support)
+- Live observation feed with honest source-only labeling
+- Compact filter toolbar (search, provider, category, severity, confidence,
+  classification, country, relationship, time window) with active-filter chips
+- Statistics derived only from loaded in-memory data
+- Full event inspection: overview, source, destination, evidence, enrichment,
+  assessment, attribution
+- Provider health: live / degraded / offline, stale detection, unavailable +
+  disabled source documentation
+- Methodology & transparency page
+- Responsive mobile layout, keyboard navigation, focus states, aria labeling
 
 ## Architecture
 
 ```text
-┌──────────┐     ┌─────────────────────────────────┐     ┌────────────────┐
-│  Browser │────▶│ Live public threat-intel sources │────▶│ Client-side    │
-│  (React) │     │  · Spamhaus DROP (FireHOL mirror)│     │ normalization  │
-└──────────┘     │  · CISA KEV catalog              │     │ + enrichment   │
-      ▲          │  · ipwho.is geolocation (approx) │     └───────┬────────┘
-      │          └─────────────────────────────────┘             │
-      │                                                         ▼
-      │                                                  ┌────────────────┐
-      └──────────────────────────────────────────────────│ React state    │
-                                                         │ (in-memory)    │
-                                                         └───────┬────────┘
-                                                                 ▼
-                                                  ┌────────────────────────┐
-                                                  │ Three.js globe + UI    │
-                                                  │ feed · filters · stats │
-                                                  │ timeline · methodology │
-                                                  └────────────────────────┘
+Browser
+↓
+Public threat-intelligence sources (Spamhaus DROP · DShield · OpenPhish · CISA KEV mirror · ipwho.is enrichment)
+↓
+Client normalization (ThreatEvent model · pure functions)
+↓
+Client enrichment (approximate GeoIP, budgeted + cached in-memory)
+↓
+In-memory state (React context · no storage)
+↓
+Three.js visualization (globe · feed · filters · stats · detail)
 ```
 
-There is **no** backend, database, auth, worker, Docker, ORM, migration,
-persistence layer, or server process. `npm run build` emits a static `dist/`
-deployable to Cloudflare Pages, Vercel, Netlify, GitHub Pages, or any static
-host. Page refresh intentionally resets all state (in-memory session only —
-no localStorage, no IndexedDB).
+No backend. No database. No accounts. No persistence.
 
-## Data sources (live, keyless, browser-compatible)
+`npm run build` emits a static `dist/` deployable to any static host.
+
+## Live Data Sources
 
 | Provider | What it publishes | What ThreatStream renders | Attribution |
 |---|---|---|---|
-| **Spamhaus DROP** via FireHOL mirror (`raw.githubusercontent.com`) | CIDR ranges under hijacked / botnet-C&C control, ~12h refresh | Source-only markers (●), geolocated in-browser | `https://www.spamhaus.org/drop/drop.txt` |
-| **CISA KEV** catalog JSON | CVEs confirmed exploited in the wild | Non-geographic intel records (feed/stats only) | `https://www.cisa.gov/known-exploited-vulnerabilities-catalog` |
+| **Spamhaus DROP** via FireHOL mirror (`raw.githubusercontent.com`) | CIDR ranges under hijacked / botnet-C&C control, origin ~12h refresh, polled 10 min | Source-only markers (●), geolocated in-browser | `https://www.spamhaus.org/drop/drop.txt` |
+| **DShield** (SANS) via FireHOL mirror | Top ~20 attacking /24s seen over 3 days, ~10 min refresh, polled 10 min | Source-only markers (●), geolocated in-browser | `https://www.dshield.org/block.html` (mirror: FireHOL) |
+| **OpenPhish** Community Feed (raw GitHub mirror) | Reported phishing URLs (~300), periodic refresh, polled 30 min | Intel records (feed/stats only, never globe) | `https://www.openphish.com/phishing_feeds.html` |
+| **CISA KEV** via official `cisagov/kev-data` mirror | CVEs confirmed exploited (~1700), weekdays, polled 60 min | Intel records (feed/stats only, never globe) | `https://www.cisa.gov/known-exploited-vulnerabilities-catalog` |
 | **ipwho.is** (free, keyless) | Approximate IP → country/city/ASN/org | Enrichment only, labeled `geolocation_approximate` | Per-event, in detail panel |
 
-**Deliberately disabled** (documented in-app under Source health): URLhaus,
-ThreatFox, Feodo Tracker (abuse.ch now requires a personal Auth-Key — a
-browser bundle cannot hold it without leaking credentials), AbuseIPDB,
-GreyNoise, AlienVault OTX (secret API keys). No private keys ship in the
-bundle, ever.
+**Unavailable** (documented in-app under Source health): Feodo Tracker — blocklist
+endpoint sends no CORS headers (browsers block the fetch), the public list was
+stale-dated with 5 entries at verification, and API access needs an Auth-Key
+(verified 2026-09-10).
 
-## How live data is obtained
+**Deliberately disabled**: URLhaus, ThreatFox (abuse.ch Auth-Key required),
+AbuseIPDB, GreyNoise, AlienVault OTX (secret API keys). No private keys ship in
+the bundle, ever.
 
-1. On load (and every 10 min after, pausing while the tab is hidden), the
-   provider registry fetches each enabled source directly from the browser.
-2. Payloads are normalized into `ThreatEvent`s (see `src/lib/threat/model.js`).
-3. Events deduplicate on stable `provider + record + timestamp` keys —
-   unchanged data merges silently; the UI never pretends old data is new.
+## Data Integrity
+
+1. On load — and per source on its own cadence after (DROP/DShield 10 min,
+   OpenPhish 30 min, KEV 60 min; a 60-second scheduler checks what is due,
+   pausing while the tab is hidden) — the provider registry fetches each
+   enabled source directly from the browser.
+2. Payloads are normalized into `ThreatEvent`s (`src/lib/threat/model.js`).
+3. Events deduplicate on stable provider-derived ids; each cycle diffs the live
+   snapshot (`+added −removed ~unchanged`) and reports real counts — unchanged
+   data merges silently; the UI never pretends old data is new. Records a
+   source drops leave the in-memory window.
 4. Source-only IPs missing coordinates are enriched via ipwho.is within a
    per-cycle budget (25 lookups, cached in-memory); failures stay `null`
    (“pending”), never guessed.
-5. One provider failing degrades gracefully; all failing shows an honest
-   empty state. There is **no mock fallback** — `if (!data) return mockData`
-   does not exist in this codebase.
+5. One provider failing degrades gracefully (others continue); all failing shows
+   an honest empty state. There is **no mock fallback**.
 
-## Event normalization
+## Observed vs Inferred
 
-`src/lib/threat/` holds the pure pipeline: `model.js` (event factory, `null`
-defaults, coordinate guards rejecting `(0,0)`), `normalize.js` (DROP lines,
-KEV entries; malformed input skipped + counted), `dedup.js` (stable hashing,
-enrichment-preserving merges), `filter.js` (country/category/provider/
-relationship/time/search), `statistics.js` (metrics derived only from loaded
-events). `src/lib/providers/` holds one module per source plus the registry
-(`fetchLatest / normalize / getMetadata / getSourceHealth` semantics).
+- **Observed** — stated directly by the provider (blocklist membership, list dates).
+- **Enriched** — approximate IP metadata resolved in-browser (country, city, ASN,
+  organization, coarse coordinates).
+- **Inferred** — currently only the `geolocation_approximate` marker. No victim
+  guessing, no attack-path fabrication, no severity invention.
 
-## Globe visualization
+Unknown stays `null`/`unknown` — never `(0,0)`, never “now”, never “medium”.
+`destination` stays `null` unless a provider genuinely supplies one.
+
+## Globe Visualization
 
 `src/components/globe/ThreatGlobe.jsx` (plain Three.js + OrbitControls):
 
-- Source-only intel → marker; genuine both-endpoint observations → great-circle
-  arc with traveling pulse; enriched markers render amber vs red.
-- Current providers publish **source-only** intelligence, so the globe
-  truthfully shows markers, not attack arcs — arcs render automatically if a
-  future provider supplies destinations.
-- Auto-rotate, drag, zoom, reset, focus-on-event, hover/click select,
-  pause/resume, instanced markers (cap 600), arc cap (40), rAF paused when
-  hidden, full disposal on unmount, reduced-motion support.
+- Source-only intel → marker (red observed, amber enriched); genuine
+  both-endpoint observations → great-circle arc with traveling pulse.
+- Current sources publish **source-only** intelligence, so the globe truthfully
+  shows markers and reports zero confirmed paths.
+- Instanced markers (cap 600), arc cap (40), rAF paused when hidden, full
+  disposal on unmount, fullscreen support, reduced-motion support.
 
-## Run locally
+## Local Development
 
 Prerequisites: Node.js 18+ and npm.
 
@@ -100,7 +116,7 @@ npm install
 npm run dev      # Vite on http://localhost:5173
 ```
 
-## Build for deployment
+## Deployment
 
 ```powershell
 npm run build    # static output in dist/
@@ -119,27 +135,29 @@ npm test         # vitest: normalization, dedup, filtering, stats,
                  #        purity (no randomness in the pipeline)
 ```
 
-## Data-truth principles
+## Limitations
 
-- Every displayed event has an identifiable source + source link.
-- Unknown stays `null`/`unknown` — never `(0,0)`, never “now”, never “medium”.
-- Observed (feed record), enriched (approximate GeoIP), and inferred markers
-  are labeled separately in list, globe legend, and detail views.
-- Statistics count loaded data only. Small datasets are reported honestly.
-- Methodology (`/methodology`) documents sources, meanings, confidence,
-  geolocation limits, timestamps, dedup, retention (none — memory only),
-  and provider limitations.
-
-## Known limitations
-
-- DROP contributes only the first ~140 subnets per cycle; geolocation is
-  budgeted (~25 new lookups/cycle) to respect the free tier — the rest wait
-  as “pending”, visible in feed/stats but not on the globe.
-- No provider currently supplies victim destinations, so no attack arcs can
-  honestly be drawn yet; the renderer supports them when data allows.
-- KEV carries no severity — shown as `unknown`, never guessed.
+- DROP contributes only the first ~140 subnets per cycle; geolocation is budgeted
+  (~25 new lookups/cycle) — the rest wait as “pending”, visible in feed/stats but
+  not on the globe.
+- No destination-bearing provider exists yet — zero confirmed paths is the honest
+  count; the renderer draws arcs automatically when data allows.
+- CISA KEV is unavailable (CORS-blocked endpoint), not silently failing.
 - abuse.ch feeds are disabled until a keyless browser-compatible mirror exists.
 - In-memory only: refresh clears everything by design.
+
+## Privacy
+
+All fetching and enrichment happen in your browser against public endpoints. No
+cookies, no browser storage, no accounts, no tracking — there is no server to send
+anything to.
+
+## Future Work
+
+- Additional **keyless, CORS-compatible** reputation feeds as they are verified.
+- Optional opt-in CORS-friendly relay only if it preserves attribution + terms.
+- Denser globe clustering when geolocated volume grows.
+- Nothing that requires secrets, accounts, servers, or fabricated data.
 
 ## Project layout
 
@@ -153,10 +171,3 @@ src/
         geo/ (coordinates)  format.js
   state/  ThreatIntelContext.jsx   (in-memory session store)
 ```
-
-## Roadmap (honest, data-dependent)
-
-- Additional **keyless, CORS-compatible** reputation feeds as they are verified.
-- Optional opt-in CORS-friendly relay only if it preserves attribution + terms.
-- Denser globe clustering when geolocated volume grows.
-- Nothing that requires secrets, accounts, servers, or fabricated data.
