@@ -27,7 +27,7 @@ export default function EventDetail({ event }) {
     <div className="event-detail">
       <Section title="Event overview" tone="observed">
         <Field label="Event ID" mono>{event.id}</Field>
-        <Field label="First observed">
+        <Field label="Record time">
           {formatUtc(event.timestamp)}
           <small className="field-note">({timestampKindLabel(event.timestampKind)} — not an attack time)</small>
         </Field>

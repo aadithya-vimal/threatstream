@@ -16,6 +16,10 @@ historical and not authoritative.
   diffing (+added −removed ~unchanged) with NEW badges and source drawer.
 - Unavailable (documented): Feodo Tracker (CORS-blocked + stale + Auth-Key).
 - Disabled (documented): URLhaus, ThreatFox, AbuseIPDB, GreyNoise, OTX.
+- Enrichment: ipwho.is primary + ipwhois.app fallback (both verified CORS),
+  failure TTL retry (no permanent poisoning), live diagnostics in Source health.
+- Monitor: replay Timeline removed; LIVE INGEST strip (last fetch, next checks,
+  +added/−removed/~unchanged, NO FEED CHANGES) + source drawer + UTC clock.
 - Browser acceptance: not yet run (pending `npm run dev` + manual pass).
 - Production acceptance: none yet (no deployment URL).
 

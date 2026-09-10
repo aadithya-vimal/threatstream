@@ -88,11 +88,14 @@ export default function Methodology() {
             <span className="mono">unknown</span> (the catalog has no severity field).
             Updated weekdays on catalog change; polled every 60 min.
           </p>
-          <h3>Enrichment: ipwho.is (keyless, in-browser)</h3>
+          <h3>Enrichment: keyless in-browser GeoIP (ipwho.is → ipwhois.app)</h3>
           <p>
             Block representatives are resolved to country/city/ASN/organization/coarse
-            coordinates via the free ipwho.is service, within a per-cycle budget (25 new
-            lookups, cached in-memory). Failures stay <span className="mono">null</span> (“pending”).
+            coordinates via free keyless services (primary ipwho.is, fallback ipwhois.app),
+            at most ~30 new lookups per cycle with bounded concurrency, cached in-memory.
+            Failures stay <span className="mono">null</span> (“pending”), retry automatically
+            after a backoff window, and are counted in the Source-health diagnostics —
+            coordinates are never invented.
           </p>
           <h3>Unavailable: Feodo Tracker</h3>
           <p>
@@ -121,7 +124,7 @@ export default function Methodology() {
         <div id="m-classes">
           <ul>
             <li><strong>Observed</strong> — stated directly by the provider (blocklist membership, list dates).</li>
-            <li><strong>Enriched</strong> — approximate IP metadata (country, city, ASN, organization, coarse coordinates) resolved in-browser via ipwho.is.</li>
+            <li><strong>Enriched</strong> — approximate IP metadata (country, city, ASN, organization, coarse coordinates) resolved in-browser via keyless GeoIP services.</li>
             <li><strong>Inferred</strong> — currently only the <span className="mono">geolocation_approximate</span> marker. No victim guessing, no attack-path fabrication, no severity invention.</li>
           </ul>
           <p>Every event detail panel separates these classes under explicit headings.</p>
@@ -137,7 +140,9 @@ export default function Methodology() {
           <strong>not proof of a human attacker</strong>, and never implies an exact
           physical or headquarters location. Unresolvable lookups leave coordinates{" "}
           <strong>null</strong> — the event stays in feed and statistics but never appears
-          on the globe. Coordinates of <span className="mono">0, 0</span> are rejected outright.
+          on the globe, and the enrichment diagnostics say exactly how many lookups were
+          attempted, resolved, and failed. Coordinates of <span className="mono">0, 0</span> are rejected outright.
+          Private, reserved, documentation, and malformed addresses are never queried.
         </p>
       </Panel>
 
@@ -170,6 +175,15 @@ export default function Methodology() {
           distinct from the <strong>source-update time</strong> (e.g. a feed&apos;s file
           date), which is shown separately in Source health. If nothing changed, the UI
           says so — it never simulates traffic to look busy.
+        </p>
+        <p>
+          <strong>LIVE</strong> means at least one enabled provider completed a successful
+          fetch within its expected freshness window — <strong>not</strong> “a new attack
+          every second”. Most public feeds change over minutes to days, so long quiet
+          stretches with “No feed changes” are normal and honest.{" "}
+          <strong>DEGRADED</strong> means some providers are healthy while others failed
+          or went stale; <strong>OFFLINE</strong> means no enabled provider has a recent
+          successful fetch.
         </p>
       </Panel>
 

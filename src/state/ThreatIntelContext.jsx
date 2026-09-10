@@ -26,7 +26,7 @@ import React, {
   useState,
 } from "react";
 import { fetchProviders, getProviderMetadata } from "../lib/providers/index.js";
-import { enrichEvents } from "../lib/providers/geoEnrichment.js";
+import { enrichEvents, getGeoDiagnostics } from "../lib/providers/geoEnrichment.js";
 import { diffIdSets, mergeEvents } from "../lib/threat/dedup.js";
 import { sortByTimeDesc } from "../lib/threat/filter.js";
 
@@ -84,6 +84,7 @@ export function ThreatIntelProvider({ children }) {
   const [events, setEvents] = useState([]);
   const [health, setHealth] = useState({});
   const [diffs, setDiffs] = useState({});
+  const [geoStats, setGeoStats] = useState(() => getGeoDiagnostics());
   const [newIds, setNewIds] = useState([]);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -160,6 +161,7 @@ export function ThreatIntelProvider({ children }) {
       mapRef.current = map;
       setEvents(sortByTimeDesc([...map.values()]));
       setHealth((prev) => healthFor(results, prev));
+      setGeoStats(getGeoDiagnostics());
       setDiffs((prev) => ({ ...prev, ...nextDiffs }));
       setNewIds([...newAtRef.current.keys()]);
       setLastUpdated(nowIso);
@@ -229,6 +231,7 @@ export function ThreatIntelProvider({ children }) {
       health,
       diffs,
       diffTotals: totals,
+      geoStats,
       newIds,
       providers: getProviderMetadata(),
       lastUpdated,
@@ -238,7 +241,7 @@ export function ThreatIntelProvider({ children }) {
       refresh,
       getEvent: (id) => mapRef.current.get(id) ?? null,
     }),
-    [events, health, diffs, totals, newIds, lastUpdated, initialLoading, refreshing, cycle, refresh]
+    [events, health, diffs, totals, geoStats, newIds, lastUpdated, initialLoading, refreshing, cycle, refresh]
   );
 
   return <ThreatIntelContext.Provider value={value}>{children}</ThreatIntelContext.Provider>;

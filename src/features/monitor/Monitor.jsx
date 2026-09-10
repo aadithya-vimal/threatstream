@@ -3,7 +3,7 @@ import ThreatGlobe from "../../components/globe/ThreatGlobe.jsx";
 import EventFeed from "../../components/feed/EventFeed.jsx";
 import EventDetail from "../../components/detail/EventDetail.jsx";
 import FilterPanel from "../../components/filters/FilterPanel.jsx";
-import Timeline from "../../components/timeline/Timeline.jsx";
+import LiveIngest from "../../components/ops/LiveIngest.jsx";
 import { ActivityChart, BarList, Metric } from "../../components/stats/StatsPanels.jsx";
 import { DISABLED_PROVIDERS, UNAVAILABLE_PROVIDERS } from "../../lib/providers/disabled.js";
 import { hasSourceCoordinates } from "../../lib/threat/model.js";
@@ -39,12 +39,14 @@ export default function Monitor() {
     health,
     diffs,
     diffTotals,
+    geoStats,
     newIds,
     providers,
     lastUpdated,
     initialLoading,
     refreshing,
     refresh,
+    cycle,
     getEvent,
   } = useThreatIntel();
 
@@ -170,7 +172,7 @@ export default function Monitor() {
       ) : (
         <>
           <Panel
-            title={`Threat globe · ${globeEvents.length} geolocated of ${filtered.length} loaded · ${stats.genuineArcs} confirmed paths`}
+            title="Global threat intelligence"
             className="globe-panel"
             action={
               selected && (
@@ -201,7 +203,27 @@ export default function Monitor() {
                 </label>
               </div>
             </div>
-            <Timeline events={filtered} selectedId={selectedId} onPick={pick} />
+            <div className="globe-facts mono" aria-live="polite">
+              <span>{globeEvents.length} geolocated</span>
+              <span aria-hidden="true">·</span>
+              <span>{filtered.length} intelligence records</span>
+              <span aria-hidden="true">·</span>
+              <span>{stats.genuineArcs} verified source → destination paths</span>
+            </div>
+            {stats.genuineArcs === 0 && (
+              <p className="globe-note">
+                Current browser-accessible feeds provide source infrastructure and
+                intelligence records, but no verified victim endpoints — no attack
+                paths are inferred.
+              </p>
+            )}
+            <LiveIngest
+              providers={providers}
+              health={health}
+              diffTotals={diffTotals}
+              lastUpdated={lastUpdated}
+              cycle={cycle}
+            />
           </Panel>
 
           <div className="metrics-row" aria-label="Live metrics from loaded data">
@@ -296,6 +318,26 @@ export default function Monitor() {
                 );
               })}
             </ul>
+            <details className="source-sublist">
+              <summary>
+                Geolocation enrichment ({geoStats.succeeded}/{geoStats.attempted} resolved
+                {geoStats.failed > 0 ? ` · ${geoStats.failed} failed` : ""})
+              </summary>
+              <ul className="mono">
+                <li>Lookups attempted: {geoStats.attempted} · resolved: {geoStats.succeeded} · failed: {geoStats.failed}</li>
+                <li>Cached entries: {geoStats.cached} · awaiting retry: {geoStats.pendingRetry}</li>
+                {Object.entries(geoStats.perEndpoint ?? {}).map(([name, s]) => (
+                  <li key={name}>{name}: {s.ok} ok · {s.fail} failed · last: {s.lastStatus}</li>
+                ))}
+                <li>Last success: {geoStats.lastSuccessAt ? formatClock(geoStats.lastSuccessAt) : "never"}</li>
+                {geoStats.lastError && <li>Last error: {geoStats.lastError}</li>}
+              </ul>
+              <p>
+                Approximate ipwho.is → ipwhois.app lookups, in-memory cache only.
+                Failures stay “pending” and retry automatically — coordinates are
+                never invented.
+              </p>
+            </details>
             <details className="source-sublist">
               <summary>Unavailable sources ({UNAVAILABLE_PROVIDERS.length}) — not browser-compatible</summary>
               <ul>

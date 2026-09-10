@@ -17,10 +17,17 @@ function ProviderTag({ id }) {
 
 function titleFor(event) {
   if (event.classification === "vulnerability") return event.raw?.cveID ?? "Vulnerability intel";
-  if (event.classification === "phishing") return "Phishing URL";
-  if (event.category === "attack_source") return "Attack source";
+  if (event.classification === "phishing") return "Phishing intelligence";
+  if (event.category === "attack_source") return "Recent attack source";
   if (event.category === "reputation_blocklist") return "Malicious infrastructure";
   return prettyLabel(event.category);
+}
+
+function kindShort(kind) {
+  if (kind === "published") return "published";
+  if (kind === "list_publication") return "list updated";
+  if (kind === "received") return "feed received";
+  return "time unknown";
 }
 
 export function EventCard({ event, masked = false, selected = false, isNew = false, onPick = null }) {
@@ -29,8 +36,8 @@ export function EventCard({ event, masked = false, selected = false, isNew = fal
   const body = (
     <>
       <div className="event-top">
-        <span className="mono event-time" title={event.timestamp ? new Date(event.timestamp).toUTCString() : "Feed provides no timestamp"}>
-          {formatClock(event.timestamp)}
+        <span className="mono event-time" title={event.timestamp ? `${new Date(event.timestamp).toUTCString()} (${kindShort(event.timestampKind)})` : "This feed provides no timestamp"}>
+          {formatClock(event.timestamp)} · {event.timestamp ? kindShort(event.timestampKind) : "no time"}
         </span>
         <span className="event-pills">
           {isNew && <span className="rel-pill rel-new">New</span>}

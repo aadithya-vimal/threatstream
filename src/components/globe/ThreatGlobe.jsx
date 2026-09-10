@@ -163,12 +163,24 @@ export default function ThreatGlobe({
     }
     scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0x8fb4ff, size: 0.08, sizeAttenuation: true, transparent: true, opacity: 0.8 })));
 
-    // Markers (instanced)
-    const markerGeo = new THREE.SphereGeometry(0.011, 10, 10);
+    // Markers (instanced) + halo shells for at-a-glance visibility.
+    // Every instance maps 1:1 to a real normalized event with coordinates.
+    const markerGeo = new THREE.SphereGeometry(0.017, 12, 12);
     const markerMat = new THREE.MeshBasicMaterial({ toneMapped: false });
     const markers = new THREE.InstancedMesh(markerGeo, markerMat, MAX_MARKERS);
     markers.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     globe.add(markers);
+    const haloGeo = new THREE.SphereGeometry(0.017, 10, 10);
+    const haloMat = new THREE.MeshBasicMaterial({
+      toneMapped: false,
+      transparent: true,
+      opacity: 0.22,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const halos = new THREE.InstancedMesh(haloGeo, haloMat, MAX_MARKERS);
+    halos.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    globe.add(halos);
     const markerIndex = []; // instanceId -> event
     const dummy = new THREE.Object3D();
     const tmpColor = new THREE.Color();
@@ -203,9 +215,15 @@ export default function ThreatGlobe({
         dummy.updateMatrix();
         markers.setMatrixAt(i, dummy.matrix);
         markers.setColorAt(i, tmpColor.set(e ? markerColor(e) : 0x000000));
+        if (e) dummy.scale.multiplyScalar(2.6);
+        dummy.updateMatrix();
+        halos.setMatrixAt(i, dummy.matrix);
+        halos.setColorAt(i, tmpColor.set(e ? markerColor(e) : 0x000000));
       }
       markers.instanceMatrix.needsUpdate = true;
       if (markers.instanceColor) markers.instanceColor.needsUpdate = true;
+      halos.instanceMatrix.needsUpdate = true;
+      if (halos.instanceColor) halos.instanceColor.needsUpdate = true;
 
       // Selection ring follows selected marker
       const sel = list.find((e) => e.id === stateRef.current.selectedId);
