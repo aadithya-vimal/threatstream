@@ -38,7 +38,7 @@
   --info: #3fd8ff;
 
   /* Type */
-  --sans: "Yu Gothic", "YuGothic", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --sans: "Google Sans Flex Variable", "Google Sans Flex", "Yu Gothic", "YuGothic", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
   --display: 2.6rem;
   --h1: 1.7rem;
