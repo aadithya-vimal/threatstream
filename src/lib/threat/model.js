@@ -14,6 +14,7 @@
 export const PROVIDERS = {
   SPAMHAUS_DROP: "spamhaus-drop",
   DSHIELD: "dshield",
+  ISC_SOURCES: "isc-sources",
   OPENPHISH: "openphish",
   CISA_KEV: "cisa-kev",
 };
@@ -24,6 +25,8 @@ export const TIMESTAMP_KINDS = {
   PUBLISHED: "published",
   /** Entry comes from a list published at this time (e.g. DROP file date). */
   LIST_PUBLICATION: "list_publication",
+  /** Sensor/observer timestamp supplied by the source (e.g. ISC lastseen). */
+  OBSERVED: "observed",
   /** Only the fetch time is known. */
   RECEIVED: "received",
 };

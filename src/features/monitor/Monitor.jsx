@@ -6,6 +6,7 @@ import FilterPanel from "../../components/filters/FilterPanel.jsx";
 import LiveIngest from "../../components/ops/LiveIngest.jsx";
 import { ActivityChart, BarList, Metric } from "../../components/stats/StatsPanels.jsx";
 import { DISABLED_PROVIDERS, UNAVAILABLE_PROVIDERS } from "../../lib/providers/disabled.js";
+import { VIEWS } from "../../components/globe/globeViews.js";
 import { hasSourceCoordinates } from "../../lib/threat/model.js";
 import { EMPTY_FILTERS, applyFilters } from "../../lib/threat/filter.js";
 import { computeStatistics } from "../../lib/threat/statistics.js";
@@ -41,6 +42,9 @@ export default function Monitor() {
     diffTotals,
     geoStats,
     newIds,
+    changedIds,
+    leaving,
+    refreshProgress,
     providers,
     lastUpdated,
     initialLoading,
@@ -58,6 +62,8 @@ export default function Monitor() {
   const [paused, setPaused] = useState(false);
   const [autoRotate, setAutoRotate] = useState(true);
   const [masked, setMasked] = useState(false);
+  const [globeView, setGlobeView] = useState("operations");
+  const [showLabels, setShowLabels] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const globeBoxRef = React.useRef(null);
 
@@ -115,6 +121,25 @@ export default function Monitor() {
 
   const providerDetail = selectedProvider ? providers.find((p) => p.id === selectedProvider) : null;
 
+  const newSet = useMemo(() => new Set(newIds ?? []), [newIds]);
+  const changedSet = useMemo(() => new Set(changedIds ?? []), [changedIds]);
+  const newestNew = useMemo(() => {
+    let best = null;
+    for (const e of events) {
+      if (!newSet.has(e.id) || !e.sessionFirstSeen) continue;
+      if (!best || e.sessionFirstSeen > best.sessionFirstSeen) best = e;
+    }
+    return best;
+  }, [events, newSet]);
+
+  const focusNewActivity = () => {
+    if (!newestNew) return;
+    pick(newestNew.id);
+    requestAnimationFrame(() => {
+      document.getElementById(newestNew.id)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+  };
+
   return (
     <div className="monitor">
       <div className="monitor-head">
@@ -129,7 +154,9 @@ export default function Monitor() {
       <div className="statusbar" role="status" aria-live="polite">
         <span className={`live-pill ${liveTone}`}>
           <span className={`live-dot${initialLoading || refreshing ? " pulsing" : ""}`} aria-hidden="true" />
-          {refreshing ? "REFRESHING" : liveLabel}
+          {refreshing
+            ? (refreshProgress.total > 1 ? `REFRESHING · ${refreshProgress.done}/${refreshProgress.total}` : "REFRESHING")
+            : liveLabel}
         </span>
         <span className="provider-dots" aria-label="Per-source status">
           {providers.map((p) => (
@@ -147,7 +174,14 @@ export default function Monitor() {
         </span>
         <span className="mono">{filtered.length}/{events.length} indicators loaded</span>
         <span className="sep" aria-hidden="true">·</span>
+        <span className="mono">{globeEvents.length} geolocated · {stats.genuineArcs} verified paths</span>
+        <span className="sep" aria-hidden="true">·</span>
         <span className="mono">+{diffTotals.added} new −{diffTotals.removed} removed{lastDiffAt ? ` · ${formatClock(lastDiffAt)}` : ""}</span>
+        {newestNew && (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={focusNewActivity} title="Focus the latest genuinely new observation">
+            New activity · {newSet.size}
+          </button>
+        )}
         <span className="spacer" />
         <UtcClock />
         <span className="statusbar-actions">
@@ -185,21 +219,40 @@ export default function Monitor() {
             <div className="globe-wrap" ref={globeBoxRef}>
               <ThreatGlobe
                 events={globeEvents}
+                newIds={newIds}
+                changedIds={changedIds}
+                leaving={leaving.filter((e) => e.source?.latitude != null && e.source?.longitude != null)}
                 selectedId={selectedId}
                 onSelect={pick}
                 focusRequest={focusRequest}
                 resetSignal={resetSignal}
                 paused={paused}
                 autoRotate={autoRotate}
+                showLabels={showLabels}
+                view={globeView}
               />
               <div className="globe-controls" role="toolbar" aria-label="Globe controls">
-                <span className="ctl-label">View</span>
+                <label className="view-select">
+                  <span className="ctl-label">View</span>
+                  <select
+                    value={globeView}
+                    onChange={(e) => setGlobeView(e.target.value)}
+                    aria-label="Globe visualization view"
+                  >
+                    {VIEWS.map((v) => (
+                      <option key={v.id} value={v.id}>{v.label}</option>
+                    ))}
+                  </select>
+                </label>
                 <button type="button" className={`btn btn-ghost btn-icon${autoRotate ? " active" : ""}`} onClick={() => setAutoRotate((v) => !v)} aria-pressed={autoRotate} title="Toggle auto-rotate">⟳</button>
                 <button type="button" className="btn btn-ghost btn-icon" onClick={() => setPaused((v) => !v)} aria-pressed={paused} title={paused ? "Resume motion" : "Pause motion"}>{paused ? "▶" : "⏸"}</button>
                 <button type="button" className="btn btn-ghost btn-icon" onClick={() => setResetSignal((n) => n + 1)} title="Reset view">⌂</button>
                 <button type="button" className="btn btn-ghost btn-icon" onClick={toggleFullscreen} aria-pressed={isFullscreen} title={isFullscreen ? "Exit fullscreen" : "Fullscreen globe"}>{isFullscreen ? "⤓" : "⤢"}</button>
                 <label className="check-inline" title="Mask last IP octets">
                   <input type="checkbox" checked={masked} onChange={(e) => setMasked(e.target.checked)} /> Mask IPs
+                </label>
+                <label className="check-inline" title="Label selected and top observations">
+                  <input type="checkbox" checked={showLabels} onChange={(e) => setShowLabels(e.target.checked)} /> Labels
                 </label>
               </div>
             </div>
@@ -240,7 +293,7 @@ export default function Monitor() {
               {filtered.length === 0 ? (
                 <EmptyState title="No observations match these filters." hint="Widen the scope — filters only narrow real data." />
               ) : (
-                <EventFeed events={filtered} masked={masked} selectedId={selectedId} newIds={newIds} onPick={pick} />
+                <EventFeed events={filtered} masked={masked} selectedId={selectedId} newIds={newIds} changedIds={changedIds} leavingEvents={leaving} onPick={pick} />
               )}
             </Panel>
 

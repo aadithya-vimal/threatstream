@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import AppShell from "./components/layout/AppShell.jsx";
 import { ThreatIntelProvider } from "./state/ThreatIntelContext.jsx";
+import { ThemeProvider } from "./state/ThemeContext.jsx";
 import { LoadingState } from "./components/ui/Primitives.jsx";
 import "./styles.css";
 
@@ -29,7 +30,8 @@ function NotFound() {
 export default function App() {
   return (
     <Router>
-      <ThreatIntelProvider>
+      <ThemeProvider>
+        <ThreatIntelProvider>
         <AppShell>
           <Suspense fallback={<LoadingState label="Loading view…" />}>
             <Routes>
@@ -42,6 +44,7 @@ export default function App() {
           </Suspense>
         </AppShell>
       </ThreatIntelProvider>
+      </ThemeProvider>
     </Router>
   );
 }

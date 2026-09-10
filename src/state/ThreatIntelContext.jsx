@@ -7,13 +7,18 @@
  * - Provider-aware refresh: each source re-fetches on its own cadence
  *   (checked every minute), never generating events. Unchanged data merges
  *   silently; genuinely new/removed ids are diffed per provider snapshot.
- * - Removed indicators leave the in-memory window (current-session view);
- *   removals are counted, never hidden.
+ * - Lifecycle: added ids seed NEW badges; updated ids seed CHANGED visuals;
+ *   removed records enter a short grace window (fade-out) before leaving
+ *   state. Lifecycle flags live in SEPARATE maps — threat records are never
+ *   mutated with presentation state.
+ * - Removed indicators leave the in-memory window after the grace period
+ *   (current-session view); removals are counted, never hidden.
  * - Per-provider health: ok / loading / error / stale, plus source-update
  *   time (SOURCE UPDATED) kept distinct from client fetch time.
  * - Geolocation enrichment runs on fresh source-only events within a
  *   per-cycle lookup budget (free-tier protection).
  * - Refreshes pause while the tab is hidden; returning refetches due sources.
+ * - Refresh progress (done/total) reflects real settled providers only.
  */
 
 import React, {
@@ -31,7 +36,10 @@ import { diffIdSets, mergeEvents } from "../lib/threat/dedup.js";
 import { sortByTimeDesc } from "../lib/threat/filter.js";
 
 const TICK_MS = 60 * 1000;
-const NEW_BADGE_MS = 30 * 60 * 1000;
+const NEW_BADGE_MS = 10 * 60 * 1000;
+const CHANGED_WINDOW_MS = 2 * 60 * 1000;
+/** Removed records linger this long so the UI can fade them out honestly. */
+export const REMOVAL_GRACE_MS = 900;
 
 const ThreatIntelContext = createContext(null);
 
@@ -78,14 +86,15 @@ function healthFor(results, prev) {
   return next;
 }
 
-const EMPTY_DIFF = { added: 0, removed: 0, unchanged: 0, changed: 0, at: null };
-
 export function ThreatIntelProvider({ children }) {
   const [events, setEvents] = useState([]);
   const [health, setHealth] = useState({});
   const [diffs, setDiffs] = useState({});
   const [geoStats, setGeoStats] = useState(() => getGeoDiagnostics());
   const [newIds, setNewIds] = useState([]);
+  const [changedIds, setChangedIds] = useState([]);
+  const [leaving, setLeaving] = useState([]);
+  const [refreshProgress, setRefreshProgress] = useState({ active: false, done: 0, total: 0 });
   const [lastUpdated, setLastUpdated] = useState(null);
   const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -94,7 +103,15 @@ export function ThreatIntelProvider({ children }) {
   const lastFetchRef = useRef(new Map());
   const prevIdsRef = useRef(new Map());
   const newAtRef = useRef(new Map());
+  const changedAtRef = useRef(new Map());
+  const leavingRef = useRef(new Map());
+  const purgeTimerRef = useRef(null);
   const mountedRef = useRef(true);
+
+  const publishLeaving = useCallback(() => {
+    if (!mountedRef.current) return;
+    setLeaving([...leavingRef.current.values()].map((l) => l.event));
+  }, []);
 
   const runProviders = useCallback(async (ids) => {
     if (document.hidden) return;
@@ -103,14 +120,21 @@ export function ThreatIntelProvider({ children }) {
       const metas = getProviderMetadata();
       const targets = ids ?? metas.map((m) => m.id);
       if (!targets.length) return;
-      const results = await fetchProviders(targets);
+      setRefreshProgress({ active: true, done: 0, total: targets.length });
+      const results = await fetchProviders(targets, {
+        onSettled: () => {
+          if (mountedRef.current) {
+            setRefreshProgress((p) => ({ ...p, done: Math.min(p.total, p.done + 1) }));
+          }
+        },
+      });
       if (!mountedRef.current) return;
       const nowIso = new Date().toISOString();
       const nowMs = Date.now();
 
       let map = new Map(mapRef.current);
       const nextDiffs = {};
-      let changedTotal = 0;
+      const changedNow = [];
 
       for (const r of results) {
         lastFetchRef.current.set(r.id, nowMs);
@@ -120,14 +144,25 @@ export function ThreatIntelProvider({ children }) {
         const { added, removed, unchanged } = diffIdSets(prevIds, currentIds);
         prevIdsRef.current.set(r.id, currentIds);
 
-        const incoming = r.events;
-        const merged = mergeEvents(map, incoming);
+        const merged = mergeEvents(map, r.events);
         map = merged.map;
-        changedTotal += merged.updated;
+        for (const id of merged.updatedIds) {
+          changedAtRef.current.set(id, nowMs);
+          changedNow.push(id);
+        }
 
-        // Drop indicators the source no longer lists (current-window view).
-        for (const id of removed) map.delete(id);
-        // Stamp genuinely new arrivals with session first-seen time.
+        // Removed records enter the grace window (fade-out) instead of
+        // vanishing instantly; they leave state when the window expires.
+        for (const id of removed) {
+          const e = map.get(id);
+          if (e) {
+            leavingRef.current.set(id, { event: e, deadline: nowMs + REMOVAL_GRACE_MS });
+            map.delete(id);
+          }
+          newAtRef.current.delete(id);
+          changedAtRef.current.delete(id);
+        }
+        // Genuinely new arrivals get session first-seen time.
         for (const id of added) {
           const e = map.get(id);
           if (e && !e.sessionFirstSeen) map.set(id, { ...e, sessionFirstSeen: nowIso });
@@ -142,9 +177,12 @@ export function ThreatIntelProvider({ children }) {
         };
       }
 
-      // Prune NEW badges older than the display window.
+      // Prune lifecycle windows.
       for (const [id, at] of newAtRef.current) {
         if (nowMs - at > NEW_BADGE_MS) newAtRef.current.delete(id);
+      }
+      for (const [id, at] of changedAtRef.current) {
+        if (nowMs - at > CHANGED_WINDOW_MS) changedAtRef.current.delete(id);
       }
 
       // Enrich only events still missing coordinates.
@@ -155,24 +193,42 @@ export function ThreatIntelProvider({ children }) {
         const { events: enriched } = await enrichEvents(missing);
         const remerged = mergeEvents(map, enriched);
         map = remerged.map;
-        changedTotal += remerged.updated;
+        for (const id of remerged.updatedIds) {
+          if (!changedAtRef.current.has(id)) changedAtRef.current.set(id, nowMs);
+        }
       }
       if (!mountedRef.current) return;
       mapRef.current = map;
       setEvents(sortByTimeDesc([...map.values()]));
+      publishLeaving();
       setHealth((prev) => healthFor(results, prev));
       setGeoStats(getGeoDiagnostics());
       setDiffs((prev) => ({ ...prev, ...nextDiffs }));
       setNewIds([...newAtRef.current.keys()]);
+      setChangedIds([...changedAtRef.current.keys()]);
       setLastUpdated(nowIso);
       setCycle((c) => c + 1);
+
+      // Purge the grace window after transitions complete.
+      if (purgeTimerRef.current) clearTimeout(purgeTimerRef.current);
+      if (leavingRef.current.size) {
+        purgeTimerRef.current = setTimeout(() => {
+          if (!mountedRef.current) return;
+          const t = Date.now();
+          for (const [id, l] of leavingRef.current) {
+            if (t >= l.deadline) leavingRef.current.delete(id);
+          }
+          publishLeaving();
+        }, REMOVAL_GRACE_MS + 150);
+      }
     } finally {
       if (mountedRef.current) {
         setRefreshing(false);
         setInitialLoading(false);
+        setRefreshProgress({ active: false, done: 0, total: 0 });
       }
     }
-  }, []);
+  }, [publishLeaving]);
 
   /** Manual refresh: fetch every enabled provider regardless of cadence. */
   const refresh = useCallback(() => {
@@ -183,33 +239,31 @@ export function ThreatIntelProvider({ children }) {
   useEffect(() => {
     mountedRef.current = true;
     runProviders(null);
-    const tick = () => {
-      if (document.hidden) return;
+    const dueIds = () => {
       const now = Date.now();
-      const due = getProviderMetadata()
+      return getProviderMetadata()
         .filter((m) => {
           const last = lastFetchRef.current.get(m.id);
           return last == null || now - last >= m.refreshIntervalMs;
         })
         .map((m) => m.id);
+    };
+    const tick = () => {
+      if (document.hidden) return;
+      const due = dueIds();
       if (due.length) runProviders(due);
     };
     const id = setInterval(tick, TICK_MS);
     const onVis = () => {
       if (document.hidden) return;
-      const now = Date.now();
-      const due = getProviderMetadata()
-        .filter((m) => {
-          const last = lastFetchRef.current.get(m.id);
-          return last == null || now - last >= m.refreshIntervalMs;
-        })
-        .map((m) => m.id);
+      const due = dueIds();
       if (due.length) runProviders(due);
     };
     document.addEventListener("visibilitychange", onVis);
     return () => {
       mountedRef.current = false;
       clearInterval(id);
+      if (purgeTimerRef.current) clearTimeout(purgeTimerRef.current);
       document.removeEventListener("visibilitychange", onVis);
     };
   }, [runProviders]);
@@ -233,15 +287,18 @@ export function ThreatIntelProvider({ children }) {
       diffTotals: totals,
       geoStats,
       newIds,
+      changedIds,
+      leaving,
+      refreshProgress,
       providers: getProviderMetadata(),
       lastUpdated,
       initialLoading,
       refreshing,
       cycle,
       refresh,
-      getEvent: (id) => mapRef.current.get(id) ?? null,
+      getEvent: (id) => mapRef.current.get(id) ?? leavingRef.current.get(id)?.event ?? null,
     }),
-    [events, health, diffs, totals, geoStats, newIds, lastUpdated, initialLoading, refreshing, cycle, refresh]
+    [events, health, diffs, totals, geoStats, newIds, changedIds, leaving, refreshProgress, lastUpdated, initialLoading, refreshing, cycle, refresh]
   );
 
   return <ThreatIntelContext.Provider value={value}>{children}</ThreatIntelContext.Provider>;
@@ -252,5 +309,3 @@ export function useThreatIntel() {
   if (!ctx) throw new Error("useThreatIntel must be used within ThreatIntelProvider");
   return ctx;
 }
-
-export { EMPTY_DIFF };

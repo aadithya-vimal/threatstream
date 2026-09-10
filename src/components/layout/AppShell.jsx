@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { useThreatIntel } from "../../state/ThreatIntelContext.jsx";
+import { useTheme } from "../../state/ThemeContext.jsx";
 import { timeAgo } from "../../lib/format.js";
 
 export function Brand() {
@@ -35,6 +36,7 @@ function TopStatus() {
 
 export default function AppShell({ children }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { theme, toggle } = useTheme();
   return (
     <div className="shell">
       <a className="skip-link" href="#main">Skip to content</a>
@@ -45,6 +47,17 @@ export default function AppShell({ children }) {
           <NavLink to="/methodology" onClick={() => setMenuOpen(false)}>Methodology</NavLink>
         </nav>
         <TopStatus />
+        <button
+          type="button"
+          className="theme-btn"
+          onClick={toggle}
+          aria-pressed={theme === "light"}
+          aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          title={theme === "dark" ? "Light mode" : "Dark mode"}
+        >
+          <span aria-hidden="true">{theme === "dark" ? "☀" : "☾"}</span>
+          <span className="theme-btn-label">{theme === "dark" ? "Light" : "Dark"}</span>
+        </button>
         <button
           type="button"
           className="menu-btn"

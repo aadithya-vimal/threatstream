@@ -222,6 +222,64 @@ export function normalizeKevCatalog(payload) {
 }
 
 /**
+ * Normalize one SANS ISC "sources/attacks" record. The API reports attacker
+ * source IPs its sensors observed, with per-record attack counts plus
+ * firstseen/lastseen dates. lastseen is a genuine source observation time
+ * (OBSERVED) — still source-only: no victims, no destinations, ever.
+ * Returns null for malformed or non-public IPs.
+ */
+export function normalizeIscSource(entry) {
+  if (!entry || typeof entry !== "object" || Array.isArray(entry)) return null;
+  const ip = asNonEmptyString(entry.ip);
+  if (!ip || !isPublicIpv4(ip)) return null;
+  const attacks = Number(entry.attacks);
+  const count = Number(entry.count);
+  const lastseen = asNonEmptyString(entry.lastseen);
+  const firstseen = asNonEmptyString(entry.firstseen);
+  return createThreatEvent({
+    provider: PROVIDERS.ISC_SOURCES,
+    recordId: ip,
+    timestamp: lastseen ?? firstseen ?? null,
+    timestampKind: lastseen || firstseen ? TIMESTAMP_KINDS.OBSERVED : TIMESTAMP_KINDS.RECEIVED,
+    source: { ip },
+    destination: null,
+    classification: CLASSIFICATIONS.MALICIOUS_SOURCE,
+    category: "attack_source",
+    // Provider-level mapping, documented in Methodology: ISC sensors observed
+    // these IPs attacking; the count is published evidence, not a guess.
+    severity: "high",
+    confidence: "high",
+    sourceUrl: "https://www.dshield.org/",
+    observed: ["feed_record"],
+    inferred: [],
+    raw: {
+      ip,
+      attacks: Number.isFinite(attacks) ? attacks : null,
+      reports: Number.isFinite(count) ? count : null,
+      firstseen,
+      lastseen,
+    },
+  });
+}
+
+export function normalizeIscSources(payload) {
+  const list = Array.isArray(payload) ? payload : payload?.sources;
+  if (!Array.isArray(list)) return { events: [], skipped: 0 };
+  const events = [];
+  let skipped = 0;
+  const seen = new Set();
+  for (const entry of list) {
+    const event = normalizeIscSource(entry);
+    if (event && !seen.has(event.id)) {
+      seen.add(event.id);
+      events.push(event);
+    } else if (!event) {
+      skipped += 1;
+    }
+  }
+  return { events, skipped };
+}
+/**
  * Normalize one OpenPhish community-feed URL line into phishing intel.
  * The feed carries no per-URL timestamps and no IPs: the event is
  * non-geographic by construction (destination null, no coordinates).

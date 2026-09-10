@@ -1,422 +1,361 @@
 /**
- * ThreatGlobe — Three.js Earth rendering real normalized observations.
+ * ThreatGlobe — Globe.GL Earth rendering real normalized observations.
  *
- * Honest rendering contract:
- * - Source-only intelligence → single marker (●). No destination invented.
+ * Honest rendering contract (unchanged by the visualization engine):
+ * - ONE normalized ThreatEvent dataset feeds every view.
+ * - Source-only intelligence → markers. No destination invented.
  * - Genuine source → destination (both endpoints observed) → animated arc.
- * - Inferred/enriched (geolocation) markers render with a distinct ring.
+ * - Inferred/enriched (geolocation) markers are visually distinct.
  * - Events without coordinates are listed in the feed, never on the globe.
+ * - Heat/hex/rings are projections of the same real records (weight 1,
+ *   bin counts from data, rings only for in-session new arrivals).
  *
- * Performance: instanced markers, capped arc/pulse counts, rAF paused when
- * the tab is hidden, full disposal on unmount.
+ * Lifecycle: single Globe.GL instance, reactive data/theme/view updates,
+ * ResizeObserver sizing, paused rendering when hidden, full disposal.
  */
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { greatCirclePoints, latLonToVec3 } from "../../lib/geo/coordinates.js";
-import { hasSourceCoordinates, hasArc } from "../../lib/threat/model.js";
+import React, { useEffect, useMemo, useRef } from "react";
+import Globe from "globe.gl";
+import {
+  MAX_ARCS,
+  MAX_MARKERS,
+  buildArcs,
+  buildHexPoints,
+  buildLabels,
+  buildPoints,
+  buildRings,
+  isEnriched,
+  labelText,
+  paletteFor,
+  pointColorFor,
+  tooltipHtml,
+} from "./globeViews.js";
+import { useTheme } from "../../state/ThemeContext.jsx";
 
-const GLOBE_RADIUS = 1;
-const MAX_MARKERS = 600;
-const MAX_ARCS = 40;
+const HOME_POV = { lat: 18, lng: 0, altitude: 2.4 };
+const FOCUS_ALTITUDE = 1.6;
 
-const COLORS = {
-  malicious: 0xff4d5e,
-  maliciousEnriched: 0xff9f43,
-  destination: 0x38e1ff,
-  selected: 0xffffff,
-  arc: 0xff6b81,
-  arcInferred: 0xff9f43,
+const LEGENDS = {
+  operations: "markers",
+  imagery: "markers",
+  minimal: "markers",
+  heatmap: "heat",
+  paths: "paths",
+  rings: "rings",
+  hex: "hex",
 };
 
-function markerColor(event) {
-  const enriched = (event.inferred ?? []).length > 0;
-  return enriched ? COLORS.maliciousEnriched : COLORS.malicious;
+function textureFor(view, theme) {
+  if (view === "imagery") return "/earth-day.jpg";
+  return theme === "light" ? "/earth-day.jpg" : "/earth-night.jpg";
 }
+
+export const LIFECYCLE_MS = { enter: 800, changed: 1200, leave: 900 };
 
 export default function ThreatGlobe({
   events = [],
+  newIds = [],
+  changedIds = [],
+  leaving = [],
   selectedId = null,
   onSelect = () => {},
   focusRequest = null, // { lat, lon, nonce }
   resetSignal = 0,
   paused = false,
   autoRotate = true,
+  showLabels = false,
+  view = "operations",
   onHover = () => {},
 }) {
   const mountRef = useRef(null);
-  const tooltipRef = useRef(null);
-  const [hover, setHover] = useState(null);
-  const apiRef = useRef({ focusLatLon: () => {}, reset: () => {} });
-  const stateRef = useRef({ events, selectedId, onSelect, onHover, paused, autoRotate });
-  stateRef.current = { events, selectedId, onSelect, onHover, paused, autoRotate };
-  const focusRef = useRef(focusRequest);
+  const globeRef = useRef(null);
+  const { theme } = useTheme();
+  const reduceMotion = useMemo(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches,
+    []
+  );
+  const stateRef = useRef({ onSelect, onHover, paused, autoRotate });
+  stateRef.current = { onSelect, onHover, paused, autoRotate };
+  // Local arrival stamps for fade windows (records carry real arrival in
+  // sessionFirstSeen; leaving/changed windows are UI-runtime only).
+  const leaveAtRef = useRef(new Map());
+  const changeAtRef = useRef(new Map());
 
-  const renderable = useMemo(() => {
-    const geo = events.filter(hasSourceCoordinates).slice(0, MAX_MARKERS);
-    const arcs = events.filter(hasArc).slice(0, MAX_ARCS);
-    return { markers: geo, arcs };
-  }, [events]);
+  const points = useMemo(() => buildPoints(events, MAX_MARKERS), [events]);
+  const leavingPoints = useMemo(
+    () => buildPoints(leaving, MAX_MARKERS),
+    [leaving]
+  );
+  const arcs = useMemo(() => buildArcs(events, MAX_ARCS), [events]);
+  const rings = useMemo(() => buildRings(events, newIds), [events, newIds]);
+  const labels = useMemo(
+    () => (showLabels || selectedId ? buildLabels(events, selectedId) : []),
+    [events, selectedId, showLabels]
+  );
 
-  const renderRef = useRef(renderable);
-  renderRef.current = renderable;
+  const legend = LEGENDS[view] ?? "markers";
+  const pal = paletteFor(theme);
+  const labelColor = theme === "light" ? "#0b1222" : "#e6edf9";
 
-  useEffect(() => {
-    focusRef.current = focusRequest;
-    if (focusRequest) apiRef.current.focusLatLon(focusRequest.lat, focusRequest.lon);
-  }, [focusRequest]);
-
-  useEffect(() => {
-    if (resetSignal > 0) apiRef.current.reset();
-  }, [resetSignal]);
-
+  // Init once.
   useEffect(() => {
     const mount = mountRef.current;
-    if (!mount) return;
-    let disposed = false;
-    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (!mount) return undefined;
+    const globe = Globe({ animateIn: false })(mount);
+    globeRef.current = globe;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio ?? 1, 2));
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    mount.appendChild(renderer.domElement);
+    globe
+      .backgroundColor("rgba(0,0,0,0)")
+      .showAtmosphere(true)
+      .showGraticules(true)
+      .pointsMerge(true)
+      .hexBinMerge(true)
+      .hexBinResolution(3)
+      .pointOfView(HOME_POV, 0);
 
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(42, 1, 0.01, 100);
-    camera.position.set(0, 0.6, 3.1);
+    const st = stateRef.current;
+    globe.controls().enableDamping = true;
+    globe.controls().dampingFactor = 0.08;
+    globe.controls().enablePan = false;
+    globe.controls().minDistance = 160;
+    globe.controls().maxDistance = 600;
+    globe.controls().autoRotateSpeed = 0.55;
+    globe.controls().autoRotate = st.autoRotate && !st.paused;
 
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.08;
-    controls.enablePan = false;
-    controls.minDistance = 1.5;
-    controls.maxDistance = 6;
-    controls.autoRotate = stateRef.current.autoRotate && !reduceMotion;
-    controls.autoRotateSpeed = 0.55;
-
-    const globe = new THREE.Group();
-    scene.add(globe);
-
-    // Earth
-    const texLoader = new THREE.TextureLoader();
-    const earthMat = new THREE.MeshStandardMaterial({
-      roughness: 1,
-      metalness: 0,
-      color: 0xffffff,
+    globe.onPointClick((d) => {
+      if (d?.id) stateRef.current.onSelect(d.id);
     });
-    texLoader.load(
-      "/earth-night.jpg",
-      (tex) => {
-        if (disposed) return;
-        tex.colorSpace = THREE.SRGBColorSpace;
-        earthMat.map = tex;
-        earthMat.needsUpdate = true;
-      },
-      undefined,
-      () => {}
-    );
-    const earth = new THREE.Mesh(new THREE.SphereGeometry(GLOBE_RADIUS, 72, 72), earthMat);
-    globe.add(earth);
-
-    // Atmosphere rim
-    const atmo = new THREE.Mesh(
-      new THREE.SphereGeometry(GLOBE_RADIUS * 1.14, 48, 48),
-      new THREE.ShaderMaterial({
-        vertexShader: `varying vec3 vN; void main(){ vN = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
-        fragmentShader: `varying vec3 vN; void main(){ float i = pow(0.62 - dot(vN, vec3(0.,0.,1.)), 3.5); gl_FragColor = vec4(0.25,0.55,1.0,1.0) * i; }`,
-        blending: THREE.AdditiveBlending,
-        side: THREE.BackSide,
-        transparent: true,
-        depthWrite: false,
-      })
-    );
-    scene.add(atmo);
-
-    scene.add(new THREE.AmbientLight(0x8fa3c7, 1.15));
-    const sun = new THREE.DirectionalLight(0xffffff, 2.1);
-    sun.position.set(-2.5, 0.8, 2.2);
-    scene.add(sun);
-
-    // Starfield — deterministic layout (fixed seed): pure scene dressing,
-    // never threat data. No Math.random anywhere in the data path.
-    const starGeo = new THREE.BufferGeometry();
-    {
-      const n = 900;
-      const pos = new Float32Array(n * 3);
-      let seed = 0x2f6e2b1;
-      const rand = () => {
-        seed = (seed + 0x6d2b79f5) >>> 0;
-        let t = seed;
-        t = Math.imul(t ^ (t >>> 15), t | 1);
-        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-      };
-      for (let i = 0; i < n; i += 1) {
-        const r = 30 + rand() * 40;
-        const th = rand() * Math.PI * 2;
-        const ph = Math.acos(2 * rand() - 1);
-        pos[i * 3] = r * Math.sin(ph) * Math.cos(th);
-        pos[i * 3 + 1] = r * Math.cos(ph);
-        pos[i * 3 + 2] = r * Math.sin(ph) * Math.sin(th);
-      }
-      starGeo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-    }
-    scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0x8fb4ff, size: 0.08, sizeAttenuation: true, transparent: true, opacity: 0.8 })));
-
-    // Markers (instanced) + halo shells for at-a-glance visibility.
-    // Every instance maps 1:1 to a real normalized event with coordinates.
-    const markerGeo = new THREE.SphereGeometry(0.017, 12, 12);
-    const markerMat = new THREE.MeshBasicMaterial({ toneMapped: false });
-    const markers = new THREE.InstancedMesh(markerGeo, markerMat, MAX_MARKERS);
-    markers.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    globe.add(markers);
-    const haloGeo = new THREE.SphereGeometry(0.017, 10, 10);
-    const haloMat = new THREE.MeshBasicMaterial({
-      toneMapped: false,
-      transparent: true,
-      opacity: 0.22,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
+    globe.onPointHover((d) => {
+      stateRef.current.onHover(d ?? null);
     });
-    const halos = new THREE.InstancedMesh(haloGeo, haloMat, MAX_MARKERS);
-    halos.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    globe.add(halos);
-    const markerIndex = []; // instanceId -> event
-    const dummy = new THREE.Object3D();
-    const tmpColor = new THREE.Color();
+    globe.onArcClick((d) => {
+      if (d?.id) stateRef.current.onSelect(d.id);
+    });
+    globe.onHexHover(() => {});
 
-    // Selection ring
-    const ring = new THREE.Mesh(
-      new THREE.RingGeometry(0.02, 0.028, 40),
-      new THREE.MeshBasicMaterial({ color: COLORS.selected, transparent: true, opacity: 0.9, side: THREE.DoubleSide, toneMapped: false })
-    );
-    ring.visible = false;
-    globe.add(ring);
-
-    // Arcs + pulses
-    const arcGroup = new THREE.Group();
-    globe.add(arcGroup);
-    let pulses = []; // { mesh, pts, t, speed }
-
-    function rebuildOverlays() {
-      const { markers: list, arcs } = renderRef.current;
-      markerIndex.length = 0;
-      for (let i = 0; i < MAX_MARKERS; i += 1) {
-        const e = list[i];
-        if (!e) {
-          dummy.position.set(0, 0, 0);
-          dummy.scale.setScalar(0.0001);
-        } else {
-          const [x, y, z] = latLonToVec3(e.source.latitude, e.source.longitude, GLOBE_RADIUS * 1.004);
-          dummy.position.set(x, y, z);
-          dummy.scale.setScalar(e.id === stateRef.current.selectedId ? 1.9 : 1);
-          markerIndex[i] = e;
-        }
-        dummy.updateMatrix();
-        markers.setMatrixAt(i, dummy.matrix);
-        markers.setColorAt(i, tmpColor.set(e ? markerColor(e) : 0x000000));
-        if (e) dummy.scale.multiplyScalar(2.6);
-        dummy.updateMatrix();
-        halos.setMatrixAt(i, dummy.matrix);
-        halos.setColorAt(i, tmpColor.set(e ? markerColor(e) : 0x000000));
-      }
-      markers.instanceMatrix.needsUpdate = true;
-      if (markers.instanceColor) markers.instanceColor.needsUpdate = true;
-      halos.instanceMatrix.needsUpdate = true;
-      if (halos.instanceColor) halos.instanceColor.needsUpdate = true;
-
-      // Selection ring follows selected marker
-      const sel = list.find((e) => e.id === stateRef.current.selectedId);
-      if (sel && hasSourceCoordinates(sel)) {
-        const [x, y, z] = latLonToVec3(sel.source.latitude, sel.source.longitude, GLOBE_RADIUS * 1.006);
-        ring.position.set(x, y, z);
-        ring.lookAt(0, 0, 0);
-        ring.visible = true;
-      } else {
-        ring.visible = false;
-      }
-
-      // Rebuild arcs
-      while (arcGroup.children.length) {
-        const c = arcGroup.children.pop();
-        c.geometry?.dispose?.();
-        c.material?.dispose?.();
-      }
-      pulses = [];
-      arcs.forEach((e, ai) => {
-        const pts = greatCirclePoints(
-          { lat: e.source.latitude, lon: e.source.longitude },
-          { lat: e.destination.latitude, lon: e.destination.longitude }
-        ).map(([x, y, z]) => new THREE.Vector3(x * GLOBE_RADIUS, y * GLOBE_RADIUS, z * GLOBE_RADIUS));
-        const g = new THREE.BufferGeometry().setFromPoints(pts);
-        const line = new THREE.Line(
-          g,
-          new THREE.LineBasicMaterial({ color: COLORS.arc, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false })
-        );
-        arcGroup.add(line);
-        const pulse = new THREE.Mesh(
-          new THREE.SphereGeometry(0.009, 8, 8),
-          new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false })
-        );
-        arcGroup.add(pulse);
-        pulses.push({ mesh: pulse, pts, t: (ai * 0.61803398875) % 1, speed: 0.12 + ((ai * 0.37) % 0.12) });
-      });
-    }
-
-    // Camera helpers
-    let camTween = null;
-    function tweenCam(toPos, lookAt = new THREE.Vector3(0, 0, 0)) {
-      camTween = { from: camera.position.clone(), to: toPos.clone(), lookAt, t: 0 };
-    }
-    apiRef.current.focusLatLon = (lat, lon) => {
-      const [x, y, z] = latLonToVec3(lat, lon, 1);
-      const dir = new THREE.Vector3(x, y, z).normalize();
-      tweenCam(dir.multiplyScalar(2.1));
-    };
-    apiRef.current.reset = () => tweenCam(new THREE.Vector3(0, 0.6, 3.1));
-
-    // Picking
-    const ray = new THREE.Raycaster();
-    const ptr = new THREE.Vector2();
-    function pick(clientX, clientY) {
-      const rect = renderer.domElement.getBoundingClientRect();
-      ptr.x = ((clientX - rect.left) / rect.width) * 2 - 1;
-      ptr.y = -((clientY - rect.top) / rect.height) * 2 + 1;
-      ray.setFromCamera(ptr, camera);
-      const hits = ray.intersectObject(markers);
-      if (!hits.length) return null;
-      return markerIndex[hits[0].instanceId] ?? null;
-    }
-    function projectToScreen(e) {
-      const [x, y, z] = latLonToVec3(e.source.latitude, e.source.longitude, GLOBE_RADIUS * 1.01);
-      const v = new THREE.Vector3(x, y, z).applyMatrix4(globe.matrixWorld).project(camera);
-      const rect = renderer.domElement.getBoundingClientRect();
-      return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height, behind: v.z > 1 };
-    }
-
-    const onMove = (ev) => {
-      const hit = pick(ev.clientX, ev.clientY);
-      setHover(hit);
-      stateRef.current.onHover(hit);
-      renderer.domElement.style.cursor = hit ? "pointer" : "grab";
-      const tip = tooltipRef.current;
-      if (tip) {
-        if (hit) {
-          const p = projectToScreen(hit);
-          tip.style.display = p.behind ? "none" : "block";
-          tip.style.left = `${p.x - mount.getBoundingClientRect().left + 14}px`;
-          tip.style.top = `${p.y - mount.getBoundingClientRect().top - 10}px`;
-        } else {
-          tip.style.display = "none";
-        }
-      }
-    };
-    const onClick = (ev) => {
-      const hit = pick(ev.clientX, ev.clientY);
-      if (hit) stateRef.current.onSelect(hit.id);
-    };
-    renderer.domElement.addEventListener("pointermove", onMove);
-    renderer.domElement.addEventListener("click", onClick);
-
-    // Resize
-    function resize() {
+    const resize = () => {
       const w = mount.clientWidth || 1;
       const h = mount.clientHeight || 1;
-      renderer.setSize(w, h, false);
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-    }
+      globe.width(w);
+      globe.height(h);
+    };
     resize();
     const ro = new ResizeObserver(resize);
     ro.observe(mount);
 
-    const clock = new THREE.Clock();
-    let raf = 0;
-    function frame() {
-      raf = requestAnimationFrame(frame);
-      if (disposed || document.hidden) return;
-      const dt = Math.min(clock.getDelta(), 0.05);
-      const st = stateRef.current;
-      controls.autoRotate = st.autoRotate && !st.paused && !reduceMotion;
-      controls.update();
-      if (camTween) {
-        camTween.t = Math.min(1, camTween.t + dt * 1.4);
-        const k = 1 - Math.pow(1 - camTween.t, 3);
-        camera.position.lerpVectors(camTween.from, camTween.to, k);
-        camera.lookAt(camTween.lookAt);
-        if (camTween.t >= 1) camTween = null;
-      }
-      if (!st.paused && !reduceMotion) {
-        for (const p of pulses) {
-          p.t = (p.t + dt * p.speed) % 1;
-          const idx = Math.min(p.pts.length - 1, Math.floor(p.t * p.pts.length));
-          p.mesh.position.copy(p.pts[idx]);
-        }
-        if (ring.visible) {
-          const s = 1 + Math.sin(performance.now() / 420) * 0.12;
-          ring.scale.setScalar(s);
-        }
-      }
-      rebuildOverlaysThrottled();
-      renderer.render(scene, camera);
-    }
-
-    let lastRebuild = 0;
-    let needsRebuild = true;
-    function rebuildOverlaysThrottled() {
-      const now = performance.now();
-      if (needsRebuild || now - lastRebuild > 900) {
-        rebuildOverlays();
-        needsRebuild = false;
-        lastRebuild = now;
-      }
-    }
-    const markDirty = () => {
-      needsRebuild = true;
+    const onVis = () => {
+      if (document.hidden) globe.pauseAnimation();
+      else if (!stateRef.current.paused) globe.resumeAnimation();
     };
-    const dirtyInterval = setInterval(markDirty, 1200);
-
-    rebuildOverlays();
-    frame();
+    document.addEventListener("visibilitychange", onVis);
+    if (document.hidden) globe.pauseAnimation();
 
     return () => {
-      disposed = true;
-      cancelAnimationFrame(raf);
-      clearInterval(dirtyInterval);
+      document.removeEventListener("visibilitychange", onVis);
       ro.disconnect();
-      renderer.domElement.removeEventListener("pointermove", onMove);
-      renderer.domElement.removeEventListener("click", onClick);
-      controls.dispose();
-      scene.traverse((o) => {
-        o.geometry?.dispose?.();
-        if (Array.isArray(o.material)) o.material.forEach((m) => m.dispose?.());
-        else o.material?.dispose?.();
-      });
-      renderer.dispose();
-      mount.removeChild(renderer.domElement);
+      globe._destructor();
+      globeRef.current = null;
+      mount.replaceChildren();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Lifecycle stamps (UI-runtime only): leaving arrivals + changed sightings.
+  const leavingIds = useMemo(() => new Set(leavingPoints.map((e) => e.id)), [leavingPoints]);
+  const changedSet = useMemo(() => new Set(changedIds ?? []), [changedIds]);
+  useEffect(() => {
+    const now = Date.now();
+    for (const e of leavingPoints) {
+      if (!leaveAtRef.current.has(e.id)) leaveAtRef.current.set(e.id, now);
+    }
+    for (const id of leaveAtRef.current.keys()) {
+      if (!leavingIds.has(id)) leaveAtRef.current.delete(id);
+    }
+    for (const id of changedSet) {
+      if (!changeAtRef.current.has(id)) changeAtRef.current.set(id, now);
+    }
+    for (const id of changeAtRef.current.keys()) {
+      if (!changedSet.has(id)) changeAtRef.current.delete(id);
+    }
+  }, [leavingPoints, leavingIds, changedSet]);
+
+  // Reactive layers: view + data + theme + selection.
+  useEffect(() => {
+    const globe = globeRef.current;
+    if (!globe) return;
+    const st = stateRef.current;
+    const showPoints = view === "operations" || view === "imagery" || view === "minimal" || view === "rings" || view === "paths";
+    const allPoints = showPoints ? [...points, ...leavingPoints] : [];
+
+    const lifecycleOf = (d, now) => {
+      if (leaveAtRef.current.has(d.id)) {
+        const age = now - (leaveAtRef.current.get(d.id) ?? now);
+        return { kind: "leaving", t: Math.min(1, age / LIFECYCLE_MS.leave) };
+      }
+      if (d.sessionFirstSeen) {
+        const age = now - Date.parse(d.sessionFirstSeen);
+        if (!Number.isNaN(age) && age < LIFECYCLE_MS.enter) {
+          return { kind: "new", t: Math.max(0, age / LIFECYCLE_MS.enter) };
+        }
+      }
+      const ch = changeAtRef.current.get(d.id);
+      if (ch != null && now - ch < LIFECYCLE_MS.changed) {
+        return { kind: "changed", t: (now - ch) / LIFECYCLE_MS.changed };
+      }
+      return { kind: "normal", t: 1 };
+    };
+    const baseRadius = (d) => (d.id === selectedId ? 0.55 : 0.34);
+
+    globe
+      .globeImageUrl(textureFor(view, theme))
+      .bumpImageUrl("/earth-topology.png")
+      .atmosphereColor(theme === "light" ? "#7fb3d5" : "#3fd8ff")
+      .showGraticules(view !== "minimal")
+      .backgroundColor("rgba(0,0,0,0)");
+
+    globe.controls().autoRotate = st.autoRotate && !st.paused && !reduceMotion;
+    if (st.paused || document.hidden) globe.pauseAnimation();
+    else globe.resumeAnimation();
+
+    // Points (operations family + paths context + grace-window leavers).
+    globe
+      .pointsData(allPoints)
+      .pointLat((d) => d.source.latitude)
+      .pointLng((d) => d.source.longitude)
+      .pointColor((d) => {
+        const lc = lifecycleOf(d, Date.now());
+        if (lc.kind === "new") return "#7dffc8";
+        if (lc.kind === "changed") return "#ffffff";
+        return pointColorFor(d, theme, selectedId);
+      })
+      .pointAltitude(0.012)
+      .pointRadius((d) => {
+        const base = baseRadius(d);
+        const lc = lifecycleOf(d, Date.now());
+        if (lc.kind === "new") return 0.1 + (base - 0.1) * lc.t;
+        if (lc.kind === "changed") return base * (1 + 0.45 * Math.sin(Math.PI * lc.t));
+        if (lc.kind === "leaving") return Math.max(0.02, base * (1 - lc.t));
+        return base;
+      })
+      .pointLabel((d) => tooltipHtml(d));
+
+    // Heatmap: same records, constant weight 1.
+    const heatOn = view === "heatmap";
+    globe
+      .heatmapsData(heatOn ? points : [])
+      .heatmapPointLat((d) => d.source.latitude)
+      .heatmapPointLng((d) => d.source.longitude)
+      .heatmapPointWeight(() => 1);
+
+    // Hex density: bin counts derived from the same records.
+    const hexOn = view === "hex";
+    globe
+      .hexBinPointsData(hexOn ? buildHexPoints(points) : [])
+      .hexBinPointLat((d) => d.source.latitude)
+      .hexBinPointLng((d) => d.source.longitude)
+      .hexBinPointWeight(() => 1)
+      .hexTopColor(() => pal.hex)
+      .hexSideColor(() => pal.hex)
+      .hexAltitude(() => 0.02)
+      .hexLabel((b) => `${b.points.length} source observations · approximate geography`);
+
+    // Rings: only in-session new arrivals inside the bounded window.
+    const ringsOn = view === "rings";
+    globe
+      .ringsData(ringsOn ? rings : [])
+      .ringLat((d) => d.source.latitude)
+      .ringLng((d) => d.source.longitude)
+      .ringColor((d) => (isEnriched(d) ? pal.ring : pal.arc))
+      .ringMaxRadius(3)
+      .ringPropagationSpeed(1.6)
+      .ringRepeatPeriod(2800);
+
+    // Arcs: genuine both-endpoint observations only.
+    globe
+      .arcsData(arcs)
+      .arcStartLat((d) => d.source.latitude)
+      .arcStartLng((d) => d.source.longitude)
+      .arcEndLat((d) => d.destination.latitude)
+      .arcEndLng((d) => d.destination.longitude)
+      .arcColor(() => pal.arc)
+      .arcStroke(0.7)
+      .arcDashLength(0.45)
+      .arcDashGap(0.25)
+      .arcDashAnimateTime(reduceMotion ? 0 : 2200);
+
+    // Labels: selected event (+ small bounded set when enabled).
+    globe
+      .labelsData(labels)
+      .labelLat((d) => d.source.latitude)
+      .labelLng((d) => d.source.longitude)
+      .labelText((d) => labelText(d))
+      .labelColor(() => labelColor)
+      .labelSize(1.15)
+      .labelDotRadius(0.35);
+  }, [view, points, leavingPoints, arcs, rings, labels, theme, selectedId, showLabels, paused, autoRotate, reduceMotion, pal, labelColor]);
+
+  // Lifecycle ticker: re-evaluates point accessors while a transition is
+  // active (entrance / pulse / fade-out), then goes quiet. Skipped under
+  // reduced motion — state changes apply directly instead.
+  useEffect(() => {
+    if (reduceMotion) return undefined;
+    const id = setInterval(() => {
+      const globe = globeRef.current;
+      if (!globe || document.hidden) return;
+      const now = Date.now();
+      let active = leavingPoints.length > 0;
+      if (!active) {
+        for (const p of points) {
+          if (p.sessionFirstSeen) {
+            const age = now - Date.parse(p.sessionFirstSeen);
+            if (!Number.isNaN(age) && age < LIFECYCLE_MS.enter) { active = true; break; }
+          }
+        }
+      }
+      if (!active) {
+        for (const at of changeAtRef.current.values()) {
+          if (now - at < LIFECYCLE_MS.changed) { active = true; break; }
+        }
+      }
+      if (!active) return;
+      globe.pointsData([...points, ...leavingPoints]);
+    }, 450);
+    return () => clearInterval(id);
+  }, [points, leavingPoints, reduceMotion]);
+
+  // Camera: focus + reset.
+  useEffect(() => {
+    if (focusRequest) {
+      globeRef.current?.pointOfView(
+        { lat: focusRequest.lat, lng: focusRequest.lon, altitude: FOCUS_ALTITUDE },
+        1200
+      );
+    }
+  }, [focusRequest]);
+
+  useEffect(() => {
+    if (resetSignal > 0) globeRef.current?.pointOfView(HOME_POV, 1200);
+  }, [resetSignal]);
 
   return (
     <div className="globe-wrap">
       <div ref={mountRef} className="globe-canvas" role="img" aria-label="3D globe showing geolocated malicious infrastructure observations" />
-      <div ref={tooltipRef} className="globe-tooltip" style={{ display: "none" }}>
-        {hover && (
+      <div className="globe-legend" aria-hidden="true">
+        {legend === "markers" && (
           <>
-            <strong className="mono">{hover.source?.ip ?? hover.raw?.cveID ?? hover.id}</strong>
-            <span>{hover.source?.country ?? "Country pending"} · {hover.category}</span>
-            <span className="muted">Approximate infrastructure location</span>
+            <span><i className="dot dot-source" /> Malicious infrastructure</span>
+            <span><i className="dot dot-enriched" /> Approximate geolocation</span>
+            <span><i className="dot dot-new" /> New this cycle</span>
+            <span><i className="dot dot-changed" /> Changed</span>
           </>
         )}
-      </div>
-      <div className="globe-legend" aria-hidden="true">
-        <span><i className="dot dot-source" /> Malicious infrastructure</span>
-        <span><i className="dot dot-enriched" /> Approximate geolocation</span>
-        <span><i className="arc-sample" /> Confirmed observed path</span>
+        {legend === "heat" && <span>Observation density · 1 weight per loaded record</span>}
+        {legend === "paths" && <span><i className="arc-sample" /> Confirmed observed path ({arcs.length} verified)</span>}
+        {legend === "rings" && <span><i className="dot dot-enriched" /> Ring = first seen this session (≤3 min)</span>}
+        {legend === "hex" && <span>Hex bins sized by loaded observation count</span>}
       </div>
       <div className="globe-count" aria-live="polite">
-        {renderable.markers.length} geolocated of {events.length} loaded · {renderable.arcs.length} confirmed paths
+        {points.length} geolocated of {events.length} loaded · {arcs.length} confirmed paths
       </div>
     </div>
   );

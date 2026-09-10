@@ -30,9 +30,10 @@ function kindShort(kind) {
   return "time unknown";
 }
 
-export function EventCard({ event, masked = false, selected = false, isNew = false, onPick = null }) {
+export function EventCard({ event, masked = false, selected = false, isNew = false, isChanged = false, isLeaving = false, onPick = null }) {
   const rel = relationshipKind(event);
   const ip = masked ? maskIp(event.source?.ip) : event.source?.ip;
+  const cls = `event-card${selected ? " selected" : ""}${isNew ? " is-new" : ""}${isChanged ? " is-changed" : ""}${isLeaving ? " is-leaving" : ""}`;
   const body = (
     <>
       <div className="event-top">
@@ -41,6 +42,7 @@ export function EventCard({ event, masked = false, selected = false, isNew = fal
         </span>
         <span className="event-pills">
           {isNew && <span className="rel-pill rel-new">New</span>}
+          {isLeaving && <span className="rel-pill rel-leaving">Removed upstream</span>}
           <span className={`rel-pill rel-${rel}`}>
             {rel === "observed_path" ? "Observed path" : rel === "source_only" ? "Source intel" : "Intel record"}
           </span>
@@ -93,27 +95,39 @@ export function EventCard({ event, masked = false, selected = false, isNew = fal
     </>
   );
 
-  if (onPick) {
+  if (onPick && !isLeaving) {
     return (
-      <button type="button" className={`event-card${selected ? " selected" : ""}`} onClick={() => onPick(event.id)}>
+      <button type="button" id={event.id} className={cls} onClick={() => onPick(event.id)}>
         {body}
       </button>
     );
   }
+  if (isLeaving) {
+    return (
+      <div id={event.id} className={cls} aria-label="Removed upstream record">
+        {body}
+      </div>
+    );
+  }
   return (
-    <Link to={`/event/${encodeURIComponent(event.id)}`} className={`event-card${selected ? " selected" : ""}`}>
+    <Link id={event.id} to={`/event/${encodeURIComponent(event.id)}`} className={cls}>
       {body}
     </Link>
   );
 }
 
-export default function EventFeed({ events, masked, selectedId, newIds, onPick, max = 120 }) {
+export default function EventFeed({ events, masked, selectedId, newIds, changedIds, leavingEvents, onPick, max = 120 }) {
   const visible = events.slice(0, max);
   const fresh = newIds instanceof Set ? newIds : new Set(newIds ?? []);
+  const changed = changedIds instanceof Set ? changedIds : new Set(changedIds ?? []);
+  const gone = (leavingEvents ?? []).slice(0, 8);
   return (
     <div className="event-feed" role="feed" aria-label="Live threat observation feed">
+      {gone.map((e) => (
+        <EventCard key={`leaving-${e.id}`} event={e} masked={masked} isLeaving onPick={null} />
+      ))}
       {visible.map((e) => (
-        <EventCard key={e.id} event={e} masked={masked} selected={e.id === selectedId} isNew={fresh.has(e.id)} onPick={onPick} />
+        <EventCard key={e.id} event={e} masked={masked} selected={e.id === selectedId} isNew={fresh.has(e.id)} isChanged={changed.has(e.id)} onPick={onPick} />
       ))}
     </div>
   );

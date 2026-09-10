@@ -49,5 +49,6 @@ export function prettyLabel(value) {
 export function timestampKindLabel(kind) {
   if (kind === "published") return "provider publication time";
   if (kind === "list_publication") return "source-list publication time";
+  if (kind === "observed") return "source observation time";
   return "time received by ThreatStream";
 }

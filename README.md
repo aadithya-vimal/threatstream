@@ -16,9 +16,13 @@ timestamps, victims, or statistics.
 
 ## Features
 
-- Interactive Three.js globe (source markers, genuine arcs only, selection, hover,
-  focus, auto-rotate, fullscreen, reduced-motion support)
-- Live observation feed with honest source-only labeling
+- Interactive Globe.GL globe with 7 switchable views (Operations, Threat heatmap,
+  Attack paths, Threat rings, Hex density, Satellite, Minimal) — one real
+  dataset, per-view projections, no synthetic records
+- Real diff-driven transitions: arrivals fade in with rings, removals fade out,
+  changes pulse; unchanged markers stay still; no historical replay
+- Dark/light analyst themes (runtime only, follows system preference)
+- Live observation feed with honest source-only labeling + NEW/removed states
 - Compact filter toolbar (search, provider, category, severity, confidence,
   classification, country, relationship, time window) with active-filter chips
 - Statistics derived only from loaded in-memory data
@@ -34,18 +38,25 @@ timestamps, victims, or statistics.
 ```text
 Browser
 ↓
-Public threat-intelligence sources (Spamhaus DROP · DShield · OpenPhish · CISA KEV mirror · ipwho.is enrichment)
+Public threat-intelligence sources (Spamhaus DROP · DShield · ISC sources · OpenPhish · CISA KEV mirror · ipwho.is enrichment)
 ↓
 Client normalization (ThreatEvent model · pure functions)
 ↓
 Client enrichment (approximate GeoIP, budgeted + cached in-memory)
 ↓
-In-memory state (React context · no storage)
+In-memory state (React context · snapshot diffing · no storage)
 ↓
-Three.js visualization (globe · feed · filters · stats · detail)
+Globe.GL visualization (views · lifecycle transitions · feed · filters · stats · detail)
 ```
 
 No backend. No database. No accounts. No persistence.
+
+Animation represents changes in the loaded intelligence dataset; it does not
+manufacture network traffic.
+
+## Stack
+
+React · Vite · Globe.GL · Three.js · Public CTI feeds · Browser-side GeoIP enrichment
 
 `npm run build` emits a static `dist/` deployable to any static host.
 
@@ -55,6 +66,7 @@ No backend. No database. No accounts. No persistence.
 |---|---|---|---|
 | **Spamhaus DROP** via FireHOL mirror (`raw.githubusercontent.com`) | CIDR ranges under hijacked / botnet-C&C control, origin ~12h refresh, polled 10 min | Source-only markers (●), geolocated in-browser | `https://www.spamhaus.org/drop/drop.txt` |
 | **DShield** (SANS) via FireHOL mirror | Top ~20 attacking /24s seen over 3 days, ~10 min refresh, polled 10 min | Source-only markers (●), geolocated in-browser | `https://www.dshield.org/block.html` (mirror: FireHOL) |
+| **ISC Attack Sources** (SANS, direct API) | Attacker IPs with observed counts + first/last seen, daily aggregates, polled 30 min | Source-only markers (●), geolocated in-browser | `https://isc.sans.edu/` |
 | **OpenPhish** Community Feed (raw GitHub mirror) | Reported phishing URLs (~300), periodic refresh, polled 30 min | Intel records (feed/stats only, never globe) | `https://www.openphish.com/phishing_feeds.html` |
 | **CISA KEV** via official `cisagov/kev-data` mirror | CVEs confirmed exploited (~1700), weekdays, polled 60 min | Intel records (feed/stats only, never globe) | `https://www.cisa.gov/known-exploited-vulnerabilities-catalog` |
 | **ipwho.is** (free, keyless) | Approximate IP → country/city/ASN/org | Enrichment only, labeled `geolocation_approximate` | Per-event, in detail panel |
@@ -77,8 +89,8 @@ the bundle, ever.
 2. Payloads are normalized into `ThreatEvent`s (`src/lib/threat/model.js`).
 3. Events deduplicate on stable provider-derived ids; each cycle diffs the live
    snapshot (`+added −removed ~unchanged`) and reports real counts — unchanged
-   data merges silently; the UI never pretends old data is new. Records a
-   source drops leave the in-memory window.
+   data merges silently; the UI never pretends old data is new. Removed records
+   linger briefly to fade out, then leave the in-memory window.
 4. Source-only IPs missing coordinates are enriched via ipwho.is within a
    per-cycle budget (25 lookups, cached in-memory); failures stay `null`
    (“pending”), never guessed.
@@ -102,6 +114,11 @@ Unknown stays `null`/`unknown` — never `(0,0)`, never “now”, never “medi
 
 - Source-only intel → marker (red observed, amber enriched); genuine
   both-endpoint observations → great-circle arc with traveling pulse.
+- Real arrivals fade/scale in with a ring, removals fade out, changes pulse —
+  driven by actual snapshot diffs, never simulated. Unchanged markers stay still.
+- No verified victim endpoints exist in current browser-compatible feeds
+  (verified: ISC publishes sources + counts only; Feodo is CORS-blocked), so
+  the globe truthfully reports zero confirmed paths instead of drawing arcs.
 - Current sources publish **source-only** intelligence, so the globe truthfully
   shows markers and reports zero confirmed paths.
 - Instanced markers (cap 600), arc cap (40), rAF paused when hidden, full

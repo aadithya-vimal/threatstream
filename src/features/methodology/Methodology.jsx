@@ -67,6 +67,15 @@ export default function Methodology() {
             (<span className="mono">dshield.org</span>). Recent attack sources, still
             source-only: no victims, no per-event times. Polled every 10 min.
           </p>
+          <h3>Live: ISC Attack Sources (SANS, direct API)</h3>
+          <p>
+            The SANS Internet Storm Center <strong>sources API</strong> reports attacker
+            source IPs its sensors observed, with per-record attack counts and{" "}
+            <strong>first/last seen dates</strong> — genuine source observation times
+            (labeled <span className="mono">observed</span>), the only per-record event
+            times any live source provides. Still source-only: the API publishes no
+            victim IPs, so no arcs are drawn. Polled every 30 min.
+          </p>
           <h3>Live: OpenPhish Community Feed</h3>
           <p>
             The <strong>OpenPhish community feed</strong> publishes reported phishing URLs
@@ -194,7 +203,8 @@ export default function Methodology() {
             <li>Only the first ~140 DROP subnets per cycle enter the pipeline; the rest wait honestly as pending. DShield&apos;s feed is natively tiny (~20).</li>
             <li>OpenPhish URLs carry no timestamps — records show “unknown” time rather than a stamped fetch time that would fake novelty.</li>
             <li>KEV comes from the official GitHub mirror (verified identical); the canonical endpoint stays CORS-blocked.</li>
-            <li>No provider currently supplies victim destinations — the globe shows source markers, and the UI says there are zero confirmed paths rather than drawing arcs.</li>
+            <li>No provider currently supplies victim destinations — the globe shows source markers, and the UI says there are zero confirmed paths rather than drawing arcs. Investigated 2026-09-10: ISC&apos;s API exposes sources + counts only (per-IP detail returns no victim data); Feodo&apos;s endpoint is CORS-blocked. No keyless browser-compatible victim-endpoint feed was found.</li>
+            <li>Arrivals fade in with rings, removals fade out after a short grace window, changes pulse — all driven by real snapshot diffs. Unchanged markers stay still; there is no replay, no scrubbing, no simulated traffic.</li>
             <li>abuse.ch feeds (URLhaus, ThreatFox) require personal Auth-Keys; Feodo&apos;s endpoint is CORS-blocked and stale — all stay out of the live path.</li>
           </ul>
         </div>

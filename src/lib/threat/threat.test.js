@@ -11,12 +11,14 @@ import {
   normalizeDshieldLine,
   normalizeDropLine,
   normalizeDropList,
+  normalizeIscSource,
+  normalizeIscSources,
   normalizeKevCatalog,
   normalizeKevEntry,
   normalizeOpenphishFeed,
   normalizeOpenphishUrl,
 } from "./normalize.js";
-import { diffIdSets, mergeEvents } from "./dedup.js";
+import { diffIdSets, mergeEvents, sameObservable } from "./dedup.js";
 import { applyFilters } from "./filter.js";
 import { bucketizeByTime, computeStatistics } from "./statistics.js";
 
@@ -275,10 +277,53 @@ describe("no fabricated destinations", () => {
     const drop = normalizeDropLine("1.10.16.0/20", DROP_OPTS);
     const dshield = normalizeDshieldLine("4.3.2.0/24", DROP_OPTS);
     const phish = normalizeOpenphishUrl("http://example.com/login");
-    for (const e of [drop, dshield, phish]) {
+    const isc = normalizeIscSource({ ip: "91.191.209.198", attacks: 8153, count: 1, firstseen: "2022-06-13", lastseen: "2026-09-10" });
+    for (const e of [drop, dshield, phish, isc]) {
       expect(e.destination).toBeNull();
       expect(hasArc(e)).toBe(false);
       expect(relationshipKind(e)).not.toBe("observed_path");
     }
+  });
+});
+
+describe("isc-sources normalization", () => {
+  it("keeps genuine observation timestamps and counts, skips private IPs", () => {
+    const e = normalizeIscSource({ ip: "91.191.209.198", attacks: 8153, count: 157503, firstseen: "2022-06-13", lastseen: "2026-09-10" });
+    expect(e.timestampKind).toBe("observed");
+    expect(e.timestamp).toContain("2026-09-10");
+    expect(e.raw.reports).toBe(157503);
+    expect(normalizeIscSource({ ip: "10.0.0.1", attacks: 1 })).toBeNull();
+    expect(normalizeIscSource(null)).toBeNull();
+    const { events, skipped } = normalizeIscSources([
+      { ip: "91.191.209.198", attacks: 1 },
+      { ip: "91.191.209.198", attacks: 1 },
+      { ip: "junk", attacks: 1 },
+    ]);
+    expect(events).toHaveLength(1);
+    expect(skipped).toBe(1);
+  });
+});
+
+describe("merge lifecycle ids", () => {
+  it("reports added and updated ids for visuals without touching records", () => {
+    const a = normalizeDropLine("1.10.16.0/20", DROP_OPTS);
+    const first = mergeEvents(new Map(), [a]);
+    expect(first.addedIds).toEqual([a.id]);
+    expect(first.updatedIds).toEqual([]);
+    const enriched = { ...a, source: { ...a.source, latitude: 1, longitude: 2 }, inferred: ["geolocation_approximate"] };
+    const second = mergeEvents(first.map, [enriched]);
+    expect(second.updatedIds).toEqual([a.id]);
+    expect(second.map.get(a.id).sessionFirstSeen).toBeUndefined();
+  });
+
+  it("treats an identical refresh as zero-change, not an update", () => {
+    const a = normalizeDropLine("1.10.16.0/20", DROP_OPTS);
+    const enriched = { ...a, source: { ...a.source, latitude: 1, longitude: 2, country: "X" }, inferred: ["geolocation_approximate"] };
+    const first = mergeEvents(new Map(), [enriched]);
+    const repeat = mergeEvents(first.map, [normalizeDropLine("1.10.16.0/20", DROP_OPTS)]);
+    expect(repeat.added).toBe(0);
+    expect(repeat.updated).toBe(0);
+    expect(repeat.updatedIds).toEqual([]);
+    expect(sameObservable(first.map.get(a.id), repeat.map.get(a.id))).toBe(true);
   });
 });

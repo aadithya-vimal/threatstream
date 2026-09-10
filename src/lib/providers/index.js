@@ -10,11 +10,12 @@
  */
 import spamhausDrop from "./spamhausDrop.js";
 import dshield from "./dshield.js";
+import iscSources from "./iscSources.js";
 import openphish from "./openphish.js";
 import cisaKev from "./cisaKev.js";
 import { DISABLED_PROVIDERS, UNAVAILABLE_PROVIDERS } from "./disabled.js";
 
-export const PROVIDER_LIST = [spamhausDrop, dshield, openphish, cisaKev];
+export const PROVIDER_LIST = [spamhausDrop, dshield, iscSources, openphish, cisaKev];
 export { DISABLED_PROVIDERS, UNAVAILABLE_PROVIDERS };
 
 export function getProviderMetadata() {
@@ -39,16 +40,18 @@ export function getProviderMetadata() {
 /**
  * Fetch a subset of providers by id (default: all enabled).
  * Always resolves — per-provider results carry ok/data or ok:false/error.
- * No fake fallback, ever.
+ * No fake fallback, ever. onSettled(result) fires as each provider finishes,
+ * enabling honest per-provider progress (counts only, never synthetic data).
  */
-export async function fetchProviders(ids = null) {
+export async function fetchProviders(ids = null, { onSettled = null } = {}) {
   const list = ids ? PROVIDER_LIST.filter((p) => ids.includes(p.id)) : PROVIDER_LIST;
   const settled = await Promise.all(
     list.map(async (p) => {
       const started = Date.now();
+      let result;
       try {
         const data = await p.fetchLatest();
-        return {
+        result = {
           id: p.id,
           ok: true,
           latencyMs: Date.now() - started,
@@ -56,7 +59,7 @@ export async function fetchProviders(ids = null) {
           ...data,
         };
       } catch (err) {
-        return {
+        result = {
           id: p.id,
           ok: false,
           latencyMs: Date.now() - started,
@@ -68,6 +71,12 @@ export async function fetchProviders(ids = null) {
               : err?.message ?? "Unknown provider error",
         };
       }
+      try {
+        onSettled?.(result);
+      } catch {
+        /* progress callback must never break ingestion */
+      }
+      return result;
     })
   );
   return settled;

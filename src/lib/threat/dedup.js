@@ -41,19 +41,24 @@ export function dedupKey(event) {
 
 /**
  * Merge incoming events into the existing map.
- * Returns { map, added, updated } — counts are real, derived from keys.
- * Geolocation enrichment counts as an update (same key, richer source).
+ * Returns { map, added, updated, addedIds, updatedIds } — counts and ids are
+ * real, derived from keys. Geolocation enrichment counts as an update
+ * (same key, richer source). addedIds/updatedIds drive honest new/changed
+ * lifecycle visuals; they never alter the records themselves.
  */
 export function mergeEvents(existingMap, incoming) {
   const map = new Map(existingMap);
   let added = 0;
   let updated = 0;
+  const addedIds = [];
+  const updatedIds = [];
   for (const event of incoming) {
     if (!event?.id) continue;
     const prev = map.get(event.id);
     if (!prev) {
       map.set(event.id, event);
       added += 1;
+      addedIds.push(event.id);
     } else {
       const prevKey = dedupKey(prev);
       const nextKey = dedupKey(event);
@@ -73,16 +78,39 @@ export function mergeEvents(existingMap, incoming) {
                 ),
               }
             : event;
-        map.set(event.id, merged);
-        updated += 1;
+        // A refresh that changes nothing observable is not a change:
+        // skip the write so steady-state cycles report zero changes.
+        if (!sameObservable(prev, merged)) {
+          map.set(event.id, merged);
+          updated += 1;
+          updatedIds.push(event.id);
+        }
       }
     }
   }
-  return { map, added, updated };
+  return { map, added, updated, addedIds, updatedIds };
 }
 
-function pickGeo(source) {
-  if (!source) return {};
+/**
+ * True when two records are observably identical: same identity, same
+ * coordinates, same enrichment markers, same assessment fields.
+ */
+export function sameObservable(a, b) {
+  if (!a || !b) return false;
+  if (dedupKey(a) !== dedupKey(b)) return false;
+  const geo = (e) => `${e.source?.latitude ?? ""},${e.source?.longitude ?? ""},${e.source?.country ?? ""},${e.source?.city ?? ""},${e.source?.asn ?? ""},${e.source?.organization ?? ""}`;
+  if (geo(a) !== geo(b)) return false;
+  const inf = (e) => [...(e.inferred ?? [])].sort().join(",");
+  if (inf(a) !== inf(b)) return false;
+  return (
+    a.classification === b.classification &&
+    a.category === b.category &&
+    a.severity === b.severity &&
+    a.confidence === b.confidence
+  );
+}
+
+function pickGeo(source) {  if (!source) return {};
   const out = {};
   for (const k of [
     "latitude",

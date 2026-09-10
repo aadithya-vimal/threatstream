@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import spamhausDrop from "./spamhausDrop.js";
 import dshield from "./dshield.js";
+import iscSources from "./iscSources.js";
 import openphish from "./openphish.js";
 import cisaKev from "./cisaKev.js";
 import { DISABLED_PROVIDERS, UNAVAILABLE_PROVIDERS } from "./disabled.js";
@@ -35,6 +36,32 @@ describe("dshield provider", () => {
     expect(result.events[0].category).toBe("attack_source");
     expect(result.events[0].destination).toBeNull();
     expect(result.fileDateIso).toContain("2026-09-09");
+  });
+});
+
+describe("isc-sources provider", () => {
+  const payload = [
+    { ip: "91.191.209.198", attacks: 8153, count: 157503, firstseen: "2022-06-13", lastseen: "2026-09-10" },
+    { ip: "10.0.0.1", attacks: 5, count: 5, firstseen: "2026-09-10", lastseen: "2026-09-10" },
+    { ip: "not-an-ip", attacks: 1, count: 1 },
+  ];
+
+  it("normalizes sensor observations with observed timestamps, source-only", async () => {
+    const result = await iscSources.fetchLatest({ fetchJson: async () => payload });
+    expect(result.totalInFeed).toBe(1);
+    expect(result.skipped).toBe(2);
+    const e = result.events[0];
+    expect(e.sourceProvider).toBe("isc-sources");
+    expect(e.source.ip).toBe("91.191.209.198");
+    expect(e.timestampKind).toBe("observed");
+    expect(e.raw.attacks).toBe(8153);
+    expect(e.destination).toBeNull();
+  });
+
+  it("propagates fetch failure instead of fabricating fallback data", async () => {
+    await expect(
+      iscSources.fetchLatest({ fetchJson: async () => { throw new Error("net down"); } })
+    ).rejects.toThrow("net down");
   });
 });
 
@@ -78,7 +105,7 @@ describe("cisa-kev provider (GitHub mirror)", () => {
 describe("provider registry", () => {
   it("exposes metadata only for verified browser-compatible providers", () => {
     const meta = getProviderMetadata();
-    expect(meta.map((m) => m.id).sort()).toEqual(["cisa-kev", "dshield", "openphish", "spamhaus-drop"]);
+    expect(meta.map((m) => m.id).sort()).toEqual(["cisa-kev", "dshield", "isc-sources", "openphish", "spamhaus-drop"]);
     expect(meta.every((m) => m.requiresKey === false)).toBe(true);
     expect(meta.every((m) => m.browserCompatible === true)).toBe(true);
     expect(meta.every((m) => m.attribution && m.updateCadence && m.feedType)).toBe(true);
