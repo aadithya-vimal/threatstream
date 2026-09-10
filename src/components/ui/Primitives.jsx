@@ -1,9 +1,9 @@
 import React from "react";
 import { timeAgo } from "../../lib/format.js";
 
-export function Panel({ title, action, children, className = "" }) {
+export function Panel({ title, action, children, className = "", id = null }) {
   return (
-    <section className={`panel ${className}`}>
+    <section className={`panel ${className}`} id={id ?? undefined}>
       {title && (
         <header className="panel-head">
           <h2>{title}</h2>

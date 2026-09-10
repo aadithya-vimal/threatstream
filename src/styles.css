@@ -38,7 +38,7 @@
   --info: #3fd8ff;
 
   /* Type */
-  --sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --sans: "Yu Gothic", "YuGothic", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
   --display: 2.6rem;
   --h1: 1.7rem;
@@ -515,12 +515,30 @@ button.event-card { font-family: var(--sans); }
 .proof-box.negative { border-left-color: var(--warn); background: rgba(232, 161, 63, 0.06); }
 
 /* ============ Methodology ============ */
-.methodology { max-width: 920px; }
+.methodology { max-width: 960px; margin: 0 auto; }
 .methodology h1 { font-size: var(--h1); margin: 6px 0 10px; letter-spacing: -0.01em; }
-.methodology .panel h3 { margin: 16px 0 5px; font-size: var(--h3); }
-.methodology .panel h3:first-of-type { margin-top: 2px; }
-.methodology p, .methodology li { line-height: 1.7; font-size: var(--small); }
-.toc { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 4px; padding: 0; list-style: none; }
+.methodology .panel { scroll-margin-top: 76px; }
+.methodology .panel-body > p:first-child { margin-top: 0; }
+.methodology .panel-body > p:last-child,
+.methodology .panel-body > ul:last-child,
+.methodology .panel-body > dl:last-child { margin-bottom: 0; }
+.methodology p, .methodology li { line-height: 1.75; font-size: var(--small); }
+.methodology .panel-body > p + p { margin-top: 10px; }
+.methodology .panel h3 {
+  margin: 18px 0 8px; font-size: 0.82rem; font-weight: 800;
+  letter-spacing: 0.04em; color: var(--text-1);
+  padding-left: 10px; border-left: 3px solid var(--accent-line);
+}
+.methodology .panel h3:first-child { margin-top: 0; }
+.source-defs { margin: 0; padding: 0; }
+.source-defs dt {
+  font-size: 0.84rem; font-weight: 800; color: var(--text-1);
+  display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+  margin: 0; padding-top: 14px;
+}
+.source-defs dt:first-of-type { padding-top: 0; }
+.source-defs dd { margin: 5px 0 0; color: var(--text-2); font-size: var(--small); line-height: 1.7; }
+.toc { display: flex; gap: 8px; flex-wrap: wrap; margin: 18px 0 20px; padding: 0; list-style: none; counter-reset: toc; }
 .toc a {
   font-size: 0.74rem; color: var(--text-2);
   border: 1px solid var(--line); border-radius: var(--r-pill);
