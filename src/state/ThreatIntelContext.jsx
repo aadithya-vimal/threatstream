@@ -38,19 +38,24 @@ import { sortByTimeDesc } from "../lib/threat/filter.js";
 const TICK_MS = 60 * 1000;
 const NEW_BADGE_MS = 10 * 60 * 1000;
 const CHANGED_WINDOW_MS = 2 * 60 * 1000;
+/** Idle enrichment: small bounded top-ups between provider cycles. */
+const IDLE_TICK_MS = 45 * 1000;
+const IDLE_BUDGET = 10;
 /** Removed records linger this long so the UI can fade them out honestly. */
 export const REMOVAL_GRACE_MS = 900;
 
 const ThreatIntelContext = createContext(null);
 
-function healthFor(results, prev) {
+function healthFor(results, prev, attempts) {
   const next = { ...(prev ?? {}) };
   for (const r of results) {
     const prior = next[r.id];
+    const lastAttempt = attempts?.get(r.id) ?? prior?.lastAttempt ?? null;
     if (r.ok) {
       next[r.id] = {
         status: "ok",
         lastSuccess: r.fetchedAt,
+        lastAttempt,
         lastError: null,
         latencyMs: r.latencyMs,
         eventCount: r.events?.length ?? 0,
@@ -63,6 +68,7 @@ function healthFor(results, prev) {
       next[r.id] = {
         status: "error",
         lastSuccess: prior?.lastSuccess ?? null,
+        lastAttempt,
         lastError: r.error ?? "Unknown provider error",
         latencyMs: r.latencyMs,
         eventCount: 0,
@@ -106,6 +112,8 @@ export function ThreatIntelProvider({ children }) {
   const changedAtRef = useRef(new Map());
   const leavingRef = useRef(new Map());
   const purgeTimerRef = useRef(null);
+  const runningRef = useRef(false);
+  const idleTimerRef = useRef(null);
   const mountedRef = useRef(true);
 
   const publishLeaving = useCallback(() => {
@@ -115,7 +123,10 @@ export function ThreatIntelProvider({ children }) {
 
   const runProviders = useCallback(async (ids) => {
     if (document.hidden) return;
+    if (runningRef.current) return; // never overlap two refresh cycles
+    runningRef.current = true;
     setRefreshing(true);
+    const attemptTimes = new Map();
     try {
       const metas = getProviderMetadata();
       const targets = ids ?? metas.map((m) => m.id);
@@ -138,6 +149,7 @@ export function ThreatIntelProvider({ children }) {
 
       for (const r of results) {
         lastFetchRef.current.set(r.id, nowMs);
+        attemptTimes.set(r.id, nowMs);
         if (!r.ok) continue;
         const currentIds = r.events.map((e) => e.id);
         const prevIds = prevIdsRef.current.get(r.id) ?? [];
@@ -201,7 +213,7 @@ export function ThreatIntelProvider({ children }) {
       mapRef.current = map;
       setEvents(sortByTimeDesc([...map.values()]));
       publishLeaving();
-      setHealth((prev) => healthFor(results, prev));
+      setHealth((prev) => healthFor(results, prev, attemptTimes));
       setGeoStats(getGeoDiagnostics());
       setDiffs((prev) => ({ ...prev, ...nextDiffs }));
       setNewIds([...newAtRef.current.keys()]);
@@ -222,6 +234,7 @@ export function ThreatIntelProvider({ children }) {
         }, REMOVAL_GRACE_MS + 150);
       }
     } finally {
+      runningRef.current = false;
       if (mountedRef.current) {
         setRefreshing(false);
         setInitialLoading(false);
@@ -229,6 +242,31 @@ export function ThreatIntelProvider({ children }) {
       }
     }
   }, [publishLeaving]);
+
+  // Idle enrichment: progressively resolve the pending backlog in small
+  // bounded top-ups (cache makes repeats free; failures respect TTL).
+  // Real acquisition, never fabrication — skipped while hidden/refreshing.
+  const runIdleEnrichment = useCallback(async () => {
+    if (document.hidden || runningRef.current || !mountedRef.current) return;
+    if (mapRef.current.size === 0) return;
+    const missing = [...mapRef.current.values()].filter(
+      (e) => e.source?.ip && (e.source.latitude == null || e.source.longitude == null)
+    );
+    if (!missing.length) return;
+    runningRef.current = true;
+    try {
+      const { events: enriched } = await enrichEvents(missing.slice(0, IDLE_BUDGET));
+      if (!mountedRef.current) return;
+      const remerged = mergeEvents(mapRef.current, enriched);
+      if (remerged.updated > 0 || remerged.added > 0) {
+        mapRef.current = remerged.map;
+        setEvents(sortByTimeDesc([...mapRef.current.values()]));
+        setGeoStats(getGeoDiagnostics());
+      }
+    } finally {
+      runningRef.current = false;
+    }
+  }, []);
 
   /** Manual refresh: fetch every enabled provider regardless of cadence. */
   const refresh = useCallback(() => {
@@ -254,19 +292,25 @@ export function ThreatIntelProvider({ children }) {
       if (due.length) runProviders(due);
     };
     const id = setInterval(tick, TICK_MS);
+    const idleId = setInterval(() => {
+      if (!document.hidden) runIdleEnrichment();
+    }, IDLE_TICK_MS);
+    idleTimerRef.current = idleId;
     const onVis = () => {
       if (document.hidden) return;
       const due = dueIds();
       if (due.length) runProviders(due);
+      else runIdleEnrichment();
     };
     document.addEventListener("visibilitychange", onVis);
     return () => {
       mountedRef.current = false;
       clearInterval(id);
+      clearInterval(idleId);
       if (purgeTimerRef.current) clearTimeout(purgeTimerRef.current);
       document.removeEventListener("visibilitychange", onVis);
     };
-  }, [runProviders]);
+  }, [runProviders, runIdleEnrichment]);
 
   const totals = useMemo(() => {
     const t = { added: 0, removed: 0, unchanged: 0, changed: 0 };

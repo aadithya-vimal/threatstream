@@ -1,14 +1,30 @@
 import React from "react";
 
 /** Tiny dependency-free SVG bars. Every value comes from loaded events. */
-export function BarList({ items, maxWidth = 220 }) {
-  if (!items?.length) return <p className="muted">No data in current scope.</p>;
+export function BarList({ items, maxWidth = 220, onSelect = null, emptyText = "No data in current scope.", emptyHint = null }) {
+  if (!items?.length) {
+    return (
+      <div>
+        <p className="muted">{emptyText}</p>
+        {emptyHint && <p className="muted bar-empty-hint">{emptyHint}</p>}
+      </div>
+    );
+  }
   const max = Math.max(...items.map((i) => i.value), 1);
   return (
     <ul className="bar-list">
       {items.map((i) => (
         <li key={i.label}>
-          <span className="bar-label mono">{i.label}</span>
+          <span className="bar-label mono" title={i.sub ?? i.label}>
+            {onSelect ? (
+              <button type="button" className="bar-label-btn" onClick={() => onSelect(i.label)} title={`Filter to ${i.label}${i.sub ? ` — ${i.sub}` : ""}`}>
+                {i.label}
+              </button>
+            ) : (
+              i.label
+            )}
+            {i.sub && <span className="bar-sub">{i.sub}</span>}
+          </span>
           <span className="bar-track">
             <span className="bar-fill" style={{ width: `${Math.max(3, (i.value / max) * 100)}%` }} />
           </span>

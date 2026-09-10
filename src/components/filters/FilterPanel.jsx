@@ -20,6 +20,7 @@ function chipsFor(filters) {
   for (const v of filters.severities ?? []) push("severities", v, v);
   for (const v of filters.confidences ?? []) push("confidences", v, v);
   for (const v of filters.sourceCountries ?? []) push("sourceCountries", v, v);
+  for (const v of filters.asns ?? []) push("asns", v, v);
   if (filters.relationship && filters.relationship !== "all") {
     chips.push({ key: "relationship", label: prettyLabel(filters.relationship), clear: () => ({ relationship: "all" }) });
   }
@@ -128,6 +129,14 @@ export default function FilterPanel({ filters, onChange, facets, resultCount, to
           <div className="country-checks">
             {facets.sourceCountries.slice(0, 14).map((c) => (
               <CheckRow key={c} label={c} checked={filters.sourceCountries.includes(c)} onChange={() => toggleList("sourceCountries", c)} />
+            ))}
+          </div>
+        </div>
+        <div className="filter-group">
+          <h4>ASN</h4>
+          <div className="country-checks">
+            {(facets.asns ?? []).slice(0, 10).map((c) => (
+              <CheckRow key={c} label={c} checked={(filters.asns ?? []).includes(c)} onChange={() => toggleList("asns", c)} />
             ))}
           </div>
         </div>

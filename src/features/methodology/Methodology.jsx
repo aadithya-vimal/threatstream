@@ -169,7 +169,8 @@ export default function Methodology() {
           so unchanged refresh data merges silently instead of appearing as new attacks —
           even when a feed republishes with a new file date. Each cycle diffs the live
           snapshot by id membership (<span className="mono">+added −removed ~unchanged</span>)
-          and reports the real counts; records a source drops leave the in-memory window.
+          and reports the real counts; records a source drops leave the in-memory window
+          after a short fade-out grace period.
           Enrichment merges preservingly: a refresh payload without geography never wipes
           previously resolved coordinates.
         </p>
@@ -183,7 +184,15 @@ export default function Methodology() {
           you return. “Updated N seconds ago” reflects the last real client fetch — kept
           distinct from the <strong>source-update time</strong> (e.g. a feed&apos;s file
           date), which is shown separately in Source health. If nothing changed, the UI
-          says so — it never simulates traffic to look busy.
+          says so — it never simulates traffic to look busy. The ingest board counts
+          down each source&apos;s next check (<span className="mono">mm:ss</span>, UI time
+          from last attempt + cadence) so quiet periods are visibly alive.
+        </p>
+        <p>
+          Between provider cycles the app progressively enriches the remaining
+          backlog in small bounded idle batches (cache makes repeats free) — real
+          acquisition that grows geolocated/ASN coverage over time without hammering
+          free GeoIP tiers.
         </p>
         <p>
           <strong>LIVE</strong> means at least one enabled provider completed a successful

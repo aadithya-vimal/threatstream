@@ -95,7 +95,7 @@ export default function ThreatGlobe({
   );
 
   const legend = LEGENDS[view] ?? "markers";
-  const pal = paletteFor(theme);
+  const pal = useMemo(() => paletteFor(theme), [theme]);
   const labelColor = theme === "light" ? "#0b1222" : "#e6edf9";
 
   // Init once.
@@ -148,17 +148,29 @@ export default function ThreatGlobe({
       if (document.hidden) globe.pauseAnimation();
       else if (!stateRef.current.paused) globe.resumeAnimation();
     };
+    const onReturn = () => {
+      // Reassert rotation + rendering whenever the page becomes usable
+      // again — independent of data flow so rotation can never get stuck.
+      if (document.hidden) return;
+      const s = stateRef.current;
+      globe.controls().autoRotate = s.autoRotate && !s.paused && !reduceMotion;
+      if (!s.paused) globe.resumeAnimation();
+    };
     document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("focus", onReturn);
+    window.addEventListener("pageshow", onReturn);
     if (document.hidden) globe.pauseAnimation();
 
     return () => {
       document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("focus", onReturn);
+      window.removeEventListener("pageshow", onReturn);
       ro.disconnect();
       globe._destructor();
       globeRef.current = null;
       mount.replaceChildren();
     };
-  }, []);
+  }, [reduceMotion]);
 
   // Lifecycle stamps (UI-runtime only): leaving arrivals + changed sightings.
   const leavingIds = useMemo(() => new Set(leavingPoints.map((e) => e.id)), [leavingPoints]);
@@ -179,11 +191,21 @@ export default function ThreatGlobe({
     }
   }, [leavingPoints, leavingIds, changedSet]);
 
+  // Rotation + render-loop ownership: dedicated effect so camera motion
+  // can never get stuck behind data-flow changes.
+  useEffect(() => {
+    const globe = globeRef.current;
+    if (!globe) return;
+    const on = autoRotate && !paused && !reduceMotion && !document.hidden;
+    globe.controls().autoRotate = on;
+    if (paused || document.hidden) globe.pauseAnimation();
+    else globe.resumeAnimation();
+  }, [autoRotate, paused, reduceMotion]);
+
   // Reactive layers: view + data + theme + selection.
   useEffect(() => {
     const globe = globeRef.current;
     if (!globe) return;
-    const st = stateRef.current;
     const showPoints = view === "operations" || view === "imagery" || view === "minimal" || view === "rings" || view === "paths";
     const allPoints = showPoints ? [...points, ...leavingPoints] : [];
 
@@ -212,10 +234,6 @@ export default function ThreatGlobe({
       .atmosphereColor(theme === "light" ? "#7fb3d5" : "#3fd8ff")
       .showGraticules(view !== "minimal")
       .backgroundColor("rgba(0,0,0,0)");
-
-    globe.controls().autoRotate = st.autoRotate && !st.paused && !reduceMotion;
-    if (st.paused || document.hidden) globe.pauseAnimation();
-    else globe.resumeAnimation();
 
     // Points (operations family + paths context + grace-window leavers).
     globe

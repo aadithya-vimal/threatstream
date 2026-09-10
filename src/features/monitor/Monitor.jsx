@@ -75,6 +75,7 @@ export default function Monitor() {
       severities: [...new Set(events.map((e) => e.severity))].sort(),
       confidences: [...new Set(events.map((e) => e.confidence))].sort(),
       sourceCountries: [...new Set(events.map((e) => e.source?.countryCode).filter(Boolean))].sort(),
+      asns: [...new Set(events.map((e) => (e.source?.asn != null ? `AS${e.source.asn}` : null)).filter(Boolean))].sort(),
     }),
     [events]
   );
@@ -84,6 +85,17 @@ export default function Monitor() {
   const globeEvents = useMemo(() => filtered.filter(hasSourceCoordinates), [filtered]);
   const phishingCount = useMemo(() => filtered.filter((e) => e.classification === "phishing").length, [filtered]);
   const vulnCount = useMemo(() => filtered.filter((e) => e.classification === "vulnerability").length, [filtered]);
+  const asnItems = useMemo(
+    () => stats.byAsn.map((i) => ({ ...i, sub: stats.asnOrganizations?.[i.label] ?? "Organization unavailable" })),
+    [stats]
+  );
+  const toggleAsnFilter = (label) => {
+    setFilters((f) => {
+      const list = f.asns ?? [];
+      return { ...f, asns: list.includes(label) ? list.filter((v) => v !== label) : [...list, label] };
+    });
+  };
+  const anyAsnAnywhere = useMemo(() => events.some((e) => e.source?.asn != null), [events]);
   const selected = selectedId ? getEvent(selectedId) : null;
 
   const pick = (id, opts = {}) => {
@@ -176,7 +188,11 @@ export default function Monitor() {
         <span className="sep" aria-hidden="true">·</span>
         <span className="mono">{globeEvents.length} geolocated · {stats.genuineArcs} verified paths</span>
         <span className="sep" aria-hidden="true">·</span>
-        <span className="mono">+{diffTotals.added} new −{diffTotals.removed} removed{lastDiffAt ? ` · ${formatClock(lastDiffAt)}` : ""}</span>
+        {cycle > 0 && diffTotals.added === 0 && diffTotals.removed === 0 && diffTotals.changed === 0 ? (
+          <span className="mono">No feed changes</span>
+        ) : (
+          <span className="mono">+{diffTotals.added} new −{diffTotals.removed} removed{lastDiffAt ? ` · ${formatClock(lastDiffAt)}` : ""}</span>
+        )}
         {newestNew && (
           <button type="button" className="btn btn-ghost btn-sm" onClick={focusNewActivity} title="Focus the latest genuinely new observation">
             New activity · {newSet.size}
@@ -318,7 +334,18 @@ export default function Monitor() {
 
           <div className="stats-grid">
             <Panel title="Top source countries"><BarList items={stats.bySourceCountry} /></Panel>
-            <Panel title="ASN distribution"><BarList items={stats.byAsn} /></Panel>
+            <Panel title={`ASN distribution · ${stats.asnBearing} bearing`}>
+              <BarList
+                items={asnItems}
+                onSelect={toggleAsnFilter}
+                emptyText="No ASN data in current scope."
+                emptyHint={
+                  anyAsnAnywhere
+                    ? "None of the currently filtered observations expose ASN metadata — widen the filters."
+                    : "ASN enrichment is not available for the currently visible observations — enrichment may still be resolving."
+                }
+              />
+            </Panel>
             <Panel title="Categories"><BarList items={Object.entries(stats.byCategory).map(([label, value]) => ({ label, value }))} /></Panel>
             <Panel title="Provider distribution"><BarList items={Object.entries(stats.byProvider).map(([label, value]) => ({ label, value }))} /></Panel>
           </div>

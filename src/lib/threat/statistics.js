@@ -33,6 +33,13 @@ export function computeStatistics(events) {
     events.map((e) => e.source?.ip).filter(Boolean)
   ).size;
   const highConfidence = events.filter((e) => e.confidence === "high").length;
+  const asnBearing = events.filter((e) => e.source?.asn != null).length;
+  const asnOrganizations = {};
+  for (const e of events) {
+    if (e.source?.asn != null && e.source.organization && asnOrganizations[`AS${e.source.asn}`] == null) {
+      asnOrganizations[`AS${e.source.asn}`] = e.source.organization;
+    }
+  }
 
   return {
     total,
@@ -42,6 +49,8 @@ export function computeStatistics(events) {
     pendingGeolocation: total - geolocated,
     genuineArcs: withArc,
     highConfidence,
+    asnBearing,
+    asnOrganizations,
     byProvider,
     byCategory,
     byClassification,

@@ -5,9 +5,18 @@ import { useThreatIntel } from "../../state/ThreatIntelContext.jsx";
 export default function Landing() {
   const { events, initialLoading, health, providers } = useThreatIntel();
   const okProviders = Object.values(health).filter((h) => h.status === "ok").length;
-  const geolocated = events.filter(
+  const geolocatedEvents = events.filter(
     (e) => typeof e.source?.latitude === "number" && typeof e.source?.longitude === "number"
-  ).length;
+  );
+  const geolocated = geolocatedEvents.length;
+  // Real plotted markers only: equirectangular projection of actual
+  // coordinates onto the decorative disc. No synthetic positions.
+  const heroDots = geolocatedEvents.slice(0, 12).map((e) => ({
+    id: e.id,
+    x: ((e.source.longitude + 180) / 360) * 100,
+    y: ((90 - e.source.latitude) / 180) * 100,
+    label: `${e.source.ip ?? e.id} · ${e.source.country ?? "Country pending"}`,
+  }));
 
   return (
     <div className="landing">
@@ -50,6 +59,14 @@ export default function Landing() {
           <div className="css-globe">
             <span className="css-globe-ring r1" />
             <span className="css-globe-ring r2" />
+            {heroDots.map((d) => (
+              <span
+                key={d.id}
+                className="hero-dot"
+                style={{ left: `${d.x}%`, top: `${d.y}%` }}
+                title={d.label}
+              />
+            ))}
           </div>
           <span className="css-globe-tag" style={{ top: "12%", right: "8%" }}>DROP · live</span>
           <span className="css-globe-tag" style={{ bottom: "14%", left: "6%" }}>in-memory · no tracking</span>

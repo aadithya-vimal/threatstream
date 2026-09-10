@@ -88,7 +88,9 @@ const ENDPOINTS = [
   {
     name: "ipwho.is",
     url: (ip) =>
-      `https://ipwho.is/${encodeURIComponent(ip)}?fields=ip,country,country_code,region,city,latitude,longitude,asn,org`,
+      // NOTE: ASN/org live nested under `connection` — the allowlist must
+      // name it or the response omits ASN data entirely.
+      `https://ipwho.is/${encodeURIComponent(ip)}?fields=ip,country,country_code,region,city,latitude,longitude,connection`,
     parse: parseIpwhoIs,
   },
   {

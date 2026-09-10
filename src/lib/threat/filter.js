@@ -11,6 +11,7 @@ export const EMPTY_FILTERS = Object.freeze({
   severities: [],
   confidences: [],
   providers: [],
+  asns: [],
   relationship: "all", // all | source_only | observed_path | intel_only
   hours: 0, // 0 = full loaded scope
 });
@@ -23,6 +24,7 @@ export function applyFilters(events, filters = {}, nowMs = Date.now()) {
 
   return events.filter((e) => {
     if (f.providers.length && !f.providers.includes(e.sourceProvider)) return false;
+    if (f.asns.length && !f.asns.includes(e.source?.asn != null ? `AS${e.source.asn}` : "XX")) return false;
     if (f.classifications.length && !f.classifications.includes(e.classification))
       return false;
     if (f.categories.length && !f.categories.includes(e.category)) return false;

@@ -86,3 +86,21 @@ export async function fetchProviders(ids = null, { onSettled = null } = {}) {
 export async function fetchAllProviders() {
   return fetchProviders(null);
 }
+
+/**
+ * Milliseconds until a provider's next scheduled check, derived from its
+ * last attempt wall-clock + cadence. Pure UI-time helper for countdowns —
+ * never touches event timestamps. Returns 0 when due now.
+ */
+export function nextCheckInMs(lastAttemptMs, refreshIntervalMs, nowMs = Date.now()) {
+  if (lastAttemptMs == null || Number.isNaN(lastAttemptMs)) return 0;
+  return Math.max(0, refreshIntervalMs - (nowMs - lastAttemptMs));
+}
+
+export function formatCountdown(ms) {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  const p = (n) => String(n).padStart(2, "0");
+  return `${p(m)}:${p(r)}`;
+}

@@ -53,8 +53,16 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("ip query guard", () => {
-  it("rejects private, reserved, documentation, and malformed IPs", () => {
+describe("endpoint configuration", () => {
+  it("requests the nested connection object so ASN/org are returned", () => {
+    // Regression: an allowlist of flat `asn,org` fields silently drops ASN
+    // data because ipwho.is nests it under `connection`.
+    const url = __geoInternals.ENDPOINTS[0].url("8.8.8.8");
+    expect(url).toContain("connection");
+  });
+});
+
+describe("ip query guard", () => {  it("rejects private, reserved, documentation, and malformed IPs", () => {
     expect(isQueryableIpv4("10.0.0.1")).toBe(false);
     expect(isQueryableIpv4("192.168.1.1")).toBe(false);
     expect(isQueryableIpv4("127.0.0.1")).toBe(false);

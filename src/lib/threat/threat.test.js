@@ -178,6 +178,8 @@ describe("filtering", () => {
     expect(applyFilters(evts, { categories: ["reputation_blocklist"] })).toHaveLength(1);
     expect(applyFilters(evts, { severities: ["high"] })).toHaveLength(1);
     expect(applyFilters(evts, { sourceCountries: ["US"] })).toHaveLength(1);
+    expect(applyFilters(evts, { asns: ["AS13335"] })).toHaveLength(1);
+    expect(applyFilters(evts, { asns: ["AS99999"] })).toHaveLength(0);
     expect(applyFilters(evts, { relationship: "intel_only" })).toHaveLength(2);
     expect(applyFilters(evts, { relationship: "source_only" })).toHaveLength(0);
   });
@@ -212,6 +214,16 @@ describe("statistics", () => {
     expect(s.pendingGeolocation).toBe(1);
     expect(s.genuineArcs).toBe(0);
     expect(s.byProvider["spamhaus-drop"]).toBe(2);
+  });
+
+  it("counts ASN-bearing observations and maps first-seen organizations", () => {
+    const withAsn = createThreatEvent({ provider: "spamhaus-drop", recordId: "3.3.3.0/24", source: { ip: "3.3.3.0", asn: 14061, organization: "DigitalOcean" } });
+    const noAsn = createThreatEvent({ provider: "spamhaus-drop", recordId: "4.4.4.0/24", source: { ip: "4.4.4.0" } });
+    const s = computeStatistics([withAsn, noAsn]);
+    expect(s.asnBearing).toBe(1);
+    expect(s.byAsn).toEqual([{ label: "AS14061", value: 1 }]);
+    expect(s.asnOrganizations).toEqual({ AS14061: "DigitalOcean" });
+    expect(computeStatistics([noAsn]).byAsn).toEqual([]);
   });
 
   it("returns empty buckets when no timestamps exist", () => {

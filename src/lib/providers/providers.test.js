@@ -5,7 +5,7 @@ import iscSources from "./iscSources.js";
 import openphish from "./openphish.js";
 import cisaKev from "./cisaKev.js";
 import { DISABLED_PROVIDERS, UNAVAILABLE_PROVIDERS } from "./disabled.js";
-import { fetchAllProviders, fetchProviders, getProviderMetadata } from "./index.js";
+import { fetchAllProviders, fetchProviders, formatCountdown, getProviderMetadata, nextCheckInMs } from "./index.js";
 
 describe("spamhaus-drop provider", () => {
   it("normalizes fetched text with a bounded, deterministic slice", async () => {
@@ -117,6 +117,21 @@ describe("provider registry", () => {
     expect(results[0].id).toBe("dshield");
   });
 
+describe("scheduler countdown helpers", () => {
+  it("computes ms until next check from last attempt + cadence", () => {
+    expect(nextCheckInMs(null, 600000, 1000000)).toBe(0);
+    expect(nextCheckInMs(1000000, 600000, 1000000 + 100000)).toBe(500000);
+    expect(nextCheckInMs(1000000, 600000, 1000000 + 900000)).toBe(0);
+  });
+
+  it("formats mm:ss countdowns", () => {
+    expect(formatCountdown(561000)).toBe("09:21");
+    expect(formatCountdown(0)).toBe("00:00");
+    expect(formatCountdown(-5)).toBe("00:00");
+  });
+});
+
+describe("unavailable-source documentation", () => {
   it("keeps CORS-blocked sources out of the live list with documentation", () => {
     expect(UNAVAILABLE_PROVIDERS.map((p) => p.id)).toContain("feodo-tracker");
     expect(UNAVAILABLE_PROVIDERS.every((d) => d.reason && d.reference)).toBe(true);
@@ -137,4 +152,5 @@ describe("provider registry", () => {
       expect(Array.isArray(r.events)).toBe(true);
     }
   });
+});
 });
