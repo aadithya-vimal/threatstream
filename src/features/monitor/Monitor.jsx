@@ -213,9 +213,11 @@ export default function Monitor() {
         <EmptyState
           title="No live observations"
           hint={
-            failing.length
-              ? `All providers failed (${failing.map((p) => p.name).join(", ")}). Check your connection and refresh — ThreatStream will not invent data to fill the silence.`
-              : "Providers returned no records this cycle. Refresh to retry."
+            failing.length === providers.length && providers.length > 0
+              ? `All providers failed (${failing.map((p) => p.name).join(", ")}). If this persists, an adblocker, DNS filter, or firewall blocking the feed hosts (e.g. raw.githubusercontent.com) is the usual cause — ThreatStream will not invent data to fill the silence.`
+              : failing.length
+                ? `Providers failed (${failing.map((p) => p.name).join(", ")}) and the rest returned no records. Check your connection and refresh — ThreatStream will not invent data to fill the silence.`
+                : "Providers returned no records this cycle. Refresh to retry."
           }
           action={<button type="button" className="btn btn-primary" onClick={refresh}>Retry live fetch</button>}
         />

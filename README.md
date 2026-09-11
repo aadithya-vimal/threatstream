@@ -105,6 +105,7 @@ npm run preview  # serve dist/ locally to verify
 |---|---|---|---|---|
 | **Spamhaus DROP** via FireHOL mirror | CIDR ranges under hijacked / botnet-C&C control | 10 min | Source-only markers (●), geolocated in-browser | `https://www.spamhaus.org/drop/drop.txt` |
 | **DShield** (SANS) via FireHOL mirror | Top ~20 attacking /24s seen over 3 days | 10 min | Source-only markers (●), geolocated in-browser | `https://www.dshield.org/block.html` |
+| **ET Block** (Emerging Threats) via FireHOL mirror | Hosts flagged compromised + frequently malicious | 30 min | Source-only markers (●), geolocated in-browser | `https://www.emergingthreats.net/` |
 | **ISC Attack Sources** (SANS, direct API) | Attacker IPs + observed counts + first/last seen | 30 min | Source-only markers (●), geolocated in-browser | `https://isc.sans.edu/` |
 | **OpenPhish** Community Feed (raw GitHub mirror) | Reported phishing URLs (~300) | 30 min | Intel records (feed/stats only, never globe) | `https://www.openphish.com/phishing_feeds.html` |
 | **CISA KEV** via official `cisagov/kev-data` mirror | CVEs confirmed exploited (~1700) | 60 min | Intel records (feed/stats only, never globe) | `https://www.cisa.gov/known-exploited-vulnerabilities-catalog` |

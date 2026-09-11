@@ -10,12 +10,13 @@
  */
 import spamhausDrop from "./spamhausDrop.js";
 import dshield from "./dshield.js";
+import etBlock from "./etBlock.js";
 import iscSources from "./iscSources.js";
 import openphish from "./openphish.js";
 import cisaKev from "./cisaKev.js";
 import { DISABLED_PROVIDERS, UNAVAILABLE_PROVIDERS } from "./disabled.js";
 
-export const PROVIDER_LIST = [spamhausDrop, dshield, iscSources, openphish, cisaKev];
+export const PROVIDER_LIST = [spamhausDrop, dshield, etBlock, iscSources, openphish, cisaKev];
 export { DISABLED_PROVIDERS, UNAVAILABLE_PROVIDERS };
 
 export function getProviderMetadata() {
@@ -38,39 +39,67 @@ export function getProviderMetadata() {
 }
 
 /**
- * Fetch a subset of providers by id (default: all enabled).
- * Always resolves — per-provider results carry ok/data or ok:false/error.
- * No fake fallback, ever. onSettled(result) fires as each provider finishes,
- * enabling honest per-provider progress (counts only, never synthetic data).
+ * Fetch one provider with bounded retries (transient blips must not cost a
+ * whole refresh cycle). Returns the same ok/data or ok:false/error shape.
+ * Exported for tests; production uses fetchProviders below.
  */
-export async function fetchProviders(ids = null, { onSettled = null } = {}) {
-  const list = ids ? PROVIDER_LIST.filter((p) => ids.includes(p.id)) : PROVIDER_LIST;
-  const settled = await Promise.all(
-    list.map(async (p) => {
-      const started = Date.now();
-      let result;
-      try {
-        const data = await p.fetchLatest();
-        result = {
-          id: p.id,
-          ok: true,
-          latencyMs: Date.now() - started,
-          fetchedAt: new Date().toISOString(),
-          ...data,
-        };
-      } catch (err) {
-        result = {
+export async function fetchProviderWithRetry(p, { attempts = 3, baseDelayMs = 1500 } = {}) {
+  const started = Date.now();
+  let lastMessage = "Unknown provider error";
+  for (let i = 0; i < attempts; i += 1) {
+    if (i > 0) {
+      await new Promise((r) => setTimeout(r, baseDelayMs * i));
+      if (typeof document !== "undefined" && document.hidden) {
+        return {
           id: p.id,
           ok: false,
           latencyMs: Date.now() - started,
           fetchedAt: new Date().toISOString(),
           events: [],
-          error:
-            err?.name === "AbortError"
-              ? "Request timed out"
-              : err?.message ?? "Unknown provider error",
+          error: "Skipped while tab hidden",
         };
       }
+    }
+    try {
+      const data = await p.fetchLatest();
+      return {
+        id: p.id,
+        ok: true,
+        latencyMs: Date.now() - started,
+        fetchedAt: new Date().toISOString(),
+        ...data,
+      };
+    } catch (err) {
+      lastMessage =
+        err?.name === "AbortError" ? "Request timed out" : (err?.message ?? "Unknown provider error");
+    }
+  }
+  return {
+    id: p.id,
+    ok: false,
+    latencyMs: Date.now() - started,
+    fetchedAt: new Date().toISOString(),
+    events: [],
+    error: attempts > 1 ? `${lastMessage} (${attempts} attempts)` : lastMessage,
+  };
+}
+
+/**
+ * Fetch a subset of providers by id (default: all enabled).
+ * Always resolves — per-provider results carry ok/data or ok:false/error.
+ * No fake fallback, ever. onSettled(result) fires as each provider finishes,
+ * enabling honest per-provider progress (counts only, never synthetic data).
+ * staggerMs spaces out provider starts (initial load only, avoids a cold
+ * thundering herd that includes a ~1.7 MB catalog).
+ */
+export async function fetchProviders(ids = null, { onSettled = null, staggerMs = 0 } = {}) {
+  const list = ids ? PROVIDER_LIST.filter((p) => ids.includes(p.id)) : PROVIDER_LIST;
+  const settled = await Promise.all(
+    list.map(async (p, i) => {
+      if (staggerMs > 0 && i > 0) {
+        await new Promise((r) => setTimeout(r, staggerMs * i));
+      }
+      const result = await fetchProviderWithRetry(p);
       try {
         onSettled?.(result);
       } catch {

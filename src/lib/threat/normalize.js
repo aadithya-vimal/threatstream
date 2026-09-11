@@ -280,6 +280,31 @@ export function normalizeIscSources(payload) {
   return { events, skipped };
 }
 /**
+ * Normalize one Emerging Threats Block line. ET flags compromised hosts
+ * frequently involved in malicious activity — source-only block
+ * recommendations (no victims, no per-event time).
+ */
+export function normalizeEtLine(line, { fileDateIso = null, sourceUrl = null } = {}) {
+  return normalizeCidrLine(line, {
+    provider: PROVIDERS.ET_BLOCK,
+    category: "compromised_infrastructure",
+    // Provider-level mapping, documented in Methodology: ET Block lists
+    // hosts flagged as compromised — a block recommendation.
+    severity: "high",
+    fileDateIso,
+    sourceUrl,
+  });
+}
+
+/**
+ * Normalize one ET Block file. Same envelope as DROP/DShield
+ * (Source File Date header, CIDR lines) with ET semantics.
+ */
+export function normalizeEtList(text, options = {}) {
+  return normalizeCidrList(text, normalizeEtLine, options);
+}
+
+/**
  * Normalize one OpenPhish community-feed URL line into phishing intel.
  * The feed carries no per-URL timestamps and no IPs: the event is
  * non-geographic by construction (destination null, no coordinates).

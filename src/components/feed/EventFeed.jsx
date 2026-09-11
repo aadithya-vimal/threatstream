@@ -19,6 +19,7 @@ function titleFor(event) {
   if (event.classification === "vulnerability") return event.raw?.cveID ?? "Vulnerability intel";
   if (event.classification === "phishing") return "Phishing intelligence";
   if (event.category === "attack_source") return "Recent attack source";
+  if (event.category === "compromised_infrastructure") return "Compromised host";
   if (event.category === "reputation_blocklist") return "Malicious infrastructure";
   return prettyLabel(event.category);
 }

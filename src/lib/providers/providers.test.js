@@ -1,11 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import spamhausDrop from "./spamhausDrop.js";
 import dshield from "./dshield.js";
+import etBlock from "./etBlock.js";
 import iscSources from "./iscSources.js";
 import openphish from "./openphish.js";
 import cisaKev from "./cisaKev.js";
 import { DISABLED_PROVIDERS, UNAVAILABLE_PROVIDERS } from "./disabled.js";
-import { fetchAllProviders, fetchProviders, formatCountdown, getProviderMetadata, nextCheckInMs } from "./index.js";
+import { fetchAllProviders, fetchProviders, fetchProviderWithRetry, formatCountdown, getProviderMetadata, nextCheckInMs } from "./index.js";
 
 describe("spamhaus-drop provider", () => {
   it("normalizes fetched text with a bounded, deterministic slice", async () => {
@@ -65,6 +66,46 @@ describe("isc-sources provider", () => {
   });
 });
 
+describe("et-block provider", () => {
+  it("normalizes the ET compromised-host list, source-only", async () => {
+    const text = "# hdr\n# Source File Date: Wed Sep  9 04:30:01 UTC 2026\n5.6.7.0/24\ngarbage\n";
+    const result = await etBlock.fetchLatest({ fetchText: async () => text });
+    expect(result.totalInFeed).toBe(1);
+    expect(result.skipped).toBe(1);
+    expect(result.events[0].sourceProvider).toBe("et-block");
+    expect(result.events[0].category).toBe("compromised_infrastructure");
+    expect(result.events[0].destination).toBeNull();
+    expect(result.fileDateIso).toContain("2026-09-09");
+  });
+});
+
+describe("fetch retry", () => {  it("retries transient failures then succeeds", async () => {
+    let calls = 0;
+    const stub = {
+      id: "stub",
+      fetchLatest: async () => {
+        calls += 1;
+        if (calls < 3) throw new TypeError("Failed to fetch");
+        return { events: [], totalInFeed: 0, skipped: 0, fileDateIso: null, fetchedAt: new Date().toISOString() };
+      },
+    };
+    const r = await fetchProviderWithRetry(stub, { attempts: 3, baseDelayMs: 1 });
+    expect(r.ok).toBe(true);
+    expect(calls).toBe(3);
+  });
+
+  it("reports the last error after exhausting attempts", async () => {
+    const stub = {
+      id: "stub",
+      fetchLatest: async () => { throw new Error("net down"); },
+    };
+    const r = await fetchProviderWithRetry(stub, { attempts: 2, baseDelayMs: 1 });
+    expect(r.ok).toBe(false);
+    expect(r.events).toEqual([]);
+    expect(r.error).toContain("net down");
+  });
+});
+
 describe("openphish provider", () => {
   it("returns phishing intel with null timestamps and no destinations", async () => {
     const result = await openphish.fetchLatest({
@@ -105,7 +146,7 @@ describe("cisa-kev provider (GitHub mirror)", () => {
 describe("provider registry", () => {
   it("exposes metadata only for verified browser-compatible providers", () => {
     const meta = getProviderMetadata();
-    expect(meta.map((m) => m.id).sort()).toEqual(["cisa-kev", "dshield", "isc-sources", "openphish", "spamhaus-drop"]);
+    expect(meta.map((m) => m.id).sort()).toEqual(["cisa-kev", "dshield", "et-block", "isc-sources", "openphish", "spamhaus-drop"]);
     expect(meta.every((m) => m.requiresKey === false)).toBe(true);
     expect(meta.every((m) => m.browserCompatible === true)).toBe(true);
     expect(meta.every((m) => m.attribution && m.updateCadence && m.feedType)).toBe(true);
@@ -116,6 +157,7 @@ describe("provider registry", () => {
     const expected = {
       "spamhaus-drop": 10 * 60 * 1000,
       dshield: 10 * 60 * 1000,
+      "et-block": 30 * 60 * 1000,
       "isc-sources": 30 * 60 * 1000,
       openphish: 30 * 60 * 1000,
       "cisa-kev": 60 * 60 * 1000,

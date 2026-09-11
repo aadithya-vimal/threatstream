@@ -78,7 +78,7 @@ export default function Landing() {
           <div className="landing-grid">
             <div>
               <h3>Attributed sources</h3>
-              <p>Every intelligence record remains attributable to its source — Spamhaus DROP, DShield, SANS ISC, OpenPhish, and CISA KEV.</p>
+              <p>Every intelligence record remains attributable to its source — Spamhaus DROP, DShield, Emerging Threats, SANS ISC, OpenPhish, and CISA KEV.</p>
             </div>
             <div>
               <h3>Observed vs enriched</h3>

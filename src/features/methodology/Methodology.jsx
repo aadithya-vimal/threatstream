@@ -72,6 +72,13 @@ export default function Methodology() {
             Recent attack sources, still source-only: no victims, no per-event times.
             Polled every 10 min.
           </SourceDef>
+          <SourceDef name="ET Block (Emerging Threats) · FireHOL mirror" status="Live" statusTone="success">
+            Hosts Emerging Threats flags as compromised and frequently involved in
+            malicious activity (maintainer Category: attacks). FireHOL is only the
+            CORS-compatible mirror — attribution names Emerging Threats as the origin.
+            Source-only block recommendations: no victims, no per-event times.
+            Polled every 30 min.
+          </SourceDef>
           <SourceDef name="ISC Attack Sources (SANS, direct API)" status="Live" statusTone="success">
             Attacker source IPs its sensors observed, with per-record attack counts and{" "}
             <strong>first/last seen dates</strong> — genuine source observation times

@@ -121,7 +121,7 @@ export function ThreatIntelProvider({ children }) {
     setLeaving([...leavingRef.current.values()].map((l) => l.event));
   }, []);
 
-  const runProviders = useCallback(async (ids) => {
+  const runProviders = useCallback(async (ids, { staggerMs = 0 } = {}) => {
     if (document.hidden) return;
     if (runningRef.current) return; // never overlap two refresh cycles
     runningRef.current = true;
@@ -133,6 +133,7 @@ export function ThreatIntelProvider({ children }) {
       if (!targets.length) return;
       setRefreshProgress({ active: true, done: 0, total: targets.length });
       const results = await fetchProviders(targets, {
+        staggerMs,
         onSettled: () => {
           if (mountedRef.current) {
             setRefreshProgress((p) => ({ ...p, done: Math.min(p.total, p.done + 1) }));
@@ -284,7 +285,7 @@ export function ThreatIntelProvider({ children }) {
 
   useEffect(() => {
     mountedRef.current = true;
-    runProviders(null);
+    runProviders(null, { staggerMs: 400 });
     const dueIds = () => {
       const now = Date.now();
       return getProviderMetadata()

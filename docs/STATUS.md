@@ -12,8 +12,10 @@ historical and not authoritative.
 - Live sources (all verified browser-compatible 2026-09-10): Spamhaus DROP
   (FireHOL mirror, 10 min), DShield via FireHOL mirror (10 min), ISC Attack
   Sources direct API (30 min), OpenPhish community raw mirror (30 min),
-  CISA KEV via official cisagov/kev-data mirror (60 min);
-  ipwho.is → ipwhois.app enrichment. 60-second due-check scheduler (overlap-guarded)
+  CISA KEV via official cisagov/kev-data mirror (60 min), ET Block via FireHOL
+  mirror (30 min);
+  ipwho.is → ipwhois.app enrichment. 60-second due-check scheduler (overlap-guarded,
+  staggered cold start, per-provider retries)
   + snapshot diffing with lifecycle transitions (enter/fade/pulse), NEW badges,
   source drawer, ASN analytics.
 - Pair-telemetry hunt 2026-09-10: no keyless CORS-compatible endpoint-bearing

@@ -23,7 +23,7 @@ export const CISA_KEV_INFO_URL =
 /** Most recently added CVEs first, bounded for memory + rendering. */
 export const MAX_KEV_PER_CYCLE = 120;
 
-async function fetchJsonWithTimeout(url, { timeoutMs = 30000 } = {}) {
+async function fetchJsonWithTimeout(url, { timeoutMs = 60000 } = {}) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {

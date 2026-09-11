@@ -14,6 +14,7 @@
 export const PROVIDERS = {
   SPAMHAUS_DROP: "spamhaus-drop",
   DSHIELD: "dshield",
+  ET_BLOCK: "et-block",
   ISC_SOURCES: "isc-sources",
   OPENPHISH: "openphish",
   CISA_KEV: "cisa-kev",
