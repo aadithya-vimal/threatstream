@@ -227,6 +227,12 @@ export function ThreatIntelProvider({ children }) {
         setNewIds([...newAtRef.current.keys()]);
         setChangedIds([...changedAtRef.current.keys()]);
       }
+      // Health, diagnostics, diffs, and fetch times advance EVERY completed
+      // cycle — never gated on data changes. Removing any of these updates
+      // strands the UI in a permanent loading/offline state.
+      setHealth((prev) => healthFor(results, prev, attemptTimes));
+      setGeoStats(getGeoDiagnostics());
+      setDiffs((prev) => ({ ...prev, ...nextDiffs }));
       setLastUpdated(nowIso);
       setCycle((c) => c + 1);
 

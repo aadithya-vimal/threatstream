@@ -27,6 +27,7 @@ function titleFor(event) {
 function kindShort(kind) {
   if (kind === "published") return "published";
   if (kind === "list_publication") return "list updated";
+  if (kind === "observed") return "observed";
   if (kind === "received") return "feed received";
   return "time unknown";
 }
