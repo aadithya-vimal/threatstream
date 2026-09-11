@@ -111,6 +111,14 @@ describe("provider registry", () => {
     expect(meta.every((m) => m.attribution && m.updateCadence && m.feedType)).toBe(true);
   });
 
+  it("keeps every provider on a fast heartbeat cadence", () => {
+    const meta = getProviderMetadata();
+    for (const m of meta) {
+      expect(m.refreshIntervalMs).toBeGreaterThan(0);
+      expect(m.refreshIntervalMs).toBeLessThanOrEqual(60 * 1000);
+    }
+  });
+
   it("fetches a subset of providers without touching the others", async () => {
     const results = await fetchProviders(["dshield"]);
     expect(results).toHaveLength(1);

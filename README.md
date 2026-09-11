@@ -64,11 +64,11 @@ React · Vite · Globe.GL · Three.js · Public CTI feeds · Browser-side GeoIP 
 
 | Provider | What it publishes | What ThreatStream renders | Attribution |
 |---|---|---|---|
-| **Spamhaus DROP** via FireHOL mirror (`raw.githubusercontent.com`) | CIDR ranges under hijacked / botnet-C&C control, origin ~12h refresh, polled 10 min | Source-only markers (●), geolocated in-browser | `https://www.spamhaus.org/drop/drop.txt` |
-| **DShield** (SANS) via FireHOL mirror | Top ~20 attacking /24s seen over 3 days, ~10 min refresh, polled 10 min | Source-only markers (●), geolocated in-browser | `https://www.dshield.org/block.html` (mirror: FireHOL) |
-| **ISC Attack Sources** (SANS, direct API) | Attacker IPs with observed counts + first/last seen, daily aggregates, polled 30 min | Source-only markers (●), geolocated in-browser | `https://isc.sans.edu/` |
-| **OpenPhish** Community Feed (raw GitHub mirror) | Reported phishing URLs (~300), periodic refresh, polled 30 min | Intel records (feed/stats only, never globe) | `https://www.openphish.com/phishing_feeds.html` |
-| **CISA KEV** via official `cisagov/kev-data` mirror | CVEs confirmed exploited (~1700), weekdays, polled 60 min | Intel records (feed/stats only, never globe) | `https://www.cisa.gov/known-exploited-vulnerabilities-catalog` |
+| **Spamhaus DROP** via FireHOL mirror (`raw.githubusercontent.com`) | CIDR ranges under hijacked / botnet-C&C control, origin ~12h refresh, polled 20 sec | Source-only markers (●), geolocated in-browser | `https://www.spamhaus.org/drop/drop.txt` |
+| **DShield** (SANS) via FireHOL mirror | Top ~20 attacking /24s seen over 3 days, ~10 min refresh, polled 20 sec | Source-only markers (●), geolocated in-browser | `https://www.dshield.org/block.html` (mirror: FireHOL) |
+| **ISC Attack Sources** (SANS, direct API) | Attacker IPs with observed counts + first/last seen, daily aggregates, polled 20 sec | Source-only markers (●), geolocated in-browser | `https://isc.sans.edu/` |
+| **OpenPhish** Community Feed (raw GitHub mirror) | Reported phishing URLs (~300), periodic refresh, polled 20 sec | Intel records (feed/stats only, never globe) | `https://www.openphish.com/phishing_feeds.html` |
+| **CISA KEV** via official `cisagov/kev-data` mirror | CVEs confirmed exploited (~1700), weekdays, polled 20 sec | Intel records (feed/stats only, never globe) | `https://www.cisa.gov/known-exploited-vulnerabilities-catalog` |
 | **ipwho.is** (free, keyless) | Approximate IP → country/city/ASN/org | Enrichment only, labeled `geolocation_approximate` | Per-event, in detail panel |
 
 **Unavailable** (documented in-app under Source health): Feodo Tracker — blocklist
@@ -82,10 +82,10 @@ the bundle, ever.
 
 ## Data Integrity
 
-1. On load — and per source on its own cadence after (DROP/DShield 10 min,
-   OpenPhish 30 min, KEV 60 min; a 60-second scheduler checks what is due,
-   pausing while the tab is hidden) — the provider registry fetches each
-   enabled source directly from the browser.
+1. On load — and every ~20 seconds after (a 5-second scheduler checks what is
+   due, pausing while the tab is hidden; browser HTTP caching keeps repeat
+   fetches cheap) — the provider registry fetches each enabled source directly
+   from the browser.
 2. Payloads are normalized into `ThreatEvent`s (`src/lib/threat/model.js`).
 3. Events deduplicate on stable provider-derived ids; each cycle diffs the live
    snapshot (`+added −removed ~unchanged`) and reports real counts — unchanged
@@ -110,19 +110,25 @@ Unknown stays `null`/`unknown` — never `(0,0)`, never “now”, never “medi
 
 ## Globe Visualization
 
-`src/components/globe/ThreatGlobe.jsx` (plain Three.js + OrbitControls):
+`src/components/globe/ThreatGlobe.jsx` (Globe.GL, 7 switchable views over one
+real dataset — Operations, Heatmap, Verified Flows, Rings, Hex, Satellite, Minimal):
 
 - Source-only intel → marker (red observed, amber enriched); genuine
-  both-endpoint observations → great-circle arc with traveling pulse.
+  both-endpoint observations → great-circle arc with a continuously repeating
+  directional pulse for as long as the record stays loaded.
 - Real arrivals fade/scale in with a ring, removals fade out, changes pulse —
   driven by actual snapshot diffs, never simulated. Unchanged markers stay still.
-- No verified victim endpoints exist in current browser-compatible feeds
-  (verified: ISC publishes sources + counts only; Feodo is CORS-blocked), so
+- No verified victim endpoints exist in current browser-compatible feeds, so
   the globe truthfully reports zero confirmed paths instead of drawing arcs.
-- Current sources publish **source-only** intelligence, so the globe truthfully
-  shows markers and reports zero confirmed paths.
-- Instanced markers (cap 600), arc cap (40), rAF paused when hidden, full
-  disposal on unmount, fullscreen support, reduced-motion support.
+  Investigated 2026-09-10: ISC publishes sources + counts only; Feodo is
+  CORS-blocked; URLhaus/ThreatFox are key-gated or CORS-blocked; Emerging
+  Threats and blocklist.de publish bare IP lists with no CORS headers — and
+  even where both endpoint types exist in one record (e.g. MISP attributes),
+  the source never establishes that they communicated, so pairing them would
+  itself be fabrication.
+- Capped markers (600), arcs (40), rings (in-session arrivals only), heat/hex
+  derived from the same records at weight 1; rendering pauses when hidden,
+  fullscreen support, reduced-motion support.
 
 ## Local Development
 

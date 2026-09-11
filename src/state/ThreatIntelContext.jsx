@@ -35,7 +35,7 @@ import { enrichEvents, getGeoDiagnostics } from "../lib/providers/geoEnrichment.
 import { diffIdSets, mergeEvents } from "../lib/threat/dedup.js";
 import { sortByTimeDesc } from "../lib/threat/filter.js";
 
-const TICK_MS = 60 * 1000;
+const TICK_MS = 5 * 1000;
 const NEW_BADGE_MS = 10 * 60 * 1000;
 const CHANGED_WINDOW_MS = 2 * 60 * 1000;
 /** Idle enrichment: small bounded top-ups between provider cycles. */
@@ -189,35 +189,43 @@ export function ThreatIntelProvider({ children }) {
         };
       }
 
-      // Prune lifecycle windows.
+      // Prune lifecycle windows (pruning itself is a visible change).
+      let pruned = 0;
       for (const [id, at] of newAtRef.current) {
-        if (nowMs - at > NEW_BADGE_MS) newAtRef.current.delete(id);
+        if (nowMs - at > NEW_BADGE_MS) { newAtRef.current.delete(id); pruned += 1; }
       }
       for (const [id, at] of changedAtRef.current) {
-        if (nowMs - at > CHANGED_WINDOW_MS) changedAtRef.current.delete(id);
+        if (nowMs - at > CHANGED_WINDOW_MS) { changedAtRef.current.delete(id); pruned += 1; }
       }
 
       // Enrich only events still missing coordinates.
       const missing = [...map.values()].filter(
         (e) => e.source?.ip && (e.source.latitude == null || e.source.longitude == null)
       );
+      let enrichChanged = 0;
       if (missing.length) {
         const { events: enriched } = await enrichEvents(missing);
         const remerged = mergeEvents(map, enriched);
         map = remerged.map;
+        enrichChanged = remerged.updated;
         for (const id of remerged.updatedIds) {
           if (!changedAtRef.current.has(id)) changedAtRef.current.set(id, nowMs);
         }
       }
       if (!mountedRef.current) return;
       mapRef.current = map;
-      setEvents(sortByTimeDesc([...map.values()]));
-      publishLeaving();
-      setHealth((prev) => healthFor(results, prev, attemptTimes));
-      setGeoStats(getGeoDiagnostics());
-      setDiffs((prev) => ({ ...prev, ...nextDiffs }));
-      setNewIds([...newAtRef.current.keys()]);
-      setChangedIds([...changedAtRef.current.keys()]);
+      // Zero-change cycles leave rendered state untouched (health, diffs,
+      // and fetch times still advance so freshness stays truthful).
+      const touched =
+        pruned > 0 ||
+        enrichChanged > 0 ||
+        Object.values(nextDiffs).some((d) => d.added > 0 || d.removed > 0 || d.changed > 0);
+      if (touched) {
+        setEvents(sortByTimeDesc([...map.values()]));
+        publishLeaving();
+        setNewIds([...newAtRef.current.keys()]);
+        setChangedIds([...changedAtRef.current.keys()]);
+      }
       setLastUpdated(nowIso);
       setCycle((c) => c + 1);
 

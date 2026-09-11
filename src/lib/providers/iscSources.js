@@ -44,12 +44,12 @@ const provider = {
   sourceUrl: ISC_INFO_URL,
   feedUrl: ISC_SOURCES_URL,
   attribution: "SANS Internet Storm Center",
-  updateCadence: "Daily sensor aggregates · polled every 30 min",
+  updateCadence: "Daily sensor aggregates · polled every 20 sec",
   feedType: "Attack-source observations (JSON)",
   browserCompatible: true,
   limitations:
     "Source IPs + counts only — no victims, no ports per record, no destinations. Counts reflect sensor visibility, not global totals.",
-  refreshIntervalMs: 30 * 60 * 1000,
+  refreshIntervalMs: 20 * 1000,
   requiresKey: false,
 
   async fetchLatest({ fetchJson = fetchJsonWithTimeout } = {}) {

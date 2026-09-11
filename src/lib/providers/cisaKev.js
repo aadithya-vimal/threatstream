@@ -52,12 +52,12 @@ const provider = {
   sourceUrl: CISA_KEV_INFO_URL,
   feedUrl: CISA_KEV_MIRROR_URL,
   attribution: "CISA (via official cisagov/kev-data mirror)",
-  updateCadence: "Weekdays on catalog change · polled every 60 min",
+  updateCadence: "Weekdays on catalog change · polled every 20 sec",
   feedType: "Vulnerability catalog (JSON, ~1.7 MB)",
   browserCompatible: true,
   limitations:
     "CVE intel only — no IPs, no geography, no severity field (stays unknown).",
-  refreshIntervalMs: 60 * 60 * 1000,
+  refreshIntervalMs: 20 * 1000,
   requiresKey: false,
 
   async fetchLatest({ fetchJson = fetchJsonWithTimeout } = {}) {
