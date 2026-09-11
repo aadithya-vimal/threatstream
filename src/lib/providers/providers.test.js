@@ -111,11 +111,17 @@ describe("provider registry", () => {
     expect(meta.every((m) => m.attribution && m.updateCadence && m.feedType)).toBe(true);
   });
 
-  it("keeps every provider on a fast heartbeat cadence", () => {
+  it("keeps every provider on its documented heartbeat cadence", () => {
     const meta = getProviderMetadata();
+    const expected = {
+      "spamhaus-drop": 10 * 60 * 1000,
+      dshield: 10 * 60 * 1000,
+      "isc-sources": 30 * 60 * 1000,
+      openphish: 30 * 60 * 1000,
+      "cisa-kev": 60 * 60 * 1000,
+    };
     for (const m of meta) {
-      expect(m.refreshIntervalMs).toBeGreaterThan(0);
-      expect(m.refreshIntervalMs).toBeLessThanOrEqual(60 * 1000);
+      expect(m.refreshIntervalMs).toBe(expected[m.id]);
     }
   });
 

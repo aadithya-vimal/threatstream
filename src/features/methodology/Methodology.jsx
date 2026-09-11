@@ -63,21 +63,21 @@ export default function Methodology() {
             CIDR becomes one source-only observation; the file&apos;s own{" "}
             <em>Source File Date</em> header becomes each event&apos;s timestamp, labeled as a{" "}
             <strong>list-publication time</strong>, never an attack time. Origin refresh ~12h;
-            Polled every 20 sec.
+            Polled every 10 min.
           </SourceDef>
           <SourceDef name="DShield (SANS) · FireHOL mirror" status="Live" statusTone="success">
             The top ~20 attacking /24 subnets SANS sensors saw over the last three days
             (maintainer Category: attacks, ~10 min file refresh). FireHOL is only the
             CORS-compatible mirror — attribution names SANS DShield as the origin.
             Recent attack sources, still source-only: no victims, no per-event times.
-            Polled every 20 sec.
+            Polled every 10 min.
           </SourceDef>
           <SourceDef name="ISC Attack Sources (SANS, direct API)" status="Live" statusTone="success">
             Attacker source IPs its sensors observed, with per-record attack counts and{" "}
             <strong>first/last seen dates</strong> — genuine source observation times
             (labeled <span className="mono">observed</span>), the only per-record event
             times any live source provides. Still source-only: the API publishes no
-            victim IPs, so no arcs are drawn. Polled every 20 sec.
+            victim IPs, so no arcs are drawn. Polled every 30 min.
           </SourceDef>
           <SourceDef name="OpenPhish Community Feed" status="Live" statusTone="success">
             Reported phishing URLs (one per line) via OpenPhish&apos;s own raw GitHub
@@ -85,14 +85,14 @@ export default function Methodology() {
             <strong>not</strong> geographic: URLs carry no IPs and no timestamps, so records
             appear in feed/stats only, never as globe markers. Timestamps stay{" "}
             <span className="mono">null</span> with kind <span className="mono">received</span>.
-            Polled every 20 sec.
+            Polled every 30 min.
           </SourceDef>
           <SourceDef name="CISA KEV · official GitHub mirror" status="Live" statusTone="success">
             CVEs confirmed exploited in the wild. The canonical cisa.gov endpoint sends no
             CORS headers and is unusable from browsers — so ThreatStream fetches the official
             CISA-maintained mirror (<span className="mono">cisagov/kev-data</span>), verified
             identical in shape. Non-geographic by design, severity stays{" "}
-            <span className="mono">unknown</span>. Updated weekdays; polled every 20 sec.
+            <span className="mono">unknown</span>. Updated weekdays; polled every 60 min.
           </SourceDef>
           <SourceDef name="GeoIP enrichment · ipwho.is → ipwhois.app" status="Enrichment" statusTone="info">
             Block representatives resolved to country/city/ASN/organization/coarse
@@ -173,7 +173,8 @@ export default function Methodology() {
 
       <Panel id="m-refresh" title="08 · Refresh model">
         <p>
-          Each source re-fetches on a <strong>~20-second heartbeat</strong> (a 5-second scheduler checks what is due), pausing while the tab is hidden and refetching due sources when
+          Each source re-fetches on <strong>its own cadence</strong> (DROP/DShield every
+          10 min, ISC/OpenPhish every 30 min, KEV every 60 min; a 60-second scheduler checks what is due), pausing while the tab is hidden and refetching due sources when
           you return. “Updated N seconds ago” reflects the last real client fetch — kept
           distinct from the <strong>source-update time</strong> (e.g. a feed&apos;s file
           date), which is shown separately in Source health. If nothing changed, the UI
@@ -238,4 +239,5 @@ export default function Methodology() {
     </div>
   );
 }
+
 

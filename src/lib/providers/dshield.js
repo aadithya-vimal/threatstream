@@ -41,12 +41,12 @@ const provider = {
   sourceUrl: DSHIELD_SOURCE_URL,
   feedUrl: DSHIELD_MIRROR_URL,
   attribution: "SANS Internet Storm Center DShield (via FireHOL mirror)",
-  updateCadence: "File ~10 min · polled every 20 sec",
+  updateCadence: "File ~10 min · polled every 10 min",
   feedType: "CIDR blocklist (text)",
   browserCompatible: true,
   limitations:
     "Top-20 recent attackers only — small, churning set. No victims, no per-event times.",
-  refreshIntervalMs: 20 * 1000,
+  refreshIntervalMs: 10 * 60 * 1000,
   requiresKey: false,
 
   async fetchLatest({ fetchText = fetchWithTimeout } = {}) {

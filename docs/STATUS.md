@@ -10,11 +10,12 @@ historical and not authoritative.
 - Exact next task: run `npm install`, `npm test`, `npm run build`; fix fallout.
 - Architecture: static React + Three.js frontend. No backend/database/auth.
 - Live sources (all verified browser-compatible 2026-09-10): Spamhaus DROP
-  (FireHOL mirror), DShield via FireHOL mirror, ISC Attack Sources (direct API),
-  OpenPhish community raw mirror, CISA KEV via official cisagov/kev-data mirror;
-  ipwho.is → ipwhois.app enrichment. 20-second refresh heartbeat (5-sec due-check,
-  overlap-guarded, browser-cache friendly) + snapshot diffing with lifecycle
-  transitions (enter/fade/pulse), NEW badges, source drawer, ASN analytics.
+  (FireHOL mirror, 10 min), DShield via FireHOL mirror (10 min), ISC Attack
+  Sources direct API (30 min), OpenPhish community raw mirror (30 min),
+  CISA KEV via official cisagov/kev-data mirror (60 min);
+  ipwho.is → ipwhois.app enrichment. 60-second due-check scheduler (overlap-guarded)
+  + snapshot diffing with lifecycle transitions (enter/fade/pulse), NEW badges,
+  source drawer, ASN analytics.
 - Pair-telemetry hunt 2026-09-10: no keyless CORS-compatible endpoint-bearing
   feed found (ISC sources+counts only; Feodo/URLhaus CORS-blocked; ThreatFox
   key-gated; ET/blocklist.de bare IP lists, no CORS) — arcs stay honestly at 0;

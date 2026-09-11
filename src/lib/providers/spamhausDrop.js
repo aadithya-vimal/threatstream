@@ -43,12 +43,12 @@ const provider = {
   sourceUrl: SPAMHAUS_DROP_SOURCE_URL,
   feedUrl: SPAMHAUS_DROP_MIRROR_URL,
   attribution: "Spamhaus Project (via FireHOL mirror)",
-  updateCadence: "Origin ~12h · polled every 20 sec",
+  updateCadence: "Origin ~12h · polled every 10 min",
   feedType: "CIDR blocklist (text)",
   browserCompatible: true,
   limitations:
     "Lists ranges only — absence proves nothing. No victims, times, or targets. First ~140 subnets per cycle.",
-  refreshIntervalMs: 20 * 1000,
+  refreshIntervalMs: 10 * 60 * 1000,
   requiresKey: false,
 
   async fetchLatest({ fetchText = fetchWithTimeout } = {}) {

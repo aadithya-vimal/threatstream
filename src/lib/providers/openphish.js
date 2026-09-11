@@ -40,12 +40,12 @@ const provider = {
   sourceUrl: OPENPHISH_INFO_URL,
   feedUrl: OPENPHISH_FEED_URL,
   attribution: "OpenPhish Community Feed",
-  updateCadence: "Periodic community refresh · polled every 20 sec",
+  updateCadence: "Periodic community refresh · polled every 30 min",
   feedType: "URL list (text)",
   browserCompatible: true,
   limitations:
     "URLs only — no IPs, no timestamps, no victims. Shown in feed/stats, never on the globe.",
-  refreshIntervalMs: 20 * 1000,
+  refreshIntervalMs: 30 * 60 * 1000,
   requiresKey: false,
 
   async fetchLatest({ fetchText = fetchWithTimeout } = {}) {

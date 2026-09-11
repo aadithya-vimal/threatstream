@@ -35,7 +35,7 @@ import { enrichEvents, getGeoDiagnostics } from "../lib/providers/geoEnrichment.
 import { diffIdSets, mergeEvents } from "../lib/threat/dedup.js";
 import { sortByTimeDesc } from "../lib/threat/filter.js";
 
-const TICK_MS = 5 * 1000;
+const TICK_MS = 60 * 1000;
 const NEW_BADGE_MS = 10 * 60 * 1000;
 const CHANGED_WINDOW_MS = 2 * 60 * 1000;
 /** Idle enrichment: small bounded top-ups between provider cycles. */
